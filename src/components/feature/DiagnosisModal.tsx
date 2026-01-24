@@ -1,0 +1,92 @@
+"use client";
+
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+const ERROR_TAGS = [
+  { id: "Linking", label: "Linking (连读/吞音)" },
+  { id: "Vocab", label: "Vocab (生词/短语)" },
+  { id: "Speed", label: "Speed (语速过快)" },
+  { id: "Grammar", label: "Grammar (长难句)" },
+  { id: "Accent", label: "Accent (口音)" },
+];
+
+interface DiagnosisModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (tags: string[], note: string) => void;
+  sentenceText: string;
+}
+
+export default function DiagnosisModal({
+  isOpen,
+  onClose,
+  onSave,
+  sentenceText,
+}: DiagnosisModalProps) {
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+
+  const toggleTag = (id: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+    );
+  };
+
+  const handleSave = () => {
+    onSave(selectedTags, note);
+    setSelectedTags([]);
+    setNote("");
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Why couldn't you catch this?</DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <div className="p-3 bg-gray-50 rounded-md text-sm italic text-gray-600 border">
+            "{sentenceText}"
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            {ERROR_TAGS.map((tag) => (
+              <Badge
+                key={tag.id}
+                variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                className="cursor-pointer px-3 py-1 text-sm"
+                onClick={() => toggleTag(tag.id)}
+              >
+                {tag.label}
+              </Badge>
+            ))}
+          </div>
+
+          <textarea
+            placeholder="Add a note (e.g., 'of' sounded like 'a')"
+            className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px]"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={selectedTags.length === 0}>
+            Add to Vault
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

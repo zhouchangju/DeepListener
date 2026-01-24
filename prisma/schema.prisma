@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Track {
+  id            String     @id @default(uuid())
+  title         String
+  audioUrl      String
+  transcription String     // JSON string storing Whisper word-level data
+  createdAt     DateTime   @default(now())
+  
+  sentences     Sentence[]
+}
+
+model Sentence {
+  id          String   @id @default(uuid())
+  trackId     String
+  track       Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  
+  text        String
+  startTime   Float    // In seconds
+  endTime     Float    // In seconds
+  orderIndex  Int
+
+  reviewItem  ReviewItem?
+}
+
+model ReviewItem {
+  id          String   @id @default(uuid())
+  sentenceId  String   @unique
+  sentence    Sentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+
+  level       Int      @default(0)
+  nextReview  DateTime @default(now())
+  
+  tags        ErrorTag[]
+  
+  userNote    String?
+  createdAt   DateTime @default(now())
+}
+
+model ErrorTag {
+  id          String       @id @default(uuid())
+  name        String       @unique // "Linking", "Vocab", "Speed", "Grammar", etc.
+  reviewItems ReviewItem[]
+}

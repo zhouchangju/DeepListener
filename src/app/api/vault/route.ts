@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { sentenceId, tags, note } = await req.json();
+
+    // Ensure tags exist in DB
+    for (const tagName of tags) {
+      await prisma.errorTag.upsert({
+        where: { name: tagName },
+        update: {},
+        create: { name: tagName },
+      });
+    }
+
+    const reviewItem = await prisma.reviewItem.upsert({
+      where: { sentenceId },
+      update: {
+        userNote: note,
+        tags: {
+          set: tags.map((t: string) => ({ name: t })),
+        },
+      },
+      create: {
+        sentenceId,
+        userNote: note,
+        tags: {
+          connect: tags.map((t: string) => ({ name: t })),
+        },
+      },
+    });
+
+    return NextResponse.json(reviewItem);
+  } catch (error: any) {
+    console.error("Vault error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
