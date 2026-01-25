@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import DifficultySelector from "./DifficultySelector";
 
-const ERROR_TAGS = ["Linking", "Vocab", "Speed", "Grammar", "Accent"];
+const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "Grammar", "Accent"];
 
 interface EditVaultModalProps {
   isOpen: boolean;
@@ -24,12 +25,14 @@ interface EditVaultModalProps {
 export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditVaultModalProps) {
   const [note, setNote] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [difficulty, setDifficulty] = useState("NORMAL");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (item) {
       setNote(item.userNote || "");
       setSelectedTags(item.tags?.map((t: any) => t.name) || []);
+      setDifficulty(item.difficulty || "NORMAL");
     }
   }, [item]);
 
@@ -45,7 +48,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
       const res = await fetch(`/api/vault/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userNote: note, tags: selectedTags }),
+        body: JSON.stringify({ userNote: note, tags: selectedTags, difficulty }),
       });
 
       if (!res.ok) throw new Error("Failed to update");
@@ -80,6 +83,11 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
                 {tag}
               </Badge>
             ))}
+          </div>
+
+          <div>
+            <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
+            <DifficultySelector value={difficulty} onChange={setDifficulty} />
           </div>
 
           <div className="text-sm font-medium mt-2">Personal Note</div>

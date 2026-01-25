@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Repeat, Eraser } from "lucide-react";
+import { memo } from "react";
 
 interface PlayerControlsProps {
   isPlaying: boolean;
@@ -12,7 +13,7 @@ interface PlayerControlsProps {
   onToggleDebug: (e: React.MouseEvent) => void;
 }
 
-export function PlayerControls({
+export const PlayerControls = memo(function PlayerControls({
   isPlaying,
   currentTime,
   duration,
@@ -69,4 +70,4 @@ export function PlayerControls({
       </div>
     </div>
   );
-}
+});

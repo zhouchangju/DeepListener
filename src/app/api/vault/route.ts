@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { sentenceId, tags, note } = await req.json();
+    const { sentenceId, tags, note, difficulty = "NORMAL" } = await req.json();
 
     // Ensure tags exist in DB
     for (const tagName of tags) {
@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
       where: { sentenceId },
       update: {
         userNote: note,
+        difficulty, // Update difficulty if exists
         tags: {
           set: tags.map((t: string) => ({ name: t })),
         },
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       create: {
         sentenceId,
         userNote: note,
+        difficulty, // Set initial difficulty
         tags: {
           connect: tags.map((t: string) => ({ name: t })),
         },

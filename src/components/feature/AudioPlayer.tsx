@@ -48,9 +48,11 @@ export default function AudioPlayer({
   const [loopMode, setLoopMode] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(-1);
   const [zoomLevel, setZoomLevel] = useState(25);
-  // Removed local isReady state, will use hook's return
   const [debugMode, setDebugMode] = useState(false);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  
+  // Throttle ref
+  const lastTimeUpdateRef = useRef(0);
 
   // Auto-scroll logic
   const { listContainerRef, onListScroll, scrollToItem } = useAutoScroll();
@@ -92,10 +94,15 @@ export default function AudioPlayer({
     audioUrl,
     zoomLevel,
     onTimeUpdate: (time) => {
-      setCurrentTime(time);
-      syncListToTime(time, false);
+      // Throttle updates to ~10fps (100ms)
+      const now = Date.now();
+      if (now - lastTimeUpdateRef.current > 100) {
+        setCurrentTime(time);
+        syncListToTime(time, false);
+        lastTimeUpdateRef.current = now;
+      }
     },
-    onReady: () => {}, // State is managed inside the hook now
+    onReady: () => {}, 
     onRegionUpdateEnd: (region) => {
       setTimeout(() => {
         wavesurferRef.current?.setTime(region.start);
@@ -110,12 +117,25 @@ export default function AudioPlayer({
     },
   });
 
+  // Callbacks
+  const handlePlayPause = useCallback(() => {
+    wavesurferRef.current?.playPause();
+  }, [wavesurferRef]);
+
+  const handleToggleLoop = useCallback(() => {
+    setLoopMode((prev) => !prev);
+  }, []);
+
+  const handleClearRegions = useCallback(() => {
+    regionsRef.current?.clearRegions();
+  }, [regionsRef]);
+
   // Interactions Hook
   useAudioInteractions({
     containerRef,
     isReady,
     setZoomLevel,
-    onPlayPause: () => wavesurferRef.current?.playPause(),
+    onPlayPause: handlePlayPause,
   });
 
   // Loop Logic
@@ -147,30 +167,38 @@ export default function AudioPlayer({
   }, [loopMode, isReady, sentences, wavesurferRef, regionsRef]);
 
   // Handlers
-  const handleSentenceClick = (s: Sentence, index: number) => {
+  const handleSentenceClick = useCallback((s: Sentence, index: number) => {
     if (debugMode) console.log(`Sentence ${index}:`, s.text);
     if (blindMode) setRevealedIds((prev) => new Set(prev).add(s.id));
     
     wavesurferRef.current?.setTime(s.startTime);
     wavesurferRef.current?.play();
     regionsRef.current.clearRegions();
-  };
+  }, [debugMode, blindMode, wavesurferRef, regionsRef]);
 
-  const handleToggleDebug = (e: React.MouseEvent) => {
+  const handleToggleDebug = useCallback((e: React.MouseEvent) => {
     if (e.altKey) {
-      setDebugMode(!debugMode);
-      if (!debugMode) {
-        console.table(
-          sentences.map((s) => ({
-            text: s.text.substring(0, 20) + "...",
-            start: s.startTime,
-            end: s.endTime,
-            duration: s.endTime - s.startTime,
-          }))
-        );
-      }
+      setDebugMode((prev) => {
+        const next = !prev;
+        if (!next) {
+          console.table(
+            sentences.map((s) => ({
+              text: s.text.substring(0, 20) + "...",
+              start: s.startTime,
+              end: s.endTime,
+              duration: s.endTime - s.startTime,
+            }))
+          );
+        }
+        return next;
+      });
     }
-  };
+  }, [sentences]);
+
+  const handleShadowing = useCallback((index: number) => {
+    wavesurferRef.current?.pause();
+    onShadowing(index);
+  }, [onShadowing, wavesurferRef]);
 
   return (
     <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
@@ -179,9 +207,9 @@ export default function AudioPlayer({
         currentTime={currentTime}
         duration={isReady ? wavesurferRef.current?.getDuration() || 0 : 0}
         loopMode={loopMode}
-        onTogglePlay={() => wavesurferRef.current?.playPause()}
-        onToggleLoop={() => setLoopMode(!loopMode)}
-        onClearRegions={() => regionsRef.current.clearRegions()}
+        onTogglePlay={handlePlayPause}
+        onToggleLoop={handleToggleLoop}
+        onClearRegions={handleClearRegions}
         onToggleDebug={handleToggleDebug}
       />
 
@@ -196,7 +224,7 @@ export default function AudioPlayer({
         listContainerRef={listContainerRef}
         onScroll={onListScroll}
         onSentenceClick={handleSentenceClick}
-        onShadowing={onShadowing}
+        onShadowing={handleShadowing}
         onCapture={onCapture}
       />
 

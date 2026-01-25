@@ -10,10 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import DifficultySelector from "./DifficultySelector";
 
 const ERROR_TAGS = [
   { id: "Linking", label: "Linking (连读/吞音)" },
   { id: "Vocab", label: "Vocab (生词/短语)" },
+  { id: "Misheard", label: "Misheard (听错单词)" },
+  { id: "Comprehension", label: "Comprehension (不理解)" },
   { id: "Speed", label: "Speed (语速过快)" },
   { id: "Grammar", label: "Grammar (长难句)" },
   { id: "Accent", label: "Accent (口音)" },
@@ -22,7 +25,7 @@ const ERROR_TAGS = [
 interface DiagnosisModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tags: string[], note: string) => void;
+  onSave: (tags: string[], note: string, difficulty: string) => void; // Updated signature
   sentenceText: string;
 }
 
@@ -34,6 +37,7 @@ export default function DiagnosisModal({
 }: DiagnosisModalProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [difficulty, setDifficulty] = useState("NORMAL"); // Default
 
   const toggleTag = (id: string) => {
     setSelectedTags((prev) =>
@@ -42,9 +46,10 @@ export default function DiagnosisModal({
   };
 
   const handleSave = () => {
-    onSave(selectedTags, note);
+    onSave(selectedTags, note, difficulty);
     setSelectedTags([]);
     setNote("");
+    setDifficulty("NORMAL");
   };
 
   return (
@@ -70,6 +75,11 @@ export default function DiagnosisModal({
                 {tag.label}
               </Badge>
             ))}
+          </div>
+
+          <div>
+            <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
+            <DifficultySelector value={difficulty} onChange={setDifficulty} />
           </div>
 
           <textarea

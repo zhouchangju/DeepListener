@@ -18,16 +18,20 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = await params;
-    const { userNote, tags } = await req.json();
+    const { userNote, tags, difficulty } = await req.json();
+
+    const data: any = {
+      userNote,
+      tags: {
+        set: tags.map((t: string) => ({ name: t })),
+      },
+    };
+
+    if (difficulty) data.difficulty = difficulty;
 
     const updated = await prisma.reviewItem.update({
       where: { id },
-      data: {
-        userNote,
-        tags: {
-          set: tags.map((t: string) => ({ name: t })),
-        },
-      },
+      data,
     });
 
     return NextResponse.json(updated);

@@ -1,12 +1,12 @@
 import { MousePointer2, Hand, ZoomIn } from "lucide-react";
-import { RefObject } from "react";
+import { RefObject, memo } from "react";
 
 interface WaveformAreaProps {
   containerRef: RefObject<HTMLDivElement | null>;
   timelineRef: RefObject<HTMLDivElement | null>;
 }
 
-export function WaveformArea({ containerRef, timelineRef }: WaveformAreaProps) {
+export const WaveformArea = memo(function WaveformArea({ containerRef, timelineRef }: WaveformAreaProps) {
   return (
     <div className="p-4 sm:p-6 bg-white">
       <div ref={timelineRef} className="mb-2 opacity-80" />
@@ -30,4 +30,4 @@ export function WaveformArea({ containerRef, timelineRef }: WaveformAreaProps) {
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Mic2, BookmarkCheck, Save } from "lucide-react";
-import { RefObject } from "react";
+import { Mic2, BookmarkCheck, Save, Copy } from "lucide-react";
+import { RefObject, memo } from "react";
+import { toast } from "sonner";
 
 interface Sentence {
   id: string;
@@ -23,7 +24,7 @@ interface SentenceListProps {
   onCapture: (sentenceId: string) => void;
 }
 
-export function SentenceList({
+export const SentenceList = memo(function SentenceList({
   sentences,
   activeSentenceIndex,
   blindMode,
@@ -35,6 +36,11 @@ export function SentenceList({
   onShadowing,
   onCapture,
 }: SentenceListProps) {
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
+  };
+
   return (
     <div className="bg-white border-t border-slate-100">
       <div
@@ -86,23 +92,34 @@ export function SentenceList({
                   {s.text}
                 </p>
 
-                {/* Mobile Actions */}
-                <div className="mt-3 flex sm:hidden items-center gap-4">
+                {/* Mobile Actions (Updated) */}
+                <div className="mt-3 flex sm:hidden items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-full text-[11px] font-bold px-3 gap-1.5 border-slate-200"
+                    className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       onShadowing(i);
                     }}
                   >
-                    <Mic2 className="h-3.5 w-3.5 text-indigo-500" /> SHADOWING
+                    <Mic2 className="h-4 w-4 text-indigo-500" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`h-8 rounded-full text-[11px] font-bold px-3 gap-1.5 ${
+                    className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopy(s.text);
+                    }}
+                  >
+                    <Copy className="h-4 w-4 text-slate-500" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-9 px-3 gap-1.5 flex-1 ${
                       isSaved ? "bg-amber-50 text-amber-600 border-amber-200" : "border-slate-200 text-slate-500"
                     }`}
                     onClick={(e) => {
@@ -110,30 +127,42 @@ export function SentenceList({
                       onCapture(s.id);
                     }}
                   >
-                    {isSaved ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                    {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Save className="h-4 w-4" />}
                     {isSaved ? "SAVED" : "CAPTURE"}
                   </Button>
                 </div>
               </div>
 
-              {/* PC Actions */}
-              <div className="hidden sm:flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+              {/* PC Actions (Updated) */}
+              <div className="hidden sm:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+                  className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
                   title="Shadowing"
                   onClick={(e) => {
                     e.stopPropagation();
                     onShadowing(i);
                   }}
                 >
-                  <Mic2 className="h-4 w-4" />
+                  <Mic2 className="h-5 w-5" />
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className={`h-8 w-8 p-0 ${
+                  className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+                  title="Copy Text"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopy(s.text);
+                  }}
+                >
+                  <Copy className="h-5 w-5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`h-9 w-9 p-0 ${
                     isSaved
                       ? "text-amber-500 hover:text-amber-600"
                       : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
@@ -144,7 +173,7 @@ export function SentenceList({
                     onCapture(s.id);
                   }}
                 >
-                  {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                  {isSaved ? <BookmarkCheck className="h-5 w-5" /> : <Save className="h-5 w-5" />}
                 </Button>
               </div>
             </div>
@@ -153,4 +182,4 @@ export function SentenceList({
       </div>
     </div>
   );
-}
+});

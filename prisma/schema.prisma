@@ -39,8 +39,9 @@ model ReviewItem {
   sentenceId  String   @unique
   sentence    Sentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
 
-  level       Int      @default(0)
-  nextReview  DateTime @default(now())
+  level       Int      @default(0) // 当前复习等级 (0-5)
+  difficulty  String   @default("NORMAL") // EASY, NORMAL, HARD, VERY_HARD
+  nextReview  DateTime @default(now()) // 下次复习时间
   
   tags        ErrorTag[]
   
