@@ -1,6 +1,6 @@
 import { createClient } from "@deepgram/sdk";
 import * as fs from "fs";
-import { TranscriptionProvider, TranscriptionResponse } from "./types";
+import { TranscriptionProvider, TranscriptionResponse, TranscriptionSegment } from "./types";
 
 export class DeepgramProvider implements TranscriptionProvider {
   private deepgram;
@@ -12,15 +12,15 @@ export class DeepgramProvider implements TranscriptionProvider {
   async transcribe(filePath: string): Promise<TranscriptionResponse> {
     const audioBuffer = fs.readFileSync(filePath);
 
-    // Deepgram 强大的智能分句 (smart_format) 和标点 (punctuate)
+    // 请求 word-level 时间戳
     const { result, error } = await this.deepgram.listen.prerecorded.transcribeFile(
       audioBuffer,
       {
-        model: "nova-2", // Deepgram 最强的模型
+        model: "nova-2",
         smart_format: true,
         punctuate: true,
-        paragraphs: true, // 这一步至关重要，Deepgram 会帮我们切分段落和句子
-        utterances: true, // 获取精确的语句时间轴
+        paragraphs: true, 
+        utterances: true, 
       }
     );
 
@@ -29,19 +29,57 @@ export class DeepgramProvider implements TranscriptionProvider {
       throw new Error(`Deepgram Error: ${error.message}`);
     }
 
-    // 解析 Utterances（话语/句子）
-    // Deepgram 的 utterances 通常对应一个完整的句子或意群，时间轴非常精准
-    const segments = result.results?.utterances?.map((u: any) => ({
-      text: u.transcript,
-      start: u.start,
-      end: u.end,
-    })) || [];
+    const words = result.results?.channels[0]?.alternatives[0]?.words || [];
+    const segments: TranscriptionSegment[] = [];
+    
+    let currentSentenceWords: string[] = [];
+    let currentStartTime = words[0]?.start || 0;
+    
+    // 自定义分句逻辑：基于标点符号
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const text = word.punctuated_word || word.word;
+      
+      currentSentenceWords.push(text);
+
+      // 判断是否是句子结尾
+      // 规则：以 . ? ! 结尾，或者已经是最后一个词
+      const isEndOfSentence = /[.?!]$/.test(text) || i === words.length - 1;
+
+      if (isEndOfSentence) {
+        const sentenceText = currentSentenceWords.join(" ");
+        const endTime = word.end;
+
+        // 只有当句子稍微长一点（比如 > 1秒）或者确实是结尾时才切分，避免 "Mr." 这种缩写误判
+        // 但 Deepgram 的 punctuated_word 通常处理好了 "Mr."，所以直接信赖标点
+        segments.push({
+          text: sentenceText,
+          start: currentStartTime,
+          end: endTime,
+        });
+
+        // 重置下一句
+        currentSentenceWords = [];
+        if (i < words.length - 1) {
+          currentStartTime = words[i + 1].start;
+        }
+      }
+    }
+
+    // 如果还有剩余的词（没标点），加进去
+    if (currentSentenceWords.length > 0) {
+      segments.push({
+        text: currentSentenceWords.join(" "),
+        start: currentStartTime,
+        end: words[words.length - 1].end,
+      });
+    }
 
     const fullText = result.results?.channels[0]?.alternatives[0]?.transcript || "";
 
     return {
       fullText,
-      segments,
+      segments, // 使用我们自己切分的高精度句子
       rawJson: JSON.stringify(result),
     };
   }

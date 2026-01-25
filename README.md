@@ -4,11 +4,24 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 
 ## 🌟 核心特性
 
-- **多模型转录引擎**：支持 OpenAI Whisper 和 Google Gemini 1.5/2.0 (当前默认)。
-- **波形精听台**：基于 `wavesurfer.js` 的可视化交互，支持单句循环、盲听模式。
+- **多模型转录引擎**：
+    - **Deepgram (默认)**：结合自定义分句算法，解决超长难句问题。
+    - **备选**：OpenAI Whisper, Google Gemini。
+- **波形精听台**：
+    - **交互升级**：右键平移、滚轮缩放、圈选即播、自动循环。
+    - **盲听模式 (Blind Mode)**：一键模糊文本，强制听力理解。
+    - **笔记状态**：已收藏句子自动高亮 (琥珀色)，重点一目了然。
+- **Shadowing 工作台 (跟读)**：
+    - **双波形对比**：原音与录音波形同屏显示，直观对比节奏与重音。
+    - **沉浸式流程**：听 -> 录 -> 自动回放 -> 对比 -> 重录。
+    - **极速切片**：基于内存的音频切片，切换句子零延迟。
+- **素材管理 (Library)**：
+    - **归档系统**：支持素材软删除 (Archive) 和物理删除 (Delete)。
+    - **重命名**：支持修改自动生成的音频标题。
+    - **移动端适配**：全站响应式设计，支持手机端操作。
 - **归因诊断系统**：强制记录听不懂的原因（连读、生词、语速等）。
-- **智能复习 (SRS)**：类似 Anki 的间隔复习算法，专注攻克难句。
-- **现代化架构**：Next.js 15, Prisma (SQLite), Tailwind CSS v4, shadcn/ui。
+- **智能复习 (Vault)**：
+    - **间隔复习**：类似 Anki 的复习算法。
 
 ## 🚀 快速开始
 
@@ -21,17 +34,15 @@ npm install
 创建或编辑 `.env` 文件：
 
 ```bash
-# 转录提供商 (openai | google)
-TRANSCRIPTION_PROVIDER=google
+# 推荐使用 Deepgram (无需代理，精准时间轴)
+TRANSCRIPTION_PROVIDER=deepgram
+DEEPGRAM_API_KEY=your_deepgram_key
 
-# Google Gemini 配置
-GOOGLE_API_KEY=your_google_api_key
+# 备选：OpenAI / Google
+# OPENAI_API_KEY=sk-...
+# GOOGLE_API_KEY=AIza...
 
-# OpenAI 配置 (可选)
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_BASE_URL=https://api.openai.com/v1
-
-# 网络代理 (国内环境必填)
+# 网络代理 (国内环境必填，针对 OpenAI/Google)
 HTTPS_PROXY=http://127.0.0.1:7890
 ```
 
@@ -48,11 +59,22 @@ npm run dev
 ## 📂 目录结构预览
 
 - `/src/lib/transcription`: 多提供商转录引擎实现。
-- `/src/app/practice`: 核心精听训练界面。
+- `/src/app/practice`: 核心精听训练界面 (AudioPlayer, ShadowingConsole)。
 - `/src/app/review`: 间隔复习系统。
-- `/src/app/dashboard`: 听力瓶颈数据分析。
+- `/src/app/vault`: 生句库列表与管理。
 
-## 🛠️ 技术深度解析
+## 🛠️ 交互指南
 
-- [关于 Node.js 18+ 原生 Fetch 代理超时的解决原理](./docs/solving-node-proxy-timeout.md)
+| 操作 | 作用 |
+| :--- | :--- |
+| **Space** | 播放 / 暂停 |
+| **Scroll** | 缩放波形密度 |
+| **Right Drag** | 左右平移波形 |
+| **Left Drag** | 圈选区域并自动循环 (松开即播) |
+| **Alt + Click** | (在 Position 标题上) 开启时间轴调试模式 |
+
+## 📚 文档资源
+
+- [技术原理：解决 Node.js 代理超时](./docs/solving-node-proxy-timeout.md)
+- [维护手册：如何扩展 API](./docs/maintenance.md)
 - [产品需求文档 (PRD)](./docs/requirement.md)

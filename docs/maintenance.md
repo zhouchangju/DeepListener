@@ -8,14 +8,17 @@
 2.  **实现 `transcribe` 方法**：确保返回符合 `TranscriptionResponse` 接口的数据。
 3.  **注册工厂**：在 `factory.ts` 的 `switch` 语句中加入新 Provider 的标识。
 
-## 2. Gemini 转录的“时间轴幻觉” (Known Issue)
+## 2. 核心算法解析
 
-**现象**：在使用 Google Gemini 2.0 Flash 进行长音频转录时，可能会出现时间轴严重拉伸。
-**原因 (The "60 vs 100" Bug)**：Gemini 有时会将 `1分44秒` (1:44) 错误地格式化为 `144.0` 秒，或者 `1.44`。这种“进制混淆”导致一句话的 `end` 时间比 `start` 晚了几十秒，造成播放器卡死。
-**解决方案**：
-1.  **Prompt 约束**：在 Prompt 中明确要求 `start/end` 必须是 `SECONDS (float)`，且禁止使用分钟格式。
-2.  **后处理修正**：前端 `AudioPlayer` 中已加入“重叠截断”逻辑，强行修正部分溢出。
-3.  **终极方案**：使用非生成式的专用 STT 模型（如 OpenAI Whisper 或 Deepgram）。
+### 2.1 智能分句策略 (Deepgram Provider)
+我们不使用 Deepgram 默认的 `utterances` 切分，因为对于语速快且无停顿的音频，它容易产生超长难句。
+**当前策略**：
+- 请求 `word-level` 时间戳。
+- **本地重组**：遍历单词流，基于标点符号 (`. ? !`) 动态合并生成句子。
+- **优势**：即使说话人一口气说一分钟，只要语法上有句号，我们就能精准切分出短句，且时间轴精确到毫秒。
+
+### 2.2 Gemini 时间轴修正
+Gemini 有时会出现“60进制混淆”问题（把 1:30 识别为 130s）。前端 `AudioPlayer` 内置了重叠检测逻辑 (`endTime > next.startTime`) 来进行运行时热修复。
 
 ## 3. 数据库维护
 

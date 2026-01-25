@@ -39,7 +39,7 @@ export default function UploadButton() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <input
         type="file"
         id="audio-upload"
@@ -48,8 +48,8 @@ export default function UploadButton() {
         onChange={handleUpload}
         disabled={uploading}
       />
-      <label htmlFor="audio-upload">
-        <Button asChild disabled={uploading}>
+      <label htmlFor="audio-upload" className="block w-full">
+        <Button asChild disabled={uploading} className="w-full">
           <span>
             {uploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

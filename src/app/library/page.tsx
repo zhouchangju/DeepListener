@@ -1,43 +1,53 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Archive } from "lucide-react";
 import UploadButton from "./UploadButton";
+import TrackList from "./TrackList";
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: { archived?: string };
+}) {
+  const { archived } = await searchParams; // Next.js 15 requires awaiting searchParams
+  const showArchived = archived === "true";
+
   const tracks = await prisma.track.findMany({
+    where: { isArchived: showArchived },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { sentences: true } } },
   });
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Your Library</h1>
-          <p className="text-gray-500">Upload audio files to start practicing.</p>
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            {showArchived ? "Archived Tracks" : "Your Library"}
+            {showArchived && <span className="text-xs md:text-sm font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded">Archive</span>}
+          </h1>
+          <p className="text-sm md:text-base text-gray-500 mt-1">
+            {showArchived ? "Tracks hidden from main view." : "Upload audio files to start practicing."}
+          </p>
         </div>
-        <UploadButton />
+        
+        <div className="flex gap-2 w-full md:w-auto">
+          <Link href={showArchived ? "/library" : "/library?archived=true"} className="flex-1 md:flex-none">
+            <Button variant="outline" className="w-full">
+              <Archive className="mr-2 h-4 w-4" />
+              {showArchived ? "View Active" : "Archive"}
+            </Button>
+          </Link>
+          {!showArchived && (
+            <div className="flex-1 md:flex-none">
+              <UploadButton />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tracks.map((track) => (
-          <Link key={track.id} href={`/practice/${track.id}`}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
-                <CardTitle className="truncate">{track.title}</CardTitle>
-                <CardDescription>
-                  {track._count.sentences} sentences • {new Date(track.createdAt).toLocaleDateString()}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
-        {tracks.length === 0 && (
-          <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl text-gray-400">
-            No tracks yet. Click the upload button to get started.
-          </div>
-        )}
-      </div>
+      <TrackList tracks={tracks} />
     </div>
   );
 }
