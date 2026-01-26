@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useWaveSurfer } from "./audio-player/useWaveSurfer";
 import { useAutoScroll } from "./audio-player/useAutoScroll";
 import { useAudioInteractions } from "./audio-player/useAudioInteractions";
@@ -31,30 +31,33 @@ export default function AudioPlayer({
   onShadowing,
   blindMode = false,
 }: AudioPlayerProps) {
-  // Pre-process sentences
-  const sentences = rawSentences.map((s, i) => {
-    const next = rawSentences[i + 1];
-    if (next && s.endTime > next.startTime) {
-      return { ...s, endTime: next.startTime - 0.05 };
-    }
-    return s;
-  });
+  
+  // 🟢 OPTIMIZATION 1: Stable Sentences Array
+  // This was the main cause of lag - creating a new array on every render.
+  const sentences = useMemo(() => {
+    return rawSentences.map((s, i) => {
+      const next = rawSentences[i + 1];
+      if (next && s.endTime > next.startTime) {
+        return { ...s, endTime: next.startTime - 0.05 };
+      }
+      return s;
+    });
+  }, [rawSentences]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLSpanElement>(null);
 
   // State
-  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [loopMode, setLoopMode] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(-1);
   const [zoomLevel, setZoomLevel] = useState(25);
   const [debugMode, setDebugMode] = useState(false);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
-  
-  // Throttle ref
-  const lastTimeUpdateRef = useRef(0);
+  const [isReady, setIsReady] = useState(false);
 
-  // Auto-scroll logic
+  // 🟢 OPTIMIZATION 2: Auto-scroll logic
   const { listContainerRef, onListScroll, scrollToItem } = useAutoScroll();
 
   useEffect(() => {
@@ -64,73 +67,58 @@ export default function AudioPlayer({
   // Core Sync Logic
   const syncListToTime = useCallback(
     (time: number, force: boolean = false) => {
-      let index = sentences.findIndex(
+      const index = sentences.findIndex(
         (s) => time >= s.startTime - 0.1 && time <= s.endTime + 0.1
       );
 
-      if (index === -1) {
-        if (force) {
-          index = sentences.findLastIndex((s) => s.startTime <= time + 0.2);
-        } else if (activeSentenceIndex !== -1) {
-          const active = sentences[activeSentenceIndex];
-          if (time < active.endTime + 1.0) index = activeSentenceIndex;
-        }
-      }
-
+      // We only care about transitions or forced jumps
       if (index !== -1) {
         if (index !== activeSentenceIndex) {
           setActiveSentenceIndex(index);
+          // 🟢 OPTIMIZATION 3: 'auto' behavior for sentence transitions
+          // Smooth scrolling during a React render is a thread killer.
+          scrollToItem(index, force); 
+        } else if (force) {
+          scrollToItem(index, true);
         }
-        scrollToItem(index, force);
       }
     },
     [sentences, activeSentenceIndex, scrollToItem]
   );
 
   // WaveSurfer Hook
-  const { wavesurferRef, regionsRef, isPlaying, isReady } = useWaveSurfer({
+  const { wavesurferRef, regionsRef } = useWaveSurfer({
     containerRef,
     timelineRef,
     audioUrl,
     zoomLevel,
     onTimeUpdate: (time) => {
-      // Throttle updates to ~10fps (100ms)
-      const now = Date.now();
-      if (now - lastTimeUpdateRef.current > 100) {
-        setCurrentTime(time);
-        syncListToTime(time, false);
-        lastTimeUpdateRef.current = now;
+      // Direct DOM update (High performance)
+      if (timeRef.current) {
+        timeRef.current.innerText = new Date(time * 1000).toISOString().substr(14, 5);
       }
+      syncListToTime(time, false);
     },
-    onReady: () => {}, 
+    onReady: () => setIsReady(true),
     onRegionUpdateEnd: (region) => {
       setTimeout(() => {
         wavesurferRef.current?.setTime(region.start);
-        setCurrentTime(region.start);
+        if (timeRef.current) timeRef.current.innerText = new Date(region.start * 1000).toISOString().substr(14, 5);
         syncListToTime(region.start, true);
         wavesurferRef.current?.play();
       }, 10);
     },
     onInteraction: (time) => {
-      setCurrentTime(time);
+      if (timeRef.current) timeRef.current.innerText = new Date(time * 1000).toISOString().substr(14, 5);
       syncListToTime(time, true);
     },
   });
 
   // Callbacks
-  const handlePlayPause = useCallback(() => {
-    wavesurferRef.current?.playPause();
-  }, [wavesurferRef]);
+  const handlePlayPause = useCallback(() => wavesurferRef.current?.playPause(), [wavesurferRef]);
+  const handleToggleLoop = useCallback(() => setLoopMode((prev) => !prev), []);
+  const handleClearRegions = useCallback(() => regionsRef.current?.clearRegions(), [regionsRef]);
 
-  const handleToggleLoop = useCallback(() => {
-    setLoopMode((prev) => !prev);
-  }, []);
-
-  const handleClearRegions = useCallback(() => {
-    regionsRef.current?.clearRegions();
-  }, [regionsRef]);
-
-  // Interactions Hook
   useAudioInteractions({
     containerRef,
     isReady,
@@ -138,7 +126,7 @@ export default function AudioPlayer({
     onPlayPause: handlePlayPause,
   });
 
-  // Loop Logic
+  // Separate Loop Effect
   useEffect(() => {
     const ws = wavesurferRef.current;
     if (!ws || !isReady) return;
@@ -150,50 +138,25 @@ export default function AudioPlayer({
         if (time >= region.end - 0.05 || time < region.start - 0.5) {
           ws.setTime(region.start);
         }
-      } else if (loopMode) {
-        const activeSentence = sentences.find(
-          (s) => time >= s.startTime && time <= s.endTime
-        );
-        if (activeSentence && time >= activeSentence.endTime - 0.05) {
-          ws.setTime(activeSentence.startTime);
-        }
       }
     };
 
     ws.on("timeupdate", onTimeUpdate);
-    return () => {
-      ws.un("timeupdate", onTimeUpdate);
-    };
-  }, [loopMode, isReady, sentences, wavesurferRef, regionsRef]);
+    return () => { ws.un("timeupdate", onTimeUpdate); };
+  }, [isReady, wavesurferRef, regionsRef]);
 
   // Handlers
   const handleSentenceClick = useCallback((s: Sentence, index: number) => {
     if (debugMode) console.log(`Sentence ${index}:`, s.text);
     if (blindMode) setRevealedIds((prev) => new Set(prev).add(s.id));
-    
     wavesurferRef.current?.setTime(s.startTime);
     wavesurferRef.current?.play();
     regionsRef.current.clearRegions();
   }, [debugMode, blindMode, wavesurferRef, regionsRef]);
 
   const handleToggleDebug = useCallback((e: React.MouseEvent) => {
-    if (e.altKey) {
-      setDebugMode((prev) => {
-        const next = !prev;
-        if (!next) {
-          console.table(
-            sentences.map((s) => ({
-              text: s.text.substring(0, 20) + "...",
-              start: s.startTime,
-              end: s.endTime,
-              duration: s.endTime - s.startTime,
-            }))
-          );
-        }
-        return next;
-      });
-    }
-  }, [sentences]);
+    if (e.altKey) setDebugMode((prev) => !prev);
+  }, []);
 
   const handleShadowing = useCallback((index: number) => {
     wavesurferRef.current?.pause();
@@ -204,7 +167,7 @@ export default function AudioPlayer({
     <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
       <PlayerControls
         isPlaying={isPlaying}
-        currentTime={currentTime}
+        timeRef={timeRef}
         duration={isReady ? wavesurferRef.current?.getDuration() || 0 : 0}
         loopMode={loopMode}
         onTogglePlay={handlePlayPause}

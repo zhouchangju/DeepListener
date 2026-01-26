@@ -24,6 +24,144 @@ interface SentenceListProps {
   onCapture: (sentenceId: string) => void;
 }
 
+// Extracted and Memoized Item
+const SentenceItem = memo(function SentenceItem({
+  s,
+  i,
+  isActive,
+  isBlurred,
+  isSaved,
+  debugMode,
+  onClick,
+  onShadowing,
+  onCapture,
+  onCopy,
+}: {
+  s: Sentence;
+  i: number;
+  isActive: boolean;
+  isBlurred: boolean;
+  isSaved: boolean;
+  debugMode: boolean;
+  onClick: () => void;
+  onShadowing: (e: React.MouseEvent) => void;
+  onCapture: (e: React.MouseEvent) => void;
+  onCopy: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      id={`sentence-${i}`}
+      onClick={onClick}
+      className={`group flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-4 rounded-xl transition-all cursor-pointer border-2 mb-2 ${
+        isActive
+          ? "bg-indigo-50/50 border-indigo-100 shadow-sm"
+          : isSaved
+          ? "bg-amber-50/30 border-amber-100/50"
+          : "bg-transparent border-transparent hover:bg-slate-50"
+      }`}
+    >
+      <div
+        className={`mt-2.5 w-1.5 h-1.5 rounded-full shrink-0 hidden sm:block ${
+          isActive
+            ? "bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]"
+            : isSaved
+            ? "bg-amber-400"
+            : "bg-slate-200"
+        }`}
+      />
+
+      <div className="flex-grow w-full">
+        <p
+          className={`text-[15px] sm:text-[16px] leading-relaxed transition-all duration-300 ${
+            isBlurred ? "blur-sm select-none text-slate-300" : "text-slate-700"
+          }`}
+        >
+          {debugMode && (
+            <span className="text-[10px] text-red-400 font-mono block mb-1">
+              [{s.startTime.toFixed(2)} - {s.endTime.toFixed(2)}]
+            </span>
+          )}
+          {s.text}
+        </p>
+
+        <div className="mt-3 flex sm:hidden items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
+            onClick={onShadowing}
+          >
+            <Mic2 className="h-4 w-4 text-indigo-500" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
+            onClick={onCopy}
+          >
+            <Copy className="h-4 w-4 text-slate-500" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={`h-9 px-3 gap-1.5 flex-1 ${
+              isSaved
+                ? "bg-amber-50 text-amber-600 border-amber-200"
+                : "border-slate-200 text-slate-500"
+            }`}
+            onClick={onCapture}
+          >
+            {isSaved ? (
+              <BookmarkCheck className="h-4 w-4" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaved ? "SAVED" : "CAPTURE"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="hidden sm:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+          title="Shadowing"
+          onClick={onShadowing}
+        >
+          <Mic2 className="h-5 w-5" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+          title="Copy Text"
+          onClick={onCopy}
+        >
+          <Copy className="h-5 w-5" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className={`h-9 w-9 p-0 ${
+            isSaved
+              ? "text-amber-500 hover:text-amber-600"
+              : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+          }`}
+          title={isSaved ? "Already Saved" : "Capture to Vault"}
+          onClick={onCapture}
+        >
+          {isSaved ? (
+            <BookmarkCheck className="h-5 w-5" />
+          ) : (
+            <Save className="h-5 w-5" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 export const SentenceList = memo(function SentenceList({
   sentences,
   activeSentenceIndex,
@@ -54,129 +192,28 @@ export const SentenceList = memo(function SentenceList({
           const isSaved = !!s.reviewItem;
 
           return (
-            <div
+            <SentenceItem
               key={s.id}
-              id={`sentence-${i}`}
+              s={s}
+              i={i}
+              isActive={isActive}
+              isBlurred={isBlurred}
+              isSaved={isSaved}
+              debugMode={debugMode}
               onClick={() => onSentenceClick(s, i)}
-              className={`group flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-4 rounded-xl transition-all cursor-pointer border-2 mb-2 ${
-                isActive
-                  ? "bg-indigo-50/50 border-indigo-100 shadow-sm"
-                  : isSaved
-                  ? "bg-amber-50/30 border-amber-100/50"
-                  : "bg-transparent border-transparent hover:bg-slate-50"
-              }`}
-            >
-              {/* Status Dot (PC) */}
-              <div
-                className={`mt-2.5 w-1.5 h-1.5 rounded-full shrink-0 hidden sm:block ${
-                  isActive
-                    ? "bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]"
-                    : isSaved
-                    ? "bg-amber-400"
-                    : "bg-slate-200"
-                }`}
-              />
-
-              {/* Content */}
-              <div className="flex-grow w-full">
-                <p
-                  className={`text-[15px] sm:text-[16px] leading-relaxed transition-all duration-300 ${
-                    isBlurred ? "blur-sm select-none text-slate-300" : "text-slate-700"
-                  }`}
-                >
-                  {debugMode && (
-                    <span className="text-[10px] text-red-400 font-mono block mb-1">
-                      [{s.startTime.toFixed(2)} - {s.endTime.toFixed(2)}]
-                    </span>
-                  )}
-                  {s.text}
-                </p>
-
-                {/* Mobile Actions (Updated) */}
-                <div className="mt-3 flex sm:hidden items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onShadowing(i);
-                    }}
-                  >
-                    <Mic2 className="h-4 w-4 text-indigo-500" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopy(s.text);
-                    }}
-                  >
-                    <Copy className="h-4 w-4 text-slate-500" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`h-9 px-3 gap-1.5 flex-1 ${
-                      isSaved ? "bg-amber-50 text-amber-600 border-amber-200" : "border-slate-200 text-slate-500"
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCapture(s.id);
-                    }}
-                  >
-                    {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-                    {isSaved ? "SAVED" : "CAPTURE"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* PC Actions (Updated) */}
-              <div className="hidden sm:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
-                  title="Shadowing"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShadowing(i);
-                  }}
-                >
-                  <Mic2 className="h-5 w-5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
-                  title="Copy Text"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopy(s.text);
-                  }}
-                >
-                  <Copy className="h-5 w-5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className={`h-9 w-9 p-0 ${
-                    isSaved
-                      ? "text-amber-500 hover:text-amber-600"
-                      : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                  }`}
-                  title={isSaved ? "Already Saved" : "Capture to Vault"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCapture(s.id);
-                  }}
-                >
-                  {isSaved ? <BookmarkCheck className="h-5 w-5" /> : <Save className="h-5 w-5" />}
-                </Button>
-              </div>
-            </div>
+              onShadowing={(e) => {
+                e.stopPropagation();
+                onShadowing(i);
+              }}
+              onCapture={(e) => {
+                e.stopPropagation();
+                onCapture(s.id);
+              }}
+              onCopy={(e) => {
+                e.stopPropagation();
+                handleCopy(s.text);
+              }}
+            />
           );
         })}
       </div>

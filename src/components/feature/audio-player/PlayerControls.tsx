@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Repeat, Eraser } from "lucide-react";
-import { memo } from "react";
+import { memo, RefObject } from "react";
 
 interface PlayerControlsProps {
   isPlaying: boolean;
-  currentTime: number;
+  timeRef: RefObject<HTMLSpanElement | null>; // Changed from currentTime number
   duration: number;
   loopMode: boolean;
   onTogglePlay: () => void;
@@ -15,7 +15,7 @@ interface PlayerControlsProps {
 
 export const PlayerControls = memo(function PlayerControls({
   isPlaying,
-  currentTime,
+  timeRef,
   duration,
   loopMode,
   onTogglePlay,
@@ -39,7 +39,7 @@ export const PlayerControls = memo(function PlayerControls({
             Position
           </span>
           <span className="text-xl sm:text-2xl font-mono text-slate-700 truncate">
-            {new Date(currentTime * 1000).toISOString().substr(14, 5)}
+            <span ref={timeRef}>00:00</span>
             <span className="text-slate-300 text-lg">
               {" "}
               / {new Date(duration * 1000).toISOString().substr(14, 5)}
@@ -48,6 +48,7 @@ export const PlayerControls = memo(function PlayerControls({
         </div>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+// ...
         <Button
           variant={loopMode ? "default" : "outline"}
           size="sm"

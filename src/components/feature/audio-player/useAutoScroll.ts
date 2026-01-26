@@ -25,7 +25,10 @@ export function useAutoScroll() {
       if (el) {
         const top = el.offsetTop - container.offsetTop;
         const targetScroll = top - (container.clientHeight / 2) + (el.clientHeight / 2);
-        container.scrollTo({ top: targetScroll, behavior: "smooth" });
+        container.scrollTo({ 
+          top: targetScroll, 
+          behavior: force ? "smooth" : "auto" 
+        });
       }
     });
   }, []);

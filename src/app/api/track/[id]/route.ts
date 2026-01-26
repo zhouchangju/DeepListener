@@ -4,7 +4,7 @@ import { unlink } from "fs/promises";
 import path from "path";
 
 // DELETE (保持不变)
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const track = await prisma.track.findUnique({ where: { id } });
@@ -25,7 +25,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 }
 
 // PATCH: 更新标题或归档状态
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
@@ -34,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: any = {};
     if (typeof body.title === "string") data.title = body.title;
     if (typeof body.isArchived === "boolean") data.isArchived = body.isArchived;
+    if (typeof body.isLearnt === "boolean") data.isLearnt = body.isLearnt;
 
     const track = await prisma.track.update({
       where: { id },

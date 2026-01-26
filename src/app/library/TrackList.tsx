@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Archive, RotateCcw, MoreVertical, Trash2, Edit3 } from "lucide-react";
+import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, Check, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -19,6 +19,7 @@ interface Track {
   id: string;
   title: string;
   isArchived: boolean;
+  isLearnt: boolean;
   createdAt: Date;
   _count: { sentences: number };
 }
@@ -28,7 +29,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [renamingTrack, setRenamingTrack] = useState<Track | null>(null);
 
-  const handleAction = async (e: React.MouseEvent, action: "archive" | "delete" | "rename", track: Track) => {
+  const handleAction = async (e: React.MouseEvent, action: "archive" | "delete" | "rename" | "toggle-learnt", track: Track) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -36,6 +37,24 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
 
     if (action === "rename") {
       setRenamingTrack(track);
+      return;
+    }
+
+    if (action === "toggle-learnt") {
+      setLoadingId(track.id);
+      try {
+        await fetch(`/api/track/${track.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isLearnt: !track.isLearnt }),
+        });
+        toast.success(track.isLearnt ? "Marked as unlearnt" : "Marked as learnt");
+        router.refresh();
+      } catch (error) {
+        toast.error("Operation failed");
+      } finally {
+        setLoadingId(null);
+      }
       return;
     }
 
@@ -84,7 +103,9 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tracks.map((track) => (
           <Link key={track.id} href={`/practice/${track.id}`}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer relative group">
+            <Card className={`hover:shadow-md transition-shadow cursor-pointer relative group ${
+              track.isLearnt ? "bg-green-50/60 hover:bg-green-50" : "hover:bg-slate-50"
+            }`}>
               <CardHeader className="pr-12">
                 <CardTitle className="leading-tight break-words text-lg">
                   {track.title}
@@ -104,6 +125,13 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => handleAction(e, "toggle-learnt", track)}>
+                        {track.isLearnt ? (
+                          <><BookOpen className="mr-2 h-4 w-4" /> Mark Unlearnt</>
+                        ) : (
+                          <><Check className="mr-2 h-4 w-4" /> Mark Learnt</>
+                        )}
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
                         <Edit3 className="mr-2 h-4 w-4" /> Rename
                       </DropdownMenuItem>

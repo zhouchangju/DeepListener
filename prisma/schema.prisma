@@ -16,6 +16,7 @@ model Track {
   audioUrl      String
   transcription String     // JSON string storing Whisper word-level data
   isArchived    Boolean    @default(false)
+  isLearnt      Boolean    @default(false)
   createdAt     DateTime   @default(now())
   
   sentences     Sentence[]
