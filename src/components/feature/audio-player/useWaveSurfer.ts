@@ -9,6 +9,7 @@ interface UseWaveSurferProps {
   timelineRef: RefObject<HTMLDivElement | null>;
   audioUrl: string;
   zoomLevel: number;
+  playbackRate: number;
   onTimeUpdate: (time: number) => void;
   onReady: () => void;
   onRegionUpdateEnd: (region: any) => void;
@@ -20,6 +21,7 @@ export function useWaveSurfer({
   timelineRef,
   audioUrl,
   zoomLevel,
+  playbackRate,
   onTimeUpdate,
   onReady,
   onRegionUpdateEnd,
@@ -44,7 +46,6 @@ export function useWaveSurfer({
       height: 100,
       minPxPerSec: zoomLevel,
       autoCenter: true,
-      shadowDOM: false,
       plugins: [
         TimelinePlugin.create({ container: timelineRef.current }),
         Minimap.create({ height: 20, waveColor: "#eee", progressColor: "#4f46e5" }),
@@ -62,11 +63,12 @@ export function useWaveSurfer({
       });
     });
 
-    regions.on("region-update-end", onRegionUpdateEnd);
+    regions.on("region-update-end" as any, onRegionUpdateEnd);
 
     // Playback Events
     ws.on("ready", () => {
       setIsReady(true);
+      ws.setPlaybackRate(playbackRate); // Set initial rate
       onReady();
     });
     ws.on("play", () => setIsPlaying(true));
@@ -98,6 +100,13 @@ export function useWaveSurfer({
       wavesurferRef.current.zoom(zoomLevel);
     }
   }, [zoomLevel, isReady]);
+
+  // Sync playback rate
+  useEffect(() => {
+    if (wavesurferRef.current && isReady) {
+      wavesurferRef.current.setPlaybackRate(playbackRate);
+    }
+  }, [playbackRate, isReady]);
 
   return { wavesurferRef, regionsRef, isPlaying, isReady };
 }

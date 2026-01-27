@@ -8,9 +8,10 @@ type Mode = "idle" | "playing_original" | "recording" | "reviewing";
 interface UseShadowingWorkflowProps {
   sentence: { text: string; startTime: number; endTime: number };
   fullAudioBuffer: AudioBuffer;
+  playbackRate: number;
 }
 
-export function useShadowingWorkflow({ sentence, fullAudioBuffer }: UseShadowingWorkflowProps) {
+export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }: UseShadowingWorkflowProps) {
   const [mode, setMode] = useState<Mode>("idle");
   const [originalBlob, setOriginalBlob] = useState<Blob | null>(null);
   const [userBlob, setUserBlob] = useState<Blob | null>(null);
@@ -29,20 +30,30 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer }: UseShadowing
       setOriginalBlob(blob);
       const url = URL.createObjectURL(blob);
       originalAudioRef.current = new Audio(url);
+      // Sync initial rate
+      originalAudioRef.current.playbackRate = playbackRate;
     } catch (e) {
       console.error("Slice failed", e);
       toast.error("Audio slice failed");
     }
   }, [fullAudioBuffer, sentence]);
 
+  // Real-time rate sync
+  useEffect(() => {
+    if (originalAudioRef.current) {
+      originalAudioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const playOriginal = useCallback((onEnded?: () => void) => {
     const audio = originalAudioRef.current;
     if (!audio) return;
     
+    audio.playbackRate = playbackRate;
     audio.currentTime = 0;
     audio.play();
     audio.onended = () => onEnded?.();
-  }, []);
+  }, [playbackRate]);
 
   const handleStartFlow = useCallback(() => {
     setMode("playing_original");
@@ -50,7 +61,13 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer }: UseShadowing
     
     playOriginal(() => {
       setMode("recording");
-      const duration = (sentence.endTime - sentence.startTime) * 1000 * 1.5;
+      // Adjust duration based on playback speed (slower speed = longer duration)
+      // Base duration is 1.5x the original length.
+      // If speed is 0.5x, the audio takes 2x longer to play, so we should probably allow more time for recording too?
+      // Actually, user speaking speed is independent of playback speed, but they might be mimicking slow speech.
+      // Let's keep the recording window generous: (duration / rate) * 1.5 might be too long if rate is 0.5.
+      // Let's stick to (duration * 1.5) / rate to be safe.
+      const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
       
       startRecording(duration).then((blob) => {
         setUserBlob(blob);
@@ -61,11 +78,11 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer }: UseShadowing
         new Audio(userUrl).play();
       });
     });
-  }, [sentence, playOriginal, startRecording]);
+  }, [sentence, playOriginal, startRecording, playbackRate]);
 
   const handleRecAgain = useCallback(() => {
     setMode("recording");
-    const duration = (sentence.endTime - sentence.startTime) * 1000 * 1.5;
+    const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
     
     startRecording(duration).then((blob) => {
       setUserBlob(blob);
@@ -73,7 +90,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer }: UseShadowing
       const userUrl = URL.createObjectURL(blob);
       new Audio(userUrl).play();
     });
-  }, [sentence, startRecording]);
+  }, [sentence, startRecording, playbackRate]);
 
   return {
     mode,

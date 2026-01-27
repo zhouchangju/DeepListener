@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Mic, Play, RotateCcw, SkipForward, X, Loader2 } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
+import SpeedSelector from "./SpeedSelector";
+import { useState } from "react";
 
 interface ShadowingConsoleProps {
   sentence: { text: string; startTime: number; endTime: number };
@@ -20,9 +22,11 @@ export default function ShadowingConsole({
   onNext,
   onPrev,
 }: ShadowingConsoleProps) {
+  const [playbackRate, setPlaybackRate] = useState(1);
   const { mode, originalBlob, userBlob, startFlow, handleRecAgain } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
+    playbackRate,
   });
 
   return (
@@ -30,7 +34,10 @@ export default function ShadowingConsole({
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold text-slate-800">Shadowing Mode</h2>
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-4">
+            Shadowing Mode
+            <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
+          </h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-6 w-6" />
           </Button>
@@ -60,6 +67,7 @@ export default function ShadowingConsole({
                     label="Original"
                     waveColor="#94a3b8"
                     progressColor="#475569"
+                    playbackRate={playbackRate}
                   />
                 </div>
               )}
@@ -77,6 +85,7 @@ export default function ShadowingConsole({
                   label="Original"
                   waveColor="#94a3b8"
                   progressColor="#475569"
+                  playbackRate={playbackRate}
                 />
                 <MiniWavePlayer
                   audioBlob={userBlob}

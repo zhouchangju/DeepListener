@@ -56,6 +56,7 @@ export default function AudioPlayer({
   const [debugMode, setDebugMode] = useState(false);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [isReady, setIsReady] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   // 🟢 OPTIMIZATION 2: Auto-scroll logic
   const { listContainerRef, onListScroll, scrollToItem } = useAutoScroll();
@@ -92,6 +93,7 @@ export default function AudioPlayer({
     timelineRef,
     audioUrl,
     zoomLevel,
+    playbackRate,
     onTimeUpdate: (time) => {
       // Direct DOM update (High performance)
       if (timeRef.current) {
@@ -170,6 +172,8 @@ export default function AudioPlayer({
         timeRef={timeRef}
         duration={isReady ? wavesurferRef.current?.getDuration() || 0 : 0}
         loopMode={loopMode}
+        playbackRate={playbackRate}
+        onRateChange={setPlaybackRate}
         onTogglePlay={handlePlayPause}
         onToggleLoop={handleToggleLoop}
         onClearRegions={handleClearRegions}

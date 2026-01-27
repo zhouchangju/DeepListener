@@ -11,6 +11,7 @@ interface MiniWavePlayerProps {
   waveColor?: string;
   progressColor?: string;
   label?: string;
+  playbackRate?: number;
 }
 
 export default function MiniWavePlayer({ 
@@ -18,11 +19,18 @@ export default function MiniWavePlayer({
   height = 60, 
   waveColor = "#cbd5e1", 
   progressColor = "#4f46e5",
-  label 
+  label,
+  playbackRate = 1,
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.setPlaybackRate(playbackRate);
+    }
+  }, [playbackRate]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -41,6 +49,7 @@ export default function MiniWavePlayer({
 
     const url = typeof audioBlob === 'string' ? audioBlob : URL.createObjectURL(audioBlob);
     ws.load(url);
+    ws.setPlaybackRate(playbackRate); // Set initial rate
     wavesurferRef.current = ws;
 
     ws.on("play", () => setIsPlaying(true));

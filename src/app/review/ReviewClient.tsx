@@ -8,11 +8,13 @@ import { Play, Eye, RotateCcw, Check, SkipForward, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
+import SpeedSelector from "@/components/feature/SpeedSelector";
 
 export default function ReviewClient({ items }: { items: any[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
@@ -22,19 +24,37 @@ export default function ReviewClient({ items }: { items: any[] }) {
     setShowAnswer(false);
   }, [currentIndex]);
 
-  const playAudio = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(current.sentence.track.audioUrl);
+  // Sync playback rate in real-time
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
     }
-    const audio = audioRef.current;
+  }, [playbackRate]);
+
+  const playAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const audio = new Audio(current.sentence.track.audioUrl);
+    audioRef.current = audio;
+    
     audio.src = current.sentence.track.audioUrl;
     audio.currentTime = current.sentence.startTime;
-    audio.play();
+    audio.playbackRate = playbackRate;
+    
+    const stopTime = current.sentence.endTime;
+    
+    const onTimeUpdate = () => {
+      if (audio.currentTime >= stopTime) {
+        audio.pause();
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+      }
+    };
 
-    const duration = (current.sentence.endTime - current.sentence.startTime) * 1000;
-    setTimeout(() => {
-      audio.pause();
-    }, duration);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.play();
   };
 
   const handleGrade = async (quality: "again" | "good") => {
@@ -65,11 +85,14 @@ export default function ReviewClient({ items }: { items: any[] }) {
     <div className="max-w-xl mx-auto">
       <div className="mb-4 text-sm text-gray-500 text-center flex justify-between items-center px-2">
         <span>{currentIndex + 1} / {items.length} sentences</span>
-        {showAnswer && (
-          <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
-            <Edit3 className="h-3 w-3 mr-1" /> Edit Note
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
+          {showAnswer && (
+            <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
+              <Edit3 className="h-3 w-3 mr-1" /> Edit Note
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="min-h-[300px] flex flex-col justify-between relative">

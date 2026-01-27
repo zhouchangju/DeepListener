@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Repeat, Eraser } from "lucide-react";
 import { memo, RefObject } from "react";
+import SpeedSelector from "../SpeedSelector";
 
 interface PlayerControlsProps {
   isPlaying: boolean;
   timeRef: RefObject<HTMLSpanElement | null>; // Changed from currentTime number
   duration: number;
   loopMode: boolean;
+  playbackRate: number;
+  onRateChange: (rate: number) => void;
   onTogglePlay: () => void;
   onToggleLoop: () => void;
   onClearRegions: () => void;
@@ -18,6 +21,8 @@ export const PlayerControls = memo(function PlayerControls({
   timeRef,
   duration,
   loopMode,
+  playbackRate,
+  onRateChange,
   onTogglePlay,
   onToggleLoop,
   onClearRegions,
@@ -48,7 +53,7 @@ export const PlayerControls = memo(function PlayerControls({
         </div>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-// ...
+        <SpeedSelector playbackRate={playbackRate} onRateChange={onRateChange} />
         <Button
           variant={loopMode ? "default" : "outline"}
           size="sm"
