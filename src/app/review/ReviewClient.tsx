@@ -22,7 +22,19 @@ export default function ReviewClient({ items }: { items: any[] }) {
 
   useEffect(() => {
     setShowAnswer(false);
+    playAudio();
   }, [currentIndex]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "r" && !showAnswer && !isEditing) {
+        setShowAnswer(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAnswer, isEditing]);
 
   // Sync playback rate in real-time
   useEffect(() => {
@@ -37,14 +49,21 @@ export default function ReviewClient({ items }: { items: any[] }) {
       audioRef.current = null;
     }
 
-    const audio = new Audio(current.sentence.track.audioUrl);
+    // Log playback
+    fetch("/api/review/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewItemId: items[currentIndex].id }),
+    }).catch(console.error);
+
+    const audio = new Audio(items[currentIndex].sentence.track.audioUrl);
     audioRef.current = audio;
     
-    audio.src = current.sentence.track.audioUrl;
-    audio.currentTime = current.sentence.startTime;
+    audio.src = items[currentIndex].sentence.track.audioUrl;
+    audio.currentTime = items[currentIndex].sentence.startTime;
     audio.playbackRate = playbackRate;
     
-    const stopTime = current.sentence.endTime;
+    const stopTime = items[currentIndex].sentence.endTime;
     
     const onTimeUpdate = () => {
       if (audio.currentTime >= stopTime) {
@@ -54,7 +73,7 @@ export default function ReviewClient({ items }: { items: any[] }) {
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.play();
+    audio.play().catch(e => console.log("Auto-play prevented:", e));
   };
 
   const handleGrade = async (quality: "again" | "good") => {
@@ -76,22 +95,30 @@ export default function ReviewClient({ items }: { items: any[] }) {
         toast.success("Review session finished!");
         window.location.reload();
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to save progress");
     }
   };
 
   return (
     <div className="max-w-xl mx-auto">
-      <div className="mb-4 text-sm text-gray-500 text-center flex justify-between items-center px-2">
-        <span>{currentIndex + 1} / {items.length} sentences</span>
-        <div className="flex items-center gap-2">
-          <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
-          {showAnswer && (
-            <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
-              <Edit3 className="h-3 w-3 mr-1" /> Edit Note
-            </Button>
-          )}
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex justify-between items-center px-2 text-sm text-gray-500">
+            <span>{currentIndex + 1} / {items.length} sentences</span>
+            <div className="flex items-center gap-2">
+            <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
+            {showAnswer && (
+                <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
+                <Edit3 className="h-3 w-3 mr-1" /> Edit Note
+                </Button>
+            )}
+            </div>
+        </div>
+        
+        {/* Stats Bar */}
+        <div className="flex justify-center gap-4 text-xs text-slate-400 bg-slate-50 py-1 rounded-md">
+            <span>Total Listens: <span className="font-semibold text-slate-600">{current.stats?.totalListens || 0}</span></span>
+            <span>Avg Daily: <span className="font-semibold text-slate-600">{current.stats?.averageDailyListens?.toFixed(1) || "0.0"}</span></span>
         </div>
       </div>
 
@@ -123,14 +150,14 @@ export default function ReviewClient({ items }: { items: any[] }) {
               )}
             </div>
           ) : (
-            <p className="text-gray-400 italic">Click play to listen. Try to decode the sentence in your mind.</p>
+            <p className="text-gray-400 italic">Click play to listen. Press 'R' to reveal.</p>
           )}
         </CardContent>
 
         <CardFooter className="bg-gray-50/50 p-6 flex gap-4">
           {!showAnswer ? (
             <Button className="w-full" onClick={() => setShowAnswer(true)}>
-              <Eye className="mr-2 h-4 w-4" /> Reveal Answer
+              <Eye className="mr-2 h-4 w-4" /> Reveal Answer (R)
             </Button>
           ) : (
             <>
@@ -156,7 +183,12 @@ export default function ReviewClient({ items }: { items: any[] }) {
         isOpen={isEditing} 
         onClose={() => setIsEditing(false)} 
         item={current} 
-        onSaved={() => router.refresh()} 
+        onSaved={() => {
+            router.refresh();
+            // Don't change index, and optionally hide answer if that's what user wanted
+            // "且不要自动显示出reveal answer的内容" -> implies hiding it
+            setShowAnswer(false); 
+        }} 
       />
     </div>
   );

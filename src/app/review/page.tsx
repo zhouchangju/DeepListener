@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import ReviewClient from "./ReviewClient";
 
 export default async function ReviewPage() {
-  const items = await prisma.reviewItem.findMany({
+  const rawItems = await prisma.reviewItem.findMany({
     where: {
       nextReview: {
         lte: new Date(),
@@ -13,8 +13,23 @@ export default async function ReviewPage() {
         include: { track: true }
       },
       tags: true,
+      _count: {
+        select: { logs: true }
+      }
     },
     orderBy: { nextReview: "asc" },
+  });
+
+  const items = rawItems.map(item => {
+    const daysSinceCreation = Math.max(1, Math.floor((new Date().getTime() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
+    const averageDailyListens = item._count.logs / daysSinceCreation;
+    return {
+      ...item,
+      stats: {
+        totalListens: item._count.logs,
+        averageDailyListens
+      }
+    };
   });
 
   return (

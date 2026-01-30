@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import UploadButton from "./UploadButton";
-import TrackList from "./TrackList";
+import LibraryManager from "./LibraryManager";
 
 export default async function LibraryPage({
   searchParams,
@@ -47,7 +47,7 @@ export default async function LibraryPage({
         </div>
       </div>
 
-      <TrackList tracks={tracks} />
+      <LibraryManager tracks={tracks} />
     </div>
   );
 }

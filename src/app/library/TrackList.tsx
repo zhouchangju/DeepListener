@@ -21,6 +21,8 @@ interface Track {
   isArchived: boolean;
   isLearnt: boolean;
   createdAt: Date;
+  trackType?: string | null;
+  trackTopic?: string | null;
   _count: { sentences: number };
 }
 
@@ -50,7 +52,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
         });
         toast.success(track.isLearnt ? "Marked as unlearnt" : "Marked as learnt");
         router.refresh();
-      } catch (error) {
+      } catch {
         toast.error("Operation failed");
       } finally {
         setLoadingId(null);
@@ -68,7 +70,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
         });
         toast.success(track.isArchived ? "Restored!" : "Archived!");
         router.refresh();
-      } catch (error) {
+      } catch {
         toast.error("Operation failed");
       } finally {
         setLoadingId(null);
@@ -82,7 +84,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
         if (!res.ok) throw new Error();
         toast.success("Track deleted permanently");
         router.refresh();
-      } catch (error) {
+      } catch {
         toast.error("Delete failed");
       } finally {
         setLoadingId(null);
@@ -107,6 +109,19 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
               track.isLearnt ? "bg-green-50/60 hover:bg-green-50" : "hover:bg-slate-50"
             }`}>
               <CardHeader className="pr-12">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {track.trackType && track.trackType !== "Other" && (
+                     <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
+                        {track.trackType}
+                     </span>
+                  )}
+                  {track.trackTopic && track.trackTopic !== "Other" && (
+                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
+                        {track.trackTopic}
+                     </span>
+                  )}
+                </div>
+
                 <CardTitle className="leading-tight break-words text-lg">
                   {track.title}
                 </CardTitle>
@@ -133,7 +148,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
-                        <Edit3 className="mr-2 h-4 w-4" /> Rename
+                        <Edit3 className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => handleAction(e, "archive", track)}>
                         {track.isArchived ? (

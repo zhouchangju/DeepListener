@@ -14,6 +14,7 @@ async function main() {
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    // @ts-ignore
     httpAgent: httpAgent,
     timeout: 120 * 1000,
   });

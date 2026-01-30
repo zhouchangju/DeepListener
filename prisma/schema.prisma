@@ -15,6 +15,9 @@ model Track {
   title         String
   audioUrl      String
   transcription String     // JSON string storing Whisper word-level data
+  note          String?    // User's free-text note for the track
+  trackType     String?    // Conversation, Lecture, Other
+  trackTopic    String?    // 校园生活, 社会科学, etc.
   isArchived    Boolean    @default(false)
   isLearnt      Boolean    @default(false)
   createdAt     DateTime   @default(now())
@@ -48,6 +51,15 @@ model ReviewItem {
   
   userNote    String?
   createdAt   DateTime @default(now())
+
+  logs        ReviewLog[]
+}
+
+model ReviewLog {
+  id           String     @id @default(uuid())
+  reviewItemId String
+  reviewItem   ReviewItem @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
 }
 
 model ErrorTag {

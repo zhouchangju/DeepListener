@@ -16,7 +16,8 @@ export function useAudioInteractions({
   // Keyboard (Space)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isInput = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName);
+      const target = e.target as HTMLElement;
+      const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName) || target.isContentEditable;
       if (e.code === "Space" && !isInput) {
         e.preventDefault();
         onPlayPause();

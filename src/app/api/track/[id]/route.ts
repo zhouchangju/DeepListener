@@ -14,13 +14,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (track.audioUrl.startsWith("/uploads/")) {
       const fileName = track.audioUrl.replace("/uploads/", "");
       const filePath = path.join(process.cwd(), "public/uploads", fileName);
-      try { await unlink(filePath); } catch (e) {}
+      try { await unlink(filePath); } catch {}
     }
 
     await prisma.track.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -31,8 +32,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     
     // 过滤只允许更新的字段
-    const data: any = {};
+    const data: Record<string, string | boolean> = {};
     if (typeof body.title === "string") data.title = body.title;
+    if (typeof body.note === "string") data.note = body.note;
+    if (typeof body.trackType === "string") data.trackType = body.trackType;
+    if (typeof body.trackTopic === "string") data.trackTopic = body.trackTopic;
     if (typeof body.isArchived === "boolean") data.isArchived = body.isArchived;
     if (typeof body.isLearnt === "boolean") data.isLearnt = body.isLearnt;
 
@@ -42,7 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     return NextResponse.json(track);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
