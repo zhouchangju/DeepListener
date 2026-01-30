@@ -19,10 +19,25 @@ model Track {
   trackType     String?    // Conversation, Lecture, Other
   trackTopic    String?    // 校园生活, 社会科学, etc.
   isArchived    Boolean    @default(false)
-  isLearnt      Boolean    @default(false)
+  status        String     @default("INTENSIVE") // INTENSIVE, ANALYSIS, SHADOWING, SPEED_SHADOWING, PARAPHRASE, LEARNT
   createdAt     DateTime   @default(now())
   
   sentences     Sentence[]
+  categories    TrackCategory[]
+}
+
+model Category {
+  id    String @id @default(uuid())
+  name  String @unique
+  tracks TrackCategory[]
+}
+
+model TrackCategory {
+  trackId    String
+  categoryId String
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([trackId, categoryId])
 }
 
 model Sentence {
@@ -59,6 +74,10 @@ model ReviewLog {
   id           String     @id @default(uuid())
   reviewItemId String
   reviewItem   ReviewItem @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
+  
+  reviewType   String     @default("STANDARD") // STANDARD, BLIND, SHADOWING
+  rating       Int        @default(0) // 0-5
+  duration     Int        @default(0) // Seconds spent
   createdAt    DateTime   @default(now())
 }
 

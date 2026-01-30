@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body.trackType === "string") data.trackType = body.trackType;
     if (typeof body.trackTopic === "string") data.trackTopic = body.trackTopic;
     if (typeof body.isArchived === "boolean") data.isArchived = body.isArchived;
-    if (typeof body.isLearnt === "boolean") data.isLearnt = body.isLearnt;
+    if (typeof body.status === "string") data.status = body.status;
 
     const track = await prisma.track.update({
       where: { id },

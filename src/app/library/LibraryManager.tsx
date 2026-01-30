@@ -10,7 +10,7 @@ interface Track {
     id: string;
     title: string;
     isArchived: boolean;
-    isLearnt: boolean;
+    status: string;
     createdAt: Date;
     note: string | null;
     trackType?: string | null;

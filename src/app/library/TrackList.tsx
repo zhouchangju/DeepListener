@@ -19,19 +19,28 @@ interface Track {
   id: string;
   title: string;
   isArchived: boolean;
-  isLearnt: boolean;
+  status: string;
   createdAt: Date;
   trackType?: string | null;
   trackTopic?: string | null;
   _count: { sentences: number };
 }
 
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  INTENSIVE: { label: "精听", color: "text-indigo-700", bg: "bg-indigo-50" },
+  ANALYSIS: { label: "分析", color: "text-amber-700", bg: "bg-amber-50" },
+  SHADOWING: { label: "Shadowing", color: "text-purple-700", bg: "bg-purple-50" },
+  SPEED_SHADOWING: { label: "倍速 Shadowing", color: "text-pink-700", bg: "bg-pink-50" },
+  PARAPHRASE: { label: "Paraphrase", color: "text-cyan-700", bg: "bg-cyan-50" },
+  LEARNT: { label: "已学习", color: "text-green-700", bg: "bg-green-50" },
+};
+
 export default function TrackList({ tracks }: { tracks: Track[] }) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [renamingTrack, setRenamingTrack] = useState<Track | null>(null);
 
-  const handleAction = async (e: React.MouseEvent, action: "archive" | "delete" | "rename" | "toggle-learnt", track: Track) => {
+  const handleAction = async (e: React.MouseEvent, action: "archive" | "delete" | "rename" | "change-status", track: Track, value?: string) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -42,15 +51,15 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
       return;
     }
 
-    if (action === "toggle-learnt") {
+    if (action === "change-status" && value) {
       setLoadingId(track.id);
       try {
         await fetch(`/api/track/${track.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isLearnt: !track.isLearnt }),
+          body: JSON.stringify({ status: value }),
         });
-        toast.success(track.isLearnt ? "Marked as unlearnt" : "Marked as learnt");
+        toast.success(`Status updated to ${STATUS_CONFIG[value]?.label || value}`);
         router.refresh();
       } catch {
         toast.error("Operation failed");
@@ -63,7 +72,7 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
     if (action === "archive") {
       setLoadingId(track.id);
       try {
-        await fetch(`/api/track/${track.id}`, { // Updated endpoint
+        await fetch(`/api/track/${track.id}`, { 
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isArchived: !track.isArchived }),
@@ -103,79 +112,84 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tracks.map((track) => (
-          <Link key={track.id} href={`/practice/${track.id}`}>
-            <Card className={`hover:shadow-md transition-shadow cursor-pointer relative group ${
-              track.isLearnt ? "bg-green-50/60 hover:bg-green-50" : "hover:bg-slate-50"
-            }`}>
-              <CardHeader className="pr-12">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {track.trackType && track.trackType !== "Other" && (
-                     <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
-                        {track.trackType}
+        {tracks.map((track) => {
+          const statusConfig = STATUS_CONFIG[track.status] || STATUS_CONFIG["INTENSIVE"];
+          return (
+            <Link key={track.id} href={`/practice/${track.id}`}>
+              <Card className={`hover:shadow-md transition-shadow cursor-pointer relative group ${
+                track.status === "LEARNT" ? "bg-green-50/30" : "hover:bg-slate-50"
+              }`}>
+                <CardHeader className="pr-12">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                     <span className={`px-2 py-0.5 text-xs rounded-full font-medium border ${statusConfig.bg} ${statusConfig.color} border-transparent`}>
+                        {statusConfig.label}
                      </span>
-                  )}
-                  {track.trackTopic && track.trackTopic !== "Other" && (
-                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-                        {track.trackTopic}
-                     </span>
-                  )}
-                </div>
+                    {track.trackType && track.trackType !== "Other" && (
+                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-full font-medium border border-indigo-100">
+                          {track.trackType}
+                       </span>
+                    )}
+                  </div>
 
-                <CardTitle className="leading-tight break-words text-lg">
-                  {track.title}
-                </CardTitle>
-                
-                <div className="absolute top-4 right-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-gray-400 hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        disabled={loadingId === track.id}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => handleAction(e, "toggle-learnt", track)}>
-                        {track.isLearnt ? (
-                          <><BookOpen className="mr-2 h-4 w-4" /> Mark Unlearnt</>
-                        ) : (
-                          <><Check className="mr-2 h-4 w-4" /> Mark Learnt</>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
-                        <Edit3 className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => handleAction(e, "archive", track)}>
-                        {track.isArchived ? (
-                          <><RotateCcw className="mr-2 h-4 w-4" /> Restore</>
-                        ) : (
-                          <><Archive className="mr-2 h-4 w-4" /> Archive</>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={(e) => handleAction(e, "delete", track)}
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  <CardTitle className="leading-tight break-words text-lg">
+                    {track.title}
+                  </CardTitle>
+                  
+                  <div className="absolute top-4 right-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-gray-400 hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          disabled={loadingId === track.id}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                          <DropdownMenuItem 
+                            key={key} 
+                            onClick={(e) => handleAction(e, "change-status", track, key)}
+                            className={track.status === key ? "bg-accent" : ""}
+                          >
+                             <div className={`w-2 h-2 rounded-full mr-2 ${config.color.replace('text-', 'bg-')}`} />
+                             Set to {config.label}
+                          </DropdownMenuItem>
+                        ))}
+                        <div className="h-px bg-border my-1" />
+                        <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
+                          <Edit3 className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleAction(e, "archive", track)}>
+                          {track.isArchived ? (
+                            <><RotateCcw className="mr-2 h-4 w-4" /> Restore</>
+                          ) : (
+                            <><Archive className="mr-2 h-4 w-4" /> Archive</>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => handleAction(e, "delete", track)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-                <CardDescription className="mt-2">
-                  <span suppressHydrationWarning>
-                    {track._count.sentences} sentences • {new Date(track.createdAt).toLocaleDateString()}
-                  </span>
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
+                  <CardDescription className="mt-2">
+                    <span suppressHydrationWarning>
+                      {track._count.sentences} sentences • {new Date(track.createdAt).toLocaleDateString()}
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
 
       {renamingTrack && (
