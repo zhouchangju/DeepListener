@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import ErrorTagChart, { StatusRingChart, TypeDistributionChart } from "./StatsCharts";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarClock, Headphones, Mic2 } from "lucide-react";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const STATUS_LABELS: Record<string, string> = {
   UNLEARNT: "未学习",
@@ -14,18 +16,53 @@ const STATUS_LABELS: Record<string, string> = {
   LEARNT: "已学习",
 };
 
-export default async function DashboardPage() {
-  // 1. TOEFL Countdown
+export default function DashboardPage() {
+  // 1. TOEFL Countdown (Static, fast)
   const targetDate = new Date("2026-05-10");
   const today = new Date();
   const diffTime = Math.abs(targetDate.getTime() - today.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  // 2. Status Stats
-  const tracks = await prisma.track.findMany({
-    where: { isArchived: false },
-    select: { status: true, trackType: true },
-  });
+  return (
+    <div className="container mx-auto py-8 px-4 space-y-8">
+      {/* Top Banner: Countdown (Always visible) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-indigo-100 font-medium text-lg">
+              <CalendarClock className="h-5 w-5" /> TOEFL Countdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-bold">{diffDays}</span>
+              <span className="text-xl text-indigo-100">days left</span>
+            </div>
+            <div className="text-sm text-indigo-200 mt-2">Target Date: May 10, 2026</div>
+          </CardContent>
+        </Card>
+
+        {/* Async Stats */}
+        <Suspense fallback={<StatsSkeleton />}>
+          <DashboardContent />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+async function DashboardContent() {
+  // Fetch everything in parallel
+  const [tracks, tags, totalSentences] = await Promise.all([
+    prisma.track.findMany({
+      where: { isArchived: false },
+      select: { status: true, trackType: true },
+    }),
+    prisma.errorTag.findMany({
+      include: { _count: { select: { reviewItems: true } } },
+    }),
+    prisma.reviewItem.count()
+  ]);
 
   const totalTracks = tracks.length;
   const learntCount = tracks.filter(t => t.status === "LEARNT").length;
@@ -50,55 +87,30 @@ export default async function DashboardPage() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // 3. Error Tags Stats
-  const tags = await prisma.errorTag.findMany({
-    include: { _count: { select: { reviewItems: true } } },
-  });
   const tagData = tags.map((t) => ({ name: t.name, value: t._count.reviewItems }));
 
-  const totalSentences = await prisma.reviewItem.count();
-
   return (
-    <div className="container mx-auto py-8 px-4 space-y-8">
-      
-      {/* Top Banner: Countdown & Progress */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-100 font-medium text-lg">
-              <CalendarClock className="h-5 w-5" /> TOEFL Countdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-bold">{diffDays}</span>
-              <span className="text-xl text-indigo-100">days left</span>
-            </div>
-            <div className="text-sm text-indigo-200 mt-2">Target Date: May 10, 2026</div>
-          </CardContent>
-        </Card>
+    <>
+      <Card className="border-indigo-100 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-indigo-900">
+            <Trophy className="h-5 w-5 text-yellow-500" /> TOEFL 5.0 Progress
+          </CardTitle>
+          <CardDescription>Target: 100 Learnt Tracks</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between text-sm font-medium">
+            <span>{learntCount} / 100 Tracks</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <Progress value={progressPercent} className="h-3 bg-indigo-100" />
+          <div className="text-xs text-muted-foreground">
+            "已学习" (Learnt) counts towards this goal.
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-indigo-100 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900">
-              <Trophy className="h-5 w-5 text-yellow-500" /> TOEFL 5.0 Progress
-            </CardTitle>
-            <CardDescription>Target: 100 Learnt Tracks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm font-medium">
-              <span>{learntCount} / 100 Tracks</span>
-              <span>{progressPercent}%</span>
-            </div>
-            <Progress value={progressPercent} className="h-3 bg-indigo-100" />
-            <div className="text-xs text-muted-foreground">
-              "已学习" (Learnt) counts towards this goal.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
         {/* Status Distribution */}
         <Card className="col-span-1">
           <CardHeader>
@@ -145,7 +157,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="col-span-1 md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
              <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>
              <div className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -161,6 +173,19 @@ export default async function DashboardPage() {
              </div>
           </div>
       </div>
-    </div>
+    </>
   );
+}
+
+function StatsSkeleton() {
+  return (
+    <>
+      <Skeleton className="h-40 w-full rounded-xl" />
+      <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+         <Skeleton className="h-64 w-full rounded-xl" />
+         <Skeleton className="h-64 w-full rounded-xl" />
+         <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    </>
+  )
 }

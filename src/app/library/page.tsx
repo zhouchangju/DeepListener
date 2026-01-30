@@ -4,20 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import UploadButton from "./UploadButton";
 import LibraryManager from "./LibraryManager";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default async function LibraryPage({
   searchParams,
 }: {
   searchParams: { archived?: string };
 }) {
-  const { archived } = await searchParams; // Next.js 15 requires awaiting searchParams
+  const { archived } = await searchParams;
   const showArchived = archived === "true";
-
-  const tracks = await prisma.track.findMany({
-    where: { isArchived: showArchived },
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { sentences: true } } },
-  });
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -47,7 +43,35 @@ export default async function LibraryPage({
         </div>
       </div>
 
-      <LibraryManager tracks={tracks} />
+      <Suspense fallback={<LibrarySkeleton />}>
+        <LibraryContent showArchived={showArchived} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function LibraryContent({ showArchived }: { showArchived: boolean }) {
+  const tracks = await prisma.track.findMany({
+    where: { isArchived: showArchived },
+    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { sentences: true } } },
+  });
+
+  return <LibraryManager tracks={tracks} />;
+}
+
+function LibrarySkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="h-40 border rounded-xl p-6 flex flex-col justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20 rounded-full" />
+            <Skeleton className="h-6 w-3/4" />
+          </div>
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+      ))}
     </div>
   );
 }
