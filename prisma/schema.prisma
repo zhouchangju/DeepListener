@@ -24,6 +24,10 @@ model Track {
   
   sentences     Sentence[]
   categories    TrackCategory[]
+
+  @@index([isArchived])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Category {
@@ -68,6 +72,9 @@ model ReviewItem {
   createdAt   DateTime @default(now())
 
   logs        ReviewLog[]
+
+  @@index([nextReview])
+  @@index([createdAt])
 }
 
 model ReviewLog {

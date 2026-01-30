@@ -31,6 +31,7 @@ export default function VaultPage() {
 
 async function VaultContent() {
   const items = await prisma.reviewItem.findMany({
+    take: 100, // Limit to 100 recent items for performance. TODO: Add pagination.
     include: {
       sentence: {
         include: { track: true },

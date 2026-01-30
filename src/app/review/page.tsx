@@ -16,6 +16,7 @@ export default function ReviewPage() {
 
 async function ReviewContent() {
   const rawItems = await prisma.reviewItem.findMany({
+    take: 50,
     where: {
       nextReview: {
         lte: new Date(),
