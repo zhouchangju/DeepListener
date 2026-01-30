@@ -4,25 +4,24 @@
 
 ### ✅ 今日成就 (Completed)
 
-1.  **学习状态流升级 (Advanced Status Workflow)**：
-    - 废弃了单一的 `isLearnt` 布尔值，升级为多状态流 (`status` Enum)。
-    - 支持状态：**精听 (Intensive)**, **分析 (Analysis)**, **Shadowing**, **倍速 Shadowing**, **Paraphrase**, **已学习 (Learnt)**。
-    - 在 Library 列表页实现了带颜色的状态 Badge 和下拉切换菜单。
+1.  **性能大优化 (Performance Fixes)**：
+    - **数据库索引**：为 `Track` 和 `ReviewItem` 的高频查询字段 (`status`, `isArchived`, `createdAt`) 添加了索引。
+    - **分页限制**：Vault 和 Review 页面增加了 `take` 限制 (100/50)，防止一次性加载海量数据导致 8-24s 的卡顿。
+    - **流式渲染 (Streaming)**：全站引入 `Suspense` + `Skeleton`，实现了页面秒切，数据后台加载。
 
-2.  **Analytics 面板重构 (Dashboard 2.0)**：
+2.  **Shadowing 模式增强 (Shadowing 2.0)**：
+    - **交互优化**：实现了“打断式”交互——点击播放立即停止录音，点击 Next 立即重置状态。
+    - **循环功能**：新增了单句循环播放按钮 (Repeat Loop)。
+    - **进度感知**：显示当前句子进度 (e.g., 5 / 42)。
+    - **Bug 修复**：解决了切句时 UI 状态残留的问题。
+
+3.  **练习页功能扩展**：
+    - **编辑功能**：在播放页顶部增加了 Edit 按钮，复用 `RenameTrackModal` 修改标题、类型和主题。
+    - **状态流升级**：`Unlearnt` 设为默认状态，完善了状态流转逻辑。
+
+4.  **Analytics 面板重构 (Dashboard 2.0)**：
     - **TOEFL 倒计时**：直观展示距离 2026-05-10 的剩余天数。
     - **可视化图表**：引入 Recharts 实现环形图 (状态分布)、条形图 (类型分布)。
-    - **进度追踪**：增加了 TOEFL 5.0 进度条 (基于 100 个已学素材的目标)。
-
-3.  **复习系统 (Review System v1)**：
-    - **后端架构**：实现了 `/api/review/log` 接口，支持记录用户的复习行为（Duration, Rating, ReviewType）。
-    - **数据模型**：新增 `ReviewLog` 表，关联 `Track` 和 `User` (Implicit)。
-    - **前端集成**：`ReviewClient` 初步对接了复习打分逻辑。
-
-4.  **素材管理增强 (Library Enhancements)**：
-    - **Track Notes**：素材现在拥有全局笔记字段 (`note`)，支持 Markdown 编辑。
-    - **Categories**：实现了多对多标签系统 (`TrackCategory`)，方便素材分类管理。
-    - **重命名功能**：终于支持修改素材标题了 (`RenameTrackModal`)。
 
 ### 🚧 核心痛点 (Critical Issues)
 

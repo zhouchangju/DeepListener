@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Mic, Play, RotateCcw, SkipForward, X, Loader2 } from "lucide-react";
+import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import SpeedSelector from "./SpeedSelector";
@@ -10,6 +10,8 @@ import { useState } from "react";
 interface ShadowingConsoleProps {
   sentence: { text: string; startTime: number; endTime: number };
   fullAudioBuffer: AudioBuffer;
+  currentIndex: number;
+  totalCount: number;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
@@ -18,37 +20,79 @@ interface ShadowingConsoleProps {
 export default function ShadowingConsole({
   sentence,
   fullAudioBuffer,
+  currentIndex,
+  totalCount,
   onClose,
   onNext,
   onPrev,
 }: ShadowingConsoleProps) {
   const [playbackRate, setPlaybackRate] = useState(1);
-  const { mode, originalBlob, userBlob, startFlow, handleRecAgain } = useShadowingWorkflow({
+  const { mode, originalBlob, userBlob, isLooping, startFlow, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
   });
+
+  const handleNext = () => {
+    stopAll();
+    onNext();
+  };
+
+  const handlePrev = () => {
+    stopAll();
+    onPrev();
+  };
+
+  const handleClose = () => {
+    stopAll();
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-4">
-            Shadowing Mode
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-slate-800">Shadowing Mode</h2>
+            <div className="text-sm font-medium px-3 py-1 bg-slate-100 rounded-full text-slate-600">
+              {currentIndex + 1} / {totalCount}
+            </div>
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleClose}>
             <X className="h-6 w-6" />
           </Button>
         </div>
 
         {/* Content */}
-        <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full">
-          <div className="flex-grow flex items-center justify-center">
-            <p className="text-2xl font-medium text-slate-700 leading-loose text-center">
+        <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
+          <div className="flex-grow flex items-center justify-center w-full relative">
+            {/* Play Button (Left) */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:block">
+              {mode === "idle" && (
+                <Button size="icon" className="h-12 w-12 rounded-full shadow-lg" onClick={startFlow}>
+                  <Play className="h-6 w-6" />
+                </Button>
+              )}
+            </div>
+
+            {/* Main Text */}
+            <p className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl">
               {sentence.text}
             </p>
+
+            {/* Loop Button (Right) */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 hidden md:block">
+               <Button 
+                size="icon" 
+                variant={isLooping ? "default" : "outline"}
+                className={`h-12 w-12 rounded-full shadow-lg transition-all ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "hover:bg-slate-100"}`}
+                onClick={toggleLoop}
+               >
+                  {isLooping ? <Pause className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
+               </Button>
+            </div>
           </div>
 
           {/* Visualization Area */}
@@ -98,11 +142,11 @@ export default function ShadowingConsole({
           </div>
 
           {/* Controls */}
-          <div className="h-16 flex items-center justify-center">
+          <div className="h-16 flex items-center justify-center w-full relative">
             {mode === "idle" && (
               <Button
                 size="lg"
-                className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200"
+                className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200 md:hidden"
                 onClick={startFlow}
               >
                 <Play className="h-5 w-5" /> Start Challenge
@@ -128,23 +172,35 @@ export default function ShadowingConsole({
                 >
                   <Mic className="h-4 w-4" /> Rec Again
                 </Button>
-                <Button size="lg" onClick={onNext} className="gap-2">
+                <Button size="lg" onClick={handleNext} className="gap-2">
                   Next <SkipForward className="h-4 w-4" />
                 </Button>
               </div>
             )}
+            
+             {/* Mobile Loop Button */}
+             <div className="absolute right-0 top-1/2 -translate-y-1/2 md:hidden">
+               <Button 
+                size="icon" 
+                variant={isLooping ? "default" : "outline"}
+                className="rounded-full"
+                onClick={toggleLoop}
+               >
+                  {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+               </Button>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="bg-slate-50 p-4 flex justify-between border-t">
-          <Button variant="ghost" onClick={onPrev}>
+          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0}>
             Previous
           </Button>
           <div className="text-slate-400 text-sm flex items-center">
             {mode === "reviewing" ? "Compare waveforms & audio" : "Listen -> Record -> Compare"}
           </div>
-          <Button variant="ghost" onClick={onNext}>
+          <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>
             Next
           </Button>
         </div>

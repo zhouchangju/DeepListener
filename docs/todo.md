@@ -15,6 +15,8 @@
 - [x] **分类标签**：素材支持多 Category 标签管理 (通过 TrackType/Topic).
 - [x] **学习状态流**：扩展已学状态为精听/分析/Shadowing/Paraphrase等多种状态。
 - [x] **Analytics 面板**：TOEFL 倒计时、状态分布环形图、进度条。
+- [x] **Shadowing 增强**：进度显示、循环播放、打断机制优化、下一句自动重置。
+- [x] **练习页编辑**：支持在播放页直接修改 Track 标题和元数据。
 
 ## 🚧 待解决/优化 (Pending)
 - [ ] **PWA 安装**：Android 局域网 http 环境下无法显示图标 (需 HTTPS)。
