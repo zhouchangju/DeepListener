@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarClock, Headphones, Mic2 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
+  UNLEARNT: "未学习",
   INTENSIVE: "精听",
   ANALYSIS: "分析",
   SHADOWING: "Shadowing",

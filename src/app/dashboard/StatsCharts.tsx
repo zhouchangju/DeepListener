@@ -3,6 +3,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
+  "未学习": "#94a3b8", // Slate
   "精听": "#4f46e5", // Indigo
   "分析": "#d97706", // Amber
   "Shadowing": "#9333ea", // Purple

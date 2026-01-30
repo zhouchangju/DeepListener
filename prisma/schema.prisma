@@ -19,7 +19,7 @@ model Track {
   trackType     String?    // Conversation, Lecture, Other
   trackTopic    String?    // 校园生活, 社会科学, etc.
   isArchived    Boolean    @default(false)
-  status        String     @default("INTENSIVE") // INTENSIVE, ANALYSIS, SHADOWING, SPEED_SHADOWING, PARAPHRASE, LEARNT
+  status        String     @default("UNLEARNT") // UNLEARNT, INTENSIVE, ANALYSIS, SHADOWING, SPEED_SHADOWING, PARAPHRASE, LEARNT
   createdAt     DateTime   @default(now())
   
   sentences     Sentence[]

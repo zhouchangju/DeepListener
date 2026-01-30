@@ -27,6 +27,7 @@ interface Track {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  UNLEARNT: { label: "未学习", color: "text-slate-600", bg: "bg-slate-50" },
   INTENSIVE: { label: "精听", color: "text-indigo-700", bg: "bg-indigo-50" },
   ANALYSIS: { label: "分析", color: "text-amber-700", bg: "bg-amber-50" },
   SHADOWING: { label: "Shadowing", color: "text-purple-700", bg: "bg-purple-50" },
