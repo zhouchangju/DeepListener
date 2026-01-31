@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ## [2026-01-30]
+- feat: enhance shadowing mode (loop button, progress indicator, smart interrupt)
+- perf: major optimization via DB indexing, pagination limits, and Suspense streaming
+- feat: upgrade track status workflow (Unlearnt/Intensive/Shadowing...) and analytics dashboard
+- fix: resolve critical recording state leakage in shadowing mode
+- feat: add track editing (rename/type/topic) in practice page
 - feat: implement basic review system with logging and grading API
 - feat: add track-level notes and category management
 - ui: add RenameTrackModal and enhanced NoteEditor
