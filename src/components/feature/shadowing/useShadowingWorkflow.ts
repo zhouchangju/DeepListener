@@ -18,18 +18,32 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   const [isLooping, setIsLooping] = useState(false);
   
   const originalAudioRef = useRef<HTMLAudioElement | null>(null);
+  const userAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortedRef = useRef(false);
   const activeSentenceIdRef = useRef<string | undefined>(undefined);
+  const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { startRecording, stopRecording, isRecording } = useAudioRecorder();
 
   // Stop everything cleanup
   const stopAll = useCallback(() => {
     abortedRef.current = true;
     stopRecording();
+    
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current);
+    }
+
     if (originalAudioRef.current) {
       originalAudioRef.current.pause();
       originalAudioRef.current.currentTime = 0;
+      originalAudioRef.current.onended = null; // Clear handlers
     }
+
+    if (userAudioRef.current) {
+      userAudioRef.current.pause();
+      userAudioRef.current.currentTime = 0;
+    }
+
     setMode("idle");
     setIsLooping(false);
   }, [stopRecording]);
@@ -63,21 +77,47 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     }
   }, [playbackRate]);
 
-  // Loop effect
+  // Loop effect with Delay
   useEffect(() => {
     const audio = originalAudioRef.current;
     if (!audio) return;
     
+    // Clear any existing loop timeout when dependency changes
+    if (loopTimeoutRef.current) clearTimeout(loopTimeoutRef.current);
+
     if (isLooping) {
-        audio.loop = true;
-        audio.play().catch(() => {});
+        audio.loop = false; // We handle loop manually
         setMode("playing_original");
+        
+        const playStep = () => {
+             audio.currentTime = 0;
+             audio.play().catch(() => {});
+        };
+
+        audio.onended = () => {
+            if (!isLooping) return; // Should be handled by unmount/dep change but safety check
+            loopTimeoutRef.current = setTimeout(() => {
+                 playStep();
+            }, 1000); // 1s Delay
+        };
+
+        playStep();
     } else {
-        audio.loop = false;
-        audio.pause();
-        if (mode === "playing_original") setMode("idle");
+        // If we just turned off looping, pause if playing
+        // But be careful not to interfere if we transitioned to another mode (like recording)
+        // Actually stopAll() handles mode reset, but if we toggle button...
+        if (mode === "playing_original") {
+             audio.pause();
+             setMode("idle");
+        }
+        // Remove handler if it was the loop handler
+        // Note: playOriginal/startFlow override onended, so this is fine.
     }
-  }, [isLooping]);
+    
+    return () => {
+        if (loopTimeoutRef.current) clearTimeout(loopTimeoutRef.current);
+    };
+  }, [isLooping]); // Depend on isLooping. When it changes, effect re-runs.
 
   const toggleLoop = useCallback(() => {
     stopRecording(); // Ensure recording stops
@@ -125,7 +165,9 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
         setUserBlob(blob);
         setMode("reviewing");
         const userUrl = URL.createObjectURL(blob);
-        new Audio(userUrl).play();
+        const userAudio = new Audio(userUrl);
+        userAudioRef.current = userAudio;
+        userAudio.play();
       });
     };
   }, [sentence, startRecording, stopAll, playbackRate]);
@@ -141,7 +183,9 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       setUserBlob(blob);
       setMode("reviewing");
       const userUrl = URL.createObjectURL(blob);
-      new Audio(userUrl).play();
+      const userAudio = new Audio(userUrl);
+      userAudioRef.current = userAudio;
+      userAudio.play();
     });
   }, [sentence, startRecording, stopAll, playbackRate]);
 

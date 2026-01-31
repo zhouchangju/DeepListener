@@ -5,10 +5,11 @@
 ### ✅ 今日成就 (Completed)
 
 1.  **Bug 修复与交互调优 (Shadowing Fixes)**：
+    - **立即打断优化**：修复了点击 "Rec Again" 时无法立即终止当前录音或播放的问题。现在支持真正的即时重录。
+    - **循环播放间隔**：优化了 Shadowing 的单句循环逻辑，在每次播放结束后增加 1 秒暂停，避免过于紧凑。
     - **录音状态泄漏修复**：利用 `useRef` 解决了切换句子时，上一个句子的录音状态（Your Voice）泄漏到新页面的严重 Bug。
     - **布局对称性优化**：将 Loop 按钮移至 MiniWavePlayer 内部右侧，与左侧播放按钮对称，视觉更平衡。
     - **播放按钮复位**：将 "Start Challenge" 按钮恢复至底部控制区，符合用户习惯。
-    - **状态同步修复**：修复了在播放过程中切换句子，播放按钮状态可能错误的 Bug (通过 `key` 强制重置)。
 
 2.  **性能大优化 (Performance Fixes)**：
     - **数据库索引**：为 `Track` 和 `ReviewItem` 的高频查询字段 (`status`, `isArchived`, `createdAt`) 添加了索引。
