@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
 import SpeedSelector from "@/components/feature/SpeedSelector";
+import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 
 export default function ReviewClient({ items }: { items: any[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -135,9 +136,14 @@ export default function ReviewClient({ items }: { items: any[] }) {
 
           {showAnswer ? (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-              <p className="text-lg font-medium leading-relaxed text-gray-800">
-                {current.sentence.text}
-              </p>
+              <div className="flex justify-center">
+                <InteractiveText 
+                  text={current.sentence.text} 
+                  formatting={current.sentence.formatting}
+                  mode="read"
+                  className="text-lg font-medium leading-relaxed text-gray-800 text-center justify-center"
+                />
+              </div>
               <div className="flex flex-wrap justify-center gap-2">
                 {current.tags.map((tag: any) => (
                   <Badge key={tag.id} variant="secondary">{tag.name}</Badge>

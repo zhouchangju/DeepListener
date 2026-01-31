@@ -13,6 +13,7 @@ interface Sentence {
   text: string;
   startTime: number;
   endTime: number;
+  formatting?: string | null;
   reviewItem?: any;
 }
 

@@ -36,6 +36,8 @@ interface Sentence {
 
   endTime: number;
 
+  formatting?: string | null;
+
 }
 
 

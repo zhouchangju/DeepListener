@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Mic2, BookmarkCheck, Save, Copy } from "lucide-react";
 import { RefObject, memo } from "react";
 import { toast } from "sonner";
+import { InteractiveText } from "../notation/InteractiveText";
 
 interface Sentence {
   id: string;
   text: string;
   startTime: number;
   endTime: number;
+  formatting?: string | null;
   reviewItem?: any;
 }
 
@@ -71,7 +73,7 @@ const SentenceItem = memo(function SentenceItem({
       />
 
       <div className="flex-grow w-full">
-        <p
+        <div
           className={`text-[15px] sm:text-[16px] leading-relaxed transition-all duration-300 ${
             isBlurred ? "blur-sm select-none text-slate-300" : "text-slate-700"
           }`}
@@ -81,8 +83,13 @@ const SentenceItem = memo(function SentenceItem({
               [{s.startTime.toFixed(2)} - {s.endTime.toFixed(2)}]
             </span>
           )}
-          {s.text}
-        </p>
+          <InteractiveText 
+            text={s.text} 
+            formatting={s.formatting} 
+            mode="read" 
+            className="text-[15px] sm:text-[16px]"
+          />
+        </div>
 
         <div className="mt-3 flex sm:hidden items-center gap-3">
           <Button
