@@ -78,17 +78,24 @@ const SentenceItem = memo(function SentenceItem({
             isBlurred ? "blur-sm select-none text-slate-300" : "text-slate-700"
           }`}
         >
-          {debugMode && (
-            <span className="text-[10px] text-red-400 font-mono block mb-1">
-              [{s.startTime.toFixed(2)} - {s.endTime.toFixed(2)}]
+          <div className="flex items-start gap-2">
+            <span className="text-[10px] font-bold text-slate-400 mt-1 shrink-0 bg-slate-100 px-1.5 py-0.5 rounded min-w-[24px] text-center">
+              {i + 1}
             </span>
-          )}
-          <InteractiveText 
-            text={s.text} 
-            formatting={s.formatting} 
-            mode="read" 
-            className="text-[15px] sm:text-[16px]"
-          />
+            <div className="flex-grow">
+              {debugMode && (
+                <span className="text-[10px] text-red-400 font-mono block mb-1">
+                  [{s.startTime.toFixed(2)} - {s.endTime.toFixed(2)}]
+                </span>
+              )}
+              <InteractiveText 
+                text={s.text} 
+                formatting={s.formatting} 
+                mode="read" 
+                className="text-[15px] sm:text-[16px]"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="mt-3 flex sm:hidden items-center gap-3">

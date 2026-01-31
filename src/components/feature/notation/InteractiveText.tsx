@@ -113,7 +113,7 @@ export const InteractiveText = React.memo(({
               <span
                 onClick={() => toggleLinking(i, i + 1)}
                 className={cn(
-                  "relative w-4 h-8 flex items-center justify-center transition-colors",
+                  "relative w-2 h-8 flex items-center justify-center transition-colors",
                   mode === "edit" && activeTool === "linking" && "hover:bg-amber-50 cursor-pointer rounded-sm"
                 )}
               >
