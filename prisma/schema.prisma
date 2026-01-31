@@ -53,6 +53,7 @@ model Sentence {
   startTime   Float    // In seconds
   endTime     Float    // In seconds
   orderIndex  Int
+  formatting  String?  // JSON string storing phonetic notations
 
   reviewItem  ReviewItem?
 }
