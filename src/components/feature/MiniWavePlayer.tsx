@@ -50,7 +50,11 @@ export default function MiniWavePlayer({
     });
 
     const url = typeof audioBlob === 'string' ? audioBlob : URL.createObjectURL(audioBlob);
-    ws.load(url);
+    ws.load(url).catch((err) => {
+      if (err.name === "AbortError") return;
+      console.warn("WaveSurfer load error:", err);
+    });
+    
     ws.setPlaybackRate(playbackRate); // Set initial rate
     wavesurferRef.current = ws;
 
