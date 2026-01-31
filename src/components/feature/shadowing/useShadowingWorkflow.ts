@@ -19,6 +19,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   
   const originalAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortedRef = useRef(false);
+  const activeSentenceIdRef = useRef<string | undefined>(undefined);
   const { startRecording, stopRecording, isRecording } = useAudioRecorder();
 
   // Stop everything cleanup
@@ -37,6 +38,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   useEffect(() => {
     stopAll(); // Stop previous when sentence changes
     abortedRef.current = false; // Reset for new sentence
+    activeSentenceIdRef.current = sentence.id; // Track active sentence
     setOriginalBlob(null);
     setUserBlob(null);
 
@@ -114,12 +116,12 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     
     // Override onended for the flow
     audio.onended = () => {
-      if (abortedRef.current) return;
+      if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
       setMode("recording");
       const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
       
       startRecording(duration).then((blob) => {
-        if (abortedRef.current) return;
+        if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
         setUserBlob(blob);
         setMode("reviewing");
         const userUrl = URL.createObjectURL(blob);
@@ -135,7 +137,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
     
     startRecording(duration).then((blob) => {
-      if (abortedRef.current) return;
+      if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
       setUserBlob(blob);
       setMode("reviewing");
       const userUrl = URL.createObjectURL(blob);
