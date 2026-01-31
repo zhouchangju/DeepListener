@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
         title: file.name.replace(/\.[^/.]+$/, ""),
         audioUrl: audioUrl,
         transcription: transcription.rawJson,
+        status: "UNLEARNT",
         sentences: {
           create: transcription.segments.map((segment, index: number) => ({
             text: segment.text,
