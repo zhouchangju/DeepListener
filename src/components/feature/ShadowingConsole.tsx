@@ -8,7 +8,7 @@ import SpeedSelector from "./SpeedSelector";
 import { useState } from "react";
 
 interface ShadowingConsoleProps {
-  sentence: { text: string; startTime: number; endTime: number };
+  sentence: { id: string; text: string; startTime: number; endTime: number };
   fullAudioBuffer: AudioBuffer;
   currentIndex: number;
   totalCount: number;
@@ -68,31 +68,10 @@ export default function ShadowingConsole({
         {/* Content */}
         <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
           <div className="flex-grow flex items-center justify-center w-full relative">
-            {/* Play Button (Left) */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:block">
-              {mode === "idle" && (
-                <Button size="icon" className="h-12 w-12 rounded-full shadow-lg" onClick={startFlow}>
-                  <Play className="h-6 w-6" />
-                </Button>
-              )}
-            </div>
-
             {/* Main Text */}
             <p className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl">
               {sentence.text}
             </p>
-
-            {/* Loop Button (Right) */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 hidden md:block">
-               <Button 
-                size="icon" 
-                variant={isLooping ? "default" : "outline"}
-                className={`h-12 w-12 rounded-full shadow-lg transition-all ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "hover:bg-slate-100"}`}
-                onClick={toggleLoop}
-               >
-                  {isLooping ? <Pause className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
-               </Button>
-            </div>
           </div>
 
           {/* Visualization Area */}
@@ -107,11 +86,23 @@ export default function ShadowingConsole({
               originalBlob && (
                 <div className="opacity-80">
                   <MiniWavePlayer
+                    key={sentence.id + "-original"} // Force reset on change
                     audioBlob={originalBlob}
                     label="Original"
                     waveColor="#94a3b8"
                     progressColor="#475569"
                     playbackRate={playbackRate}
+                    RightAction={
+                       <Button 
+                        size="icon" 
+                        variant={isLooping ? "default" : "secondary"}
+                        className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
+                        onClick={toggleLoop}
+                        title="Loop Playback"
+                       >
+                          {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
+                       </Button>
+                    }
                   />
                 </div>
               )}
@@ -125,13 +116,25 @@ export default function ShadowingConsole({
             {mode === "reviewing" && originalBlob && userBlob && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                 <MiniWavePlayer
+                  key={sentence.id + "-original-review"}
                   audioBlob={originalBlob}
                   label="Original"
                   waveColor="#94a3b8"
                   progressColor="#475569"
                   playbackRate={playbackRate}
+                  RightAction={
+                       <Button 
+                        size="icon" 
+                        variant={isLooping ? "default" : "secondary"}
+                        className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
+                        onClick={toggleLoop}
+                       >
+                          {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
+                       </Button>
+                  }
                 />
                 <MiniWavePlayer
+                  key={sentence.id + "-user"}
                   audioBlob={userBlob}
                   label="Your Voice"
                   waveColor="#fca5a5"
@@ -146,7 +149,7 @@ export default function ShadowingConsole({
             {mode === "idle" && (
               <Button
                 size="lg"
-                className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200 md:hidden"
+                className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200"
                 onClick={startFlow}
               >
                 <Play className="h-5 w-5" /> Start Challenge
@@ -177,18 +180,6 @@ export default function ShadowingConsole({
                 </Button>
               </div>
             )}
-            
-             {/* Mobile Loop Button */}
-             <div className="absolute right-0 top-1/2 -translate-y-1/2 md:hidden">
-               <Button 
-                size="icon" 
-                variant={isLooping ? "default" : "outline"}
-                className="rounded-full"
-                onClick={toggleLoop}
-               >
-                  {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
-               </Button>
-            </div>
           </div>
         </div>
 

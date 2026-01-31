@@ -12,6 +12,7 @@ interface MiniWavePlayerProps {
   progressColor?: string;
   label?: string;
   playbackRate?: number;
+  RightAction?: React.ReactNode;
 }
 
 export default function MiniWavePlayer({ 
@@ -21,6 +22,7 @@ export default function MiniWavePlayer({
   progressColor = "#4f46e5",
   label,
   playbackRate = 1,
+  RightAction,
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -78,6 +80,12 @@ export default function MiniWavePlayer({
         {label && <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{label}</span>}
         <div ref={containerRef} className="w-full" />
       </div>
+
+      {RightAction && (
+        <div className="shrink-0">
+            {RightAction}
+        </div>
+      )}
     </div>
   );
 }
