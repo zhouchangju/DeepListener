@@ -5,10 +5,13 @@ import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause } from "lu
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import SpeedSelector from "./SpeedSelector";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { InteractiveText } from "./notation/InteractiveText";
+import { NotationToolbar } from "./notation/NotationToolbar";
+import { NotationType, SentenceFormatting } from "./notation/types";
 
 interface ShadowingConsoleProps {
-  sentence: { id: string; text: string; startTime: number; endTime: number };
+  sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null };
   fullAudioBuffer: AudioBuffer;
   currentIndex: number;
   totalCount: number;
@@ -27,11 +30,47 @@ export default function ShadowingConsole({
   onPrev,
 }: ShadowingConsoleProps) {
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [activeTool, setActiveTool] = useState<NotationType | null>(null);
+  const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
+
   const { mode, originalBlob, userBlob, isLooping, startFlow, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
   });
+
+  // Load formatting when sentence changes
+  useEffect(() => {
+    if (sentence.formatting) {
+      try {
+        setLocalFormatting(JSON.parse(sentence.formatting));
+      } catch {
+        setLocalFormatting({});
+      }
+    } else {
+      setLocalFormatting({});
+    }
+  }, [sentence.id, sentence.formatting]);
+
+  // Auto-save formatting
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const currentJSON = JSON.stringify(localFormatting);
+      if (currentJSON === sentence.formatting || (!sentence.formatting && currentJSON === "{}")) return;
+
+      try {
+        await fetch(`/api/sentence/${sentence.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ formatting: currentJSON }),
+        });
+      } catch (err) {
+        console.error("Auto-save failed", err);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [localFormatting, sentence.id, sentence.formatting]);
 
   const handleNext = () => {
     stopAll();
@@ -67,11 +106,17 @@ export default function ShadowingConsole({
 
         {/* Content */}
         <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
-          <div className="flex-grow flex items-center justify-center w-full relative">
-            {/* Main Text */}
-            <p className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl">
-              {sentence.text}
-            </p>
+          <div className="flex-grow flex flex-col items-center justify-center w-full relative gap-8">
+            <InteractiveText
+              text={sentence.text}
+              formatting={localFormatting}
+              mode="edit"
+              activeTool={activeTool}
+              onChange={setLocalFormatting}
+              className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
+            />
+            
+            <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />
           </div>
 
           {/* Visualization Area */}
