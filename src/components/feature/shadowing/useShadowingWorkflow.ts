@@ -42,7 +42,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     setIsLooping(false);
   }, [stopRecording]);
 
-  // Initialize slice
+  // Initialize slice (only when sentence or fullAudioBuffer changes)
   useEffect(() => {
     stopAll(); // Stop previous when sentence changes
     abortedRef.current = false; // Reset for new sentence
@@ -60,9 +60,9 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       console.error("Slice failed", e);
       toast.error("Audio slice failed");
     }
-    
+
     return () => stopAll();
-  }, [fullAudioBuffer, sentence, stopAll, playbackRate]);
+  }, [fullAudioBuffer, sentence]); // Remove playbackRate and stopAll from dependencies
 
   // Real-time rate sync
   useEffect(() => {
