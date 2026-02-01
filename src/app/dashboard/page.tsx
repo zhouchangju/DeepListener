@@ -122,7 +122,7 @@ async function DashboardContent() {
   }
 
   return (
-    <>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
       <Card className="border-indigo-100 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-indigo-900">
@@ -256,7 +256,7 @@ async function DashboardContent() {
              </div>
           </div>
       </div>
-    </>
+    </div>
   );
 }
 
