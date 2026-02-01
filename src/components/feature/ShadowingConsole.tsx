@@ -1,23 +1,27 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause } from "lucide-react";
+import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import SpeedSelector from "./SpeedSelector";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { InteractiveText } from "./notation/InteractiveText";
 import { NotationToolbar } from "./notation/NotationToolbar";
 import { NotationType, SentenceFormatting } from "./notation/types";
+import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface ShadowingConsoleProps {
-  sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null };
+  sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null; reviewItem?: any };
   fullAudioBuffer: AudioBuffer;
   currentIndex: number;
   totalCount: number;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
+  onCapture: (sentenceId: string) => void;
 }
 
 export default function ShadowingConsole({
@@ -28,16 +32,30 @@ export default function ShadowingConsole({
   onClose,
   onNext,
   onPrev,
+  onCapture,
 }: ShadowingConsoleProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeTool, setActiveTool] = useState<NotationType | null>(null);
   const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
+  
+  // Text Editing State
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [tempText, setTempText] = useState(sentence.text);
 
   const { mode, originalBlob, userBlob, isLooping, startFlow, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
   });
+
+  // Focus on mount
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.focus();
+    }
+  }, []);
 
   // Load formatting when sentence changes
   useEffect(() => {
@@ -50,10 +68,36 @@ export default function ShadowingConsole({
     } else {
       setLocalFormatting({});
     }
-  }, [sentence.id, sentence.formatting]);
+    setTempText(sentence.text); // Sync temp text
+    setIsEditingText(false); // Reset edit mode
+  }, [sentence.id, sentence.formatting, sentence.text]);
+
+  const handleSaveText = async () => {
+    try {
+      const res = await fetch(`/api/sentence/${sentence.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            text: tempText,
+            formatting: null // Reset formatting on text change
+        }),
+      });
+      
+      if (!res.ok) throw new Error("Failed to update text");
+      
+      setLocalFormatting({});
+      setIsEditingText(false);
+      router.refresh();
+      toast.success("Text updated");
+    } catch (e) {
+      toast.error("Failed to save text");
+    }
+  };
 
   // Auto-save formatting
   useEffect(() => {
+    if (isEditingText) return; // Don't auto-save formatting while editing text
+
     const timer = setTimeout(async () => {
       const currentJSON = JSON.stringify(localFormatting);
       if (currentJSON === sentence.formatting || (!sentence.formatting && currentJSON === "{}")) return;
@@ -70,7 +114,7 @@ export default function ShadowingConsole({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [localFormatting, sentence.id, sentence.formatting]);
+  }, [localFormatting, sentence.id, sentence.formatting, isEditingText]);
 
   const handleNext = () => {
     stopAll();
@@ -87,18 +131,41 @@ export default function ShadowingConsole({
     onClose();
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "ArrowRight") handleNext();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, totalCount]); // Re-bind when index changes to ensure latest state
+  // Centralized Keyboard Handler
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditingText) {
+        e.stopPropagation(); // Allow typing in textarea
+        return; 
+    }
+    
+    e.stopPropagation(); // Stop event from bubbling to background player
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      handleClose();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      handlePrev();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      handleNext();
+    } else if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+      if (mode === "idle") {
+        startFlow();
+      } else {
+        stopAll();
+      }
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 outline-none"
+      tabIndex={-1}
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
+    >
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
@@ -108,6 +175,14 @@ export default function ShadowingConsole({
               {currentIndex + 1} / {totalCount}
             </div>
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className={sentence.reviewItem ? "text-amber-500 hover:text-amber-600" : "text-slate-400 hover:text-indigo-600"}
+              onClick={() => onCapture(sentence.id)}
+            >
+              {sentence.reviewItem ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
+            </Button>
           </div>
           <Button variant="ghost" size="icon" onClick={handleClose}>
             <X className="h-6 w-6" />
@@ -117,16 +192,45 @@ export default function ShadowingConsole({
         {/* Content */}
         <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
           <div className="flex-grow flex flex-col items-center justify-center w-full relative gap-8">
-            <InteractiveText
-              text={sentence.text}
-              formatting={localFormatting}
-              mode="edit"
-              activeTool={activeTool}
-              onChange={setLocalFormatting}
-              className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
-            />
             
-            <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />
+            {isEditingText ? (
+                <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                    <Textarea 
+                        value={tempText} 
+                        onChange={(e) => setTempText(e.target.value)} 
+                        className="text-xl font-medium min-h-[120px] resize-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>Cancel</Button>
+                        <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
+                            <Check className="w-4 h-4 mr-2" /> Save Text
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="relative group">
+                    <InteractiveText
+                    text={sentence.text}
+                    formatting={localFormatting}
+                    mode="edit"
+                    activeTool={activeTool}
+                    onChange={setLocalFormatting}
+                    className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
+                    />
+                    {/* Edit Button */}
+                    <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setIsEditingText(true)}
+                        title="Edit Text"
+                    >
+                        <Edit3 className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
+                    </Button>
+                </div>
+            )}
+            
+            {!isEditingText && <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />}
           </div>
 
           {/* Visualization Area */}
@@ -147,6 +251,7 @@ export default function ShadowingConsole({
                     waveColor="#94a3b8"
                     progressColor="#475569"
                     playbackRate={playbackRate}
+                    enableRegions={true}
                     RightAction={
                        <Button 
                         size="icon" 
@@ -204,6 +309,7 @@ export default function ShadowingConsole({
                   label="Your Voice"
                   waveColor="#fca5a5"
                   progressColor="#e11d48"
+                  autoPlay={true}
                 />
               </div>
             )}

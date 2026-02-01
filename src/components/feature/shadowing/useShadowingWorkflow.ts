@@ -18,7 +18,6 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   const [isLooping, setIsLooping] = useState(false);
   
   const originalAudioRef = useRef<HTMLAudioElement | null>(null);
-  const userAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortedRef = useRef(false);
   const activeSentenceIdRef = useRef<string | undefined>(undefined);
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -37,11 +36,6 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       originalAudioRef.current.pause();
       originalAudioRef.current.currentTime = 0;
       originalAudioRef.current.onended = null; // Clear handlers
-    }
-
-    if (userAudioRef.current) {
-      userAudioRef.current.pause();
-      userAudioRef.current.currentTime = 0;
     }
 
     setMode("idle");
@@ -164,10 +158,6 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
         if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
         setUserBlob(blob);
         setMode("reviewing");
-        const userUrl = URL.createObjectURL(blob);
-        const userAudio = new Audio(userUrl);
-        userAudioRef.current = userAudio;
-        userAudio.play();
       });
     };
   }, [sentence, startRecording, stopAll, playbackRate]);
@@ -182,10 +172,6 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
       setUserBlob(blob);
       setMode("reviewing");
-      const userUrl = URL.createObjectURL(blob);
-      const userAudio = new Audio(userUrl);
-      userAudioRef.current = userAudio;
-      userAudio.play();
     });
   }, [sentence, startRecording, stopAll, playbackRate]);
 

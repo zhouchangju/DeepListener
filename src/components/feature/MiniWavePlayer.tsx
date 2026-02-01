@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { Button } from "@/components/ui/button";
 import { Play, Pause } from "lucide-react";
 
@@ -13,6 +14,8 @@ interface MiniWavePlayerProps {
   label?: string;
   playbackRate?: number;
   RightAction?: React.ReactNode;
+  enableRegions?: boolean;
+  autoPlay?: boolean;
 }
 
 export default function MiniWavePlayer({ 
@@ -23,6 +26,8 @@ export default function MiniWavePlayer({
   label,
   playbackRate = 1,
   RightAction,
+  enableRegions = false,
+  autoPlay = false,
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -49,6 +54,31 @@ export default function MiniWavePlayer({
       normalize: true, // 归一化波形，让录音声音小的时候波形也明显
     });
 
+    if (enableRegions) {
+      const regions = ws.registerPlugin(RegionsPlugin.create());
+      regions.enableDragSelection({
+        color: "rgba(79, 70, 229, 0.2)",
+      });
+
+      regions.on("region-created", (region) => {
+        // Remove other regions to keep only one loop
+        regions.getRegions().forEach((r) => {
+          if (r.id !== region.id) r.remove();
+        });
+        
+        region.play(); // Auto play when created
+      });
+
+      regions.on("region-out", (region) => {
+        region.play(); // Loop
+      });
+      
+      // Click anywhere else to clear regions?
+      ws.on("interaction", () => {
+         // regions.clearRegions(); // Optional: Decide if click clears selection
+      });
+    }
+
     const url = typeof audioBlob === 'string' ? audioBlob : URL.createObjectURL(audioBlob);
     ws.load(url).catch((err) => {
       if (err.name === "AbortError") return;
@@ -61,6 +91,12 @@ export default function MiniWavePlayer({
     ws.on("play", () => setIsPlaying(true));
     ws.on("pause", () => setIsPlaying(false));
     ws.on("finish", () => setIsPlaying(false));
+
+    if (autoPlay) {
+      ws.on('ready', () => {
+        ws.play();
+      });
+    }
 
     return () => {
       ws.destroy();

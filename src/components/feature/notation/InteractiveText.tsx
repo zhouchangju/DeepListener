@@ -74,7 +74,7 @@ export const InteractiveText = React.memo(({
   };
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-y-4 leading-relaxed select-none", className)}>
+    <div className={cn("flex flex-wrap items-center gap-y-4 leading-relaxed", activeTool ? "select-none" : "select-text", className)}>
       {tokens.map((token, i) => {
         const isStressed = formatting.stress?.includes(i);
         const isReduced = formatting.reduction?.includes(i);
@@ -87,6 +87,7 @@ export const InteractiveText = React.memo(({
             {/* Word Token */}
             <span
               onClick={() => {
+                if (!activeTool) return;
                 if (activeTool === "stress") toggleStress(i);
                 if (activeTool === "reduction") toggleReduction(i);
                 if (activeTool === "elision") toggleElision(i);
@@ -101,7 +102,7 @@ export const InteractiveText = React.memo(({
             >
               {/* Stress Mark (Dot above) */}
               {isStressed && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-indigo-500 text-xs">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-indigo-500 text-xs select-none">
                   ●
                 </span>
               )}
@@ -111,9 +112,11 @@ export const InteractiveText = React.memo(({
             {/* Gap / Linking Area */}
             {hasNext && (
               <span
-                onClick={() => toggleLinking(i, i + 1)}
+                onClick={() => {
+                    if (activeTool === "linking") toggleLinking(i, i + 1);
+                }}
                 className={cn(
-                  "relative w-2 h-8 flex items-center justify-center transition-colors",
+                  "relative w-2 h-8 flex items-center justify-center transition-colors select-none",
                   mode === "edit" && activeTool === "linking" && "hover:bg-amber-50 cursor-pointer rounded-sm"
                 )}
               >

@@ -38,6 +38,8 @@ interface Sentence {
 
   formatting?: string | null;
 
+  reviewItem?: any;
+
 }
 
 
@@ -225,6 +227,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
           onClose={() => setShadowingMode(false)}
           onNext={() => setShadowIndex(prev => Math.min(prev + 1, track.sentences.length - 1))}
           onPrev={() => setShadowIndex(prev => Math.max(prev - 1, 0))}
+          onCapture={handleCapture}
         />
       )}
     </>
