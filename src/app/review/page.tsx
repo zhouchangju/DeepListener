@@ -15,6 +15,14 @@ export default function ReviewPage() {
 }
 
 async function ReviewContent() {
+  const totalDue = await prisma.reviewItem.count({
+    where: {
+      nextReview: {
+        lte: new Date(),
+      },
+    },
+  });
+
   const rawItems = await prisma.reviewItem.findMany({
     take: 50,
     where: {
@@ -54,7 +62,7 @@ async function ReviewContent() {
     );
   }
 
-  return <ReviewClient items={items} />;
+  return <ReviewClient items={items} totalDue={totalDue} />;
 }
 
 function ReviewSkeleton() {

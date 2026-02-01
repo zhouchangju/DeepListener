@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 
-export default function ReviewClient({ items }: { items: any[] }) {
+export default function ReviewClient({ items, totalDue }: { items: any[], totalDue: number }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -93,7 +93,7 @@ export default function ReviewClient({ items }: { items: any[] }) {
       if (currentIndex < items.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        toast.success("Review session finished!");
+        toast.success("Batch completed! Loading more...");
         window.location.reload();
       }
     } catch {
@@ -105,7 +105,7 @@ export default function ReviewClient({ items }: { items: any[] }) {
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
         <div className="flex justify-between items-center px-2 text-sm text-gray-500">
-            <span>{currentIndex + 1} / {items.length} sentences</span>
+            <span>Session: {currentIndex + 1} / {items.length} <span className="text-slate-400 ml-2">(Total Due: {totalDue})</span></span>
             <div className="flex items-center gap-2">
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
             {showAnswer && (
