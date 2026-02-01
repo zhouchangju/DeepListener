@@ -74,18 +74,28 @@ export default function ShadowingConsole({
 
   const handleNext = () => {
     stopAll();
-    onNext();
+    if (currentIndex < totalCount - 1) onNext();
   };
 
   const handlePrev = () => {
     stopAll();
-    onPrev();
+    if (currentIndex > 0) onPrev();
   };
 
   const handleClose = () => {
     stopAll();
     onClose();
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "ArrowRight") handleNext();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, totalCount]); // Re-bind when index changes to ensure latest state
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
@@ -153,8 +163,18 @@ export default function ShadowingConsole({
               )}
 
             {mode === "recording" && (
-              <div className="h-20 flex items-center justify-center text-red-500 animate-pulse font-bold text-lg gap-2 bg-red-50 rounded-lg border border-red-100">
-                <Mic className="h-6 w-6" /> Recording...
+              <div className="h-20 flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center text-red-500 animate-pulse font-bold text-lg gap-2 bg-red-50 rounded-lg border border-red-100 px-6 py-2">
+                  <Mic className="h-6 w-6" /> Recording...
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="gap-2 border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200"
+                  onClick={handleRecAgain}
+                >
+                  <RotateCcw className="h-4 w-4" /> Restart
+                </Button>
               </div>
             )}
 
