@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2026-02-01]
+- fix: resolve dashboard layout imbalance and Recharts dimension warnings
+  - Reorganize dashboard layout with unified grid structure for consistent card widths
+  - Move Countdown card into DashboardContent to share grid system with progress cards
+  - Remove redundant col-span classes and simplify grid hierarchy
+  - Replace percentage-based chart heights with fixed pixel values (250px)
+  - Add delayed dimension measurement in ChartWrapper to ensure proper layout
+  - Eliminate Recharts width(-1) and height(-1) warnings completely
+
 ## [2026-01-30]
 - feat: enhance shadowing mode (loop button, progress indicator, smart interrupt)
 - perf: major optimization via DB indexing, pagination limits, and Suspense streaming
