@@ -16,6 +16,28 @@ const STATUS_LABELS: Record<string, string> = {
   LEARNT: "已学习",
 };
 
+// Helper: group items by key and count occurrences
+function groupByCount<T>(items: T[], keyFn: (item: T) => string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const item of items) {
+    const key = keyFn(item);
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return counts;
+}
+
+// Helper: convert counts record to chart data array
+function countsToChartData(counts: Record<string, number>): Array<{ name: string; value: number }> {
+  return Object.entries(counts).map(([name, value]) => ({ name, value }));
+}
+
+// Helper: format duration in seconds to human-readable string
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export default function DashboardPage() {
   // 1. TOEFL Countdown (Static, fast)
   const targetDate = new Date("2026-05-10");
@@ -59,49 +81,33 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   const c1Progress = Math.min((totalHours / 400) * 100, 100);
 
   // Group sessions by date for display
-  const sessionsByDate: Record<string, { total: number, types: Record<string, number> }> = {};
-  studySessions.forEach(s => {
+  const sessionsByDate: Record<string, { total: number; types: Record<string, number> }> = {};
+  for (const s of studySessions) {
     const dateKey = s.date.toISOString().split('T')[0];
     if (!sessionsByDate[dateKey]) {
       sessionsByDate[dateKey] = { total: 0, types: {} };
     }
     sessionsByDate[dateKey].total += s.duration;
     sessionsByDate[dateKey].types[s.type] = (sessionsByDate[dateKey].types[s.type] || 0) + s.duration;
-  });
+  }
 
-  const dailyStats = Object.entries(sessionsByDate).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7); // Last 7 days
+  const dailyStats = Object.entries(sessionsByDate)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 7); // Last 7 days
 
   const totalTracks = tracks.length;
   const learntCount = tracks.filter(t => t.status === "LEARNT").length;
   const progressPercent = Math.min(Math.round((learntCount / 100) * 100), 100);
 
   // Group by Status
-  const statusCounts: Record<string, number> = {};
-  tracks.forEach(t => {
-    const label = STATUS_LABELS[t.status] || t.status;
-    statusCounts[label] = (statusCounts[label] || 0) + 1;
-  });
-  
-  const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  const statusCounts = groupByCount(tracks, t => STATUS_LABELS[t.status] || t.status);
+  const statusData = countsToChartData(statusCounts);
 
-  // Group by Type
-  const typeCounts: Record<string, number> = {};
-  tracks.forEach(t => {
-    const type = t.trackType || "Uncategorized";
-    typeCounts[type] = (typeCounts[type] || 0) + 1;
-  });
-  const typeData = Object.entries(typeCounts)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
+  // Group by Type (sorted by count desc)
+  const typeCounts = groupByCount(tracks, t => t.trackType || "Uncategorized");
+  const typeData = countsToChartData(typeCounts).sort((a, b) => b.value - a.value);
 
-  const tagData = tags.map((t) => ({ name: t.name, value: t._count.reviewItems }));
-
-  function formatDuration(seconds: number) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  }
+  const tagData = tags.map(t => ({ name: t.name, value: t._count.reviewItems }));
 
   return (
     <div className="space-y-6 w-full">

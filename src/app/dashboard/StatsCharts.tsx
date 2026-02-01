@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
   "未学习": "#94a3b8", // Slate
@@ -16,32 +16,22 @@ const STATUS_COLORS: Record<string, string> = {
 
 const TAG_COLORS = ["#f43f5e", "#f59e0b", "#10b981", "#06b6d4", "#8b5cf6", "#ec4899", "#6366f1"];
 
-// Enhanced client-side only wrapper with proper dimension handling
+// Client-side only wrapper with delayed rendering to ensure proper layout
 function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.ReactNode; fallbackHeight?: number }) {
-  const [isMounted, setIsMounted] = useState(false);
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-
-    // Delay measurement to ensure layout is complete
-    const timer = setTimeout(() => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setDimensions({ width: rect.width, height: rect.height });
-      }
-    }, 0);
-
+    // Delay rendering to ensure DOM layout is complete
+    const timer = setTimeout(() => setIsReady(true), 0);
     return () => clearTimeout(timer);
   }, []);
 
-  if (!isMounted || !dimensions) {
-    return <div ref={containerRef} style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-slate-50 rounded-lg" />;
+  if (!isReady) {
+    return <div style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-slate-50 rounded-lg" />;
   }
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: fallbackHeight }}>
+    <div style={{ width: '100%', height: fallbackHeight }}>
       <ResponsiveContainer width="100%" height={fallbackHeight}>
         {children}
       </ResponsiveContainer>
