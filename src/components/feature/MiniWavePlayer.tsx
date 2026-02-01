@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { Button } from "@/components/ui/button";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, X } from "lucide-react";
 
 interface MiniWavePlayerProps {
   audioBlob: Blob | string;
@@ -18,10 +18,10 @@ interface MiniWavePlayerProps {
   autoPlay?: boolean;
 }
 
-export default function MiniWavePlayer({ 
-  audioBlob, 
-  height = 60, 
-  waveColor = "#cbd5e1", 
+export default function MiniWavePlayer({
+  audioBlob,
+  height = 60,
+  waveColor = "#cbd5e1",
   progressColor = "#4f46e5",
   label,
   playbackRate = 1,
@@ -31,7 +31,9 @@ export default function MiniWavePlayer({
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const regionsRef = useRef<RegionsPlugin | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasRegion, setHasRegion] = useState(false);
 
   useEffect(() => {
     if (wavesurferRef.current) {
@@ -59,23 +61,23 @@ export default function MiniWavePlayer({
       regions.enableDragSelection({
         color: "rgba(79, 70, 229, 0.2)",
       });
+      regionsRef.current = regions;
 
       regions.on("region-created", (region) => {
         // Remove other regions to keep only one loop
         regions.getRegions().forEach((r) => {
           if (r.id !== region.id) r.remove();
         });
-        
+        setHasRegion(true);
         region.play(); // Auto play when created
+      });
+
+      regions.on("region-removed", () => {
+        if (regions.getRegions().length === 0) setHasRegion(false);
       });
 
       regions.on("region-out", (region) => {
         region.play(); // Loop
-      });
-      
-      // Click anywhere else to clear regions?
-      ws.on("interaction", () => {
-         // regions.clearRegions(); // Optional: Decide if click clears selection
       });
     }
 
@@ -101,12 +103,17 @@ export default function MiniWavePlayer({
     return () => {
       ws.destroy();
     };
-  }, [audioBlob, height, waveColor, progressColor]);
+  }, [audioBlob, height, waveColor, progressColor, enableRegions, autoPlay]); // Removed playbackRate from dependency to avoid recreation
 
   const togglePlay = () => wavesurferRef.current?.playPause();
+  
+  const clearRegions = () => {
+    regionsRef.current?.clearRegions();
+    setHasRegion(false);
+  };
 
   return (
-    <div className="flex items-center gap-4 w-full bg-slate-50 p-3 rounded-lg border border-slate-100">
+    <div className="flex items-center gap-4 w-full bg-slate-50 p-3 rounded-lg border border-slate-100 relative group">
       <Button 
         size="icon" 
         variant="secondary" 
@@ -116,9 +123,22 @@ export default function MiniWavePlayer({
         {isPlaying ? <Pause className="h-4 w-4 text-slate-700" /> : <Play className="h-4 w-4 ml-0.5 text-slate-700" />}
       </Button>
       
-      <div className="flex-grow flex flex-col gap-1">
+      <div className="flex-grow flex flex-col gap-1 relative">
         {label && <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{label}</span>}
         <div ref={containerRef} className="w-full" />
+        
+        {/* Clear Region Button */}
+        {hasRegion && (
+          <Button
+            size="icon"
+            variant="destructive"
+            className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md z-10 opacity-80 hover:opacity-100"
+            onClick={clearRegions}
+            title="Clear Selection"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        )}
       </div>
 
       {RightAction && (

@@ -115,7 +115,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
 
 
-  const saveToVault = async (tags: string[], note: string) => {
+  const saveToVault = async (tags: string[], note: string, difficulty: string) => {
 
     if (!capturingSentenceId) return;
 
@@ -136,6 +136,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
           tags,
 
           note,
+          
+          difficulty,
 
         }),
 
@@ -150,6 +152,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
       toast.success("Added to your Vault!");
 
       setCapturingSentenceId(null);
+      
+      router.refresh();
 
     } catch {
 
@@ -209,6 +213,9 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         onClose={() => setCapturingSentenceId(null)}
         sentenceText={currentSentence?.text || ""}
         onSave={saveToVault}
+        initialTags={currentSentence?.reviewItem?.tags?.map((t: any) => t.name) || []}
+        initialNote={currentSentence?.reviewItem?.userNote || ""}
+        initialDifficulty={currentSentence?.reviewItem?.difficulty || "NORMAL"}
       />
       
       <RenameTrackModal 

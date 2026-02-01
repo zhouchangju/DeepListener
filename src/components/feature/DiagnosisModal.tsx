@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,11 @@ const ERROR_TAGS = [
 interface DiagnosisModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tags: string[], note: string, difficulty: string) => void; // Updated signature
+  onSave: (tags: string[], note: string, difficulty: string) => void;
   sentenceText: string;
+  initialTags?: string[];
+  initialNote?: string;
+  initialDifficulty?: string;
 }
 
 export default function DiagnosisModal({
@@ -34,10 +37,21 @@ export default function DiagnosisModal({
   onClose,
   onSave,
   sentenceText,
+  initialTags = [],
+  initialNote = "",
+  initialDifficulty = "NORMAL",
 }: DiagnosisModalProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
-  const [difficulty, setDifficulty] = useState("NORMAL"); // Default
+  const [difficulty, setDifficulty] = useState("NORMAL");
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTags(initialTags);
+      setNote(initialNote);
+      setDifficulty(initialDifficulty);
+    }
+  }, [isOpen, initialTags, initialNote, initialDifficulty]);
 
   const toggleTag = (id: string) => {
     setSelectedTags((prev) =>
