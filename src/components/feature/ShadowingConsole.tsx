@@ -12,6 +12,7 @@ import { NotationType, SentenceFormatting } from "./notation/types";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
 interface ShadowingConsoleProps {
   sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null; reviewItem?: any };
@@ -36,6 +37,7 @@ export default function ShadowingConsole({
 }: ShadowingConsoleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { setMode } = useTimeTracking();
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeTool, setActiveTool] = useState<NotationType | null>(null);
   const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
@@ -55,7 +57,9 @@ export default function ShadowingConsole({
     if (containerRef.current) {
       containerRef.current.focus();
     }
-  }, []);
+    setMode("SHADOWING");
+    return () => setMode("LISTENING");
+  }, [setMode]);
 
   // Load formatting when sentence changes
   useEffect(() => {

@@ -10,8 +10,10 @@ import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
+import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
 export default function ReviewClient({ items, totalDue }: { items: any[], totalDue: number }) {
+  const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -20,6 +22,11 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
   const router = useRouter();
 
   const current = items[currentIndex];
+
+  useEffect(() => {
+    setMode("REVIEW");
+    return () => setMode("IDLE");
+  }, [setMode]);
 
   useEffect(() => {
     setShowAnswer(false);

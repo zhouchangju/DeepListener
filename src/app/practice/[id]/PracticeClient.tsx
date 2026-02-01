@@ -21,6 +21,7 @@ import NoteEditor from "@/components/feature/NoteEditor";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
 
 import { useRouter } from "next/navigation";
+import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
 
 
@@ -74,6 +75,12 @@ interface PracticeClientProps {
 
 export default function PracticeClient({ track }: PracticeClientProps) {
   const router = useRouter();
+  const { setMode } = useTimeTracking();
+
+  useEffect(() => {
+    setMode("LISTENING");
+    return () => setMode("IDLE");
+  }, [setMode]);
 
   const [capturingSentenceId, setCapturingSentenceId] = useState<string | null>(null);
 
