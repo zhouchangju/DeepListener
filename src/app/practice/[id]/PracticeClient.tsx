@@ -111,11 +111,15 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
 
 
-  const currentSentence = track.sentences.find((s) => s.id === capturingSentenceId);
+      const currentSentence = track.sentences.find((s) => s.id === capturingSentenceId);
 
 
 
-  const saveToVault = async (tags: string[], note: string, difficulty: string) => {
+    
+
+
+
+      const saveToVault = async (tags: string[], note: string, difficulty: string) => {
 
     if (!capturingSentenceId) return;
 

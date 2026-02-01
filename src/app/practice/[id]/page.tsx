@@ -10,7 +10,11 @@ export default async function PracticePage({ params }: { params: { id: string } 
     include: {
       sentences: {
         orderBy: { orderIndex: "asc" },
-        include: { reviewItem: true }, // 获取笔记关联信息
+        include: { 
+          reviewItem: {
+            include: { tags: true }
+          } 
+        }, 
       },
     },
   });
