@@ -24,7 +24,7 @@ function ClientOnly({ children, height }: { children: React.ReactNode; height: n
   if (!isMounted) {
     return <div style={{ width: '100%', height }} className="animate-pulse bg-slate-50 rounded-lg" />;
   }
-  return <>{children}</>;
+  return <div style={{ width: '100%', height }}>{children}</div>;
 }
 
 export function StatusRingChart({ data }: { data: { name: string; value: number }[] }) {

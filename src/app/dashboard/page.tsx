@@ -163,11 +163,11 @@ async function DashboardContent() {
 
       <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
         {/* Status Distribution */}
-        <Card className="col-span-1">
+        <Card className="col-span-1 min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Learning Status</CardTitle>
           </CardHeader>
-          <CardContent className="h-[250px]">
+          <CardContent className="h-[250px] min-w-0">
              {statusData.length > 0 ? (
                 <StatusRingChart data={statusData} />
              ) : (
@@ -177,11 +177,11 @@ async function DashboardContent() {
         </Card>
 
         {/* Type Distribution */}
-        <Card className="col-span-1">
+        <Card className="col-span-1 min-w-0">
           <CardHeader>
              <CardTitle className="text-base">Content Types</CardTitle>
           </CardHeader>
-          <CardContent className="h-[250px]">
+          <CardContent className="h-[250px] min-w-0">
              {typeData.length > 0 ? (
                 <TypeDistributionChart data={typeData} />
              ) : (
@@ -191,11 +191,11 @@ async function DashboardContent() {
         </Card>
 
         {/* Error Attribution */}
-        <Card className="col-span-1">
+        <Card className="col-span-1 min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Error Attribution</CardTitle>
           </CardHeader>
-          <CardContent className="h-[250px]">
+          <CardContent className="h-[250px] min-w-0">
             {tagData.length > 0 ? (
               <ErrorTagChart data={tagData} />
             ) : (
