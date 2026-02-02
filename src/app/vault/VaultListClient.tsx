@@ -4,16 +4,16 @@ import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame } from "lucide-react";
+import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
 
 export default function VaultListClient({ initialItems }: { initialItems: any[] }) {
-  // ... (状态保持不变)
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
@@ -29,6 +29,27 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
       toast.error("Failed to delete");
     }
   };
+
+  const handleToggleArchive = async (id: string) => {
+    try {
+      const res = await fetch(`/api/vault/${id}/archive`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      toast.success(data.isArchived ? 'Archived' : 'Unarchived');
+      router.refresh();
+    } catch (e) {
+      toast.error('Failed to toggle archive');
+    }
+  };
+
+  // Filter items based on showArchived state
+  const filteredItems = initialItems.filter((item) => {
+    return showArchived ? item.isArchived : !item.isArchived;
+  });
 
   const playAudio = (item: any) => {
     if (!audioRef.current) {
@@ -86,7 +107,28 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
 
   return (
     <div className="space-y-4">
-      {initialItems.map((item) => {
+      {/* Archive Toggle Filter */}
+      <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg border">
+        <div className="flex items-center gap-2">
+          {showArchived ? (
+            <ArchiveRestore className="w-4 h-4 text-gray-600" />
+          ) : (
+            <Archive className="w-4 h-4 text-gray-600" />
+          )}
+          <span className="text-sm text-gray-600">
+            {showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowArchived(!showArchived)}
+        >
+          {showArchived ? 'Show Active' : 'Show Archived'}
+        </Button>
+      </div>
+
+      {filteredItems.map((item) => {
         const difficulty = item.difficulty || "NORMAL";
         return (
           <Card key={item.id} className={`group transition-colors ${getDifficultyStyle(difficulty)}`}>
@@ -107,17 +149,26 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
                       {item.sentence.text}
                     </p>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-gray-400 hover:text-indigo-600"
                         onClick={() => setEditingItem(item)}
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-400 hover:text-amber-600"
+                        onClick={() => handleToggleArchive(item.id)}
+                        title={item.isArchived ? "Unarchive" : "Archive"}
+                      >
+                        {item.isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-gray-400 hover:text-red-600"
                         onClick={() => handleDelete(item.id)}
                       >
@@ -182,9 +233,11 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
         onSaved={() => router.refresh()}
       />
 
-      {initialItems.length === 0 && (
+      {filteredItems.length === 0 && (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed text-gray-400">
-          Your vault is empty. Capture some difficult sentences from the Workbench first!
+          {showArchived
+            ? 'No archived notes. Archive some notes to see them here!'
+            : 'Your vault is empty. Capture some difficult sentences from the Workbench first!'}
         </div>
       )}
     </div>
