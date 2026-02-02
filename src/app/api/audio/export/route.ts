@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
+import { tmpdir } from 'os';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -10,55 +11,6 @@ interface AudioSegment {
   audioPath: string;
   startTime: number;
   endTime: number;
-}
-
-async function extractSegment(
-  inputPath: string,
-  startTime: number,
-  duration: number
-): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-
-    ffmpeg(inputPath)
-      .setStartTime(startTime)
-      .setDuration(duration)
-      .format('mp3')
-      .audioBitrate('192k')
-      .on('error', (err) => {
-        reject(err);
-      })
-      .on('end', () => {
-        resolve(Buffer.concat(chunks));
-      })
-      .pipe()
-      .on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-  });
-}
-
-async function generateSilence(duration: number): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-
-    ffmpeg()
-      .input('anullsrc=r=44100:cl=mono')
-      .inputOptions(['-f lavfi'])
-      .duration(duration)
-      .format('mp3')
-      .audioBitrate('192k')
-      .on('error', (err) => {
-        reject(err);
-      })
-      .on('end', () => {
-        resolve(Buffer.concat(chunks));
-      })
-      .pipe()
-      .on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-  });
 }
 
 function generateFilename(): string {
@@ -176,6 +128,8 @@ async function gatherSegments(
 }
 
 export async function POST(req: NextRequest) {
+  let tempDir: string | null = null;
+
   try {
     const body = await req.json();
     const { type, trackId }: { type: 'all' | 'due' | 'track'; trackId?: string } = body;
@@ -219,23 +173,84 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process audio segments
-    const audioBuffers: Buffer[] = [];
+    // Create temporary directory for intermediate files
+    tempDir = fs.mkdtempSync(path.join(tmpdir(), 'deeplistener-export-'));
 
-    for (const segment of segments) {
-      const duration = segment.endTime - segment.startTime;
-      const audio = await extractSegment(
-        segment.audioPath,
-        segment.startTime,
-        duration
-      );
-      audioBuffers.push(audio);
+    // Extract each segment to a temporary file
+    const segmentFiles: string[] = [];
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const duration = seg.endTime - seg.startTime;
+      const outputFile = path.join(tempDir, `segment_${i}.mp3`);
 
-      const silence = await generateSilence(2.0);
-      audioBuffers.push(silence);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(seg.audioPath)
+          .setStartTime(seg.startTime)
+          .setDuration(duration)
+          .audioBitrate('192k')
+          .on('error', reject)
+          .on('end', () => resolve())
+          .save(outputFile);
+      });
+
+      segmentFiles.push(outputFile);
     }
 
-    const finalBuffer = Buffer.concat(audioBuffers);
+    // Create concat list file with silence between segments
+    const concatFilePath = path.join(tempDir, 'concat.txt');
+    const concatEntries: string[] = [];
+
+    for (let i = 0; i < segmentFiles.length; i++) {
+      // Add audio segment
+      concatEntries.push(`file '${segmentFiles[i]}'`);
+
+      // Add silence (using first segment as source, muted)
+      if (i < segmentFiles.length - 1) {
+        const silenceFile = path.join(tempDir, `silence_${i}.mp3`);
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(segmentFiles[0])
+            .audioFilters([
+              {
+                filter: 'volume',
+                options: '0',  // Mute the audio
+              },
+              {
+                filter: 'aresample',
+                options: '44100',
+              },
+            ])
+            .setDuration(2.0)  // 2 seconds of silence
+            .audioBitrate('192k')
+            .on('error', reject)
+            .on('end', () => resolve())
+            .save(silenceFile);
+        });
+        concatEntries.push(`file '${silenceFile}'`);
+      }
+    }
+
+    // Write concat list
+    fs.writeFileSync(concatFilePath, concatEntries.join('\n'));
+
+    // Merge all files using concat demuxer
+    const outputFile = path.join(tempDir, 'output.mp3');
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(concatFilePath)
+        .inputOptions(['-f concat', '-safe 0'])
+        .audioBitrate('192k')
+        .on('error', reject)
+        .on('end', () => resolve())
+        .save(outputFile);
+    });
+
+    // Read final output
+    const finalBuffer = fs.readFileSync(outputFile);
+
+    // Cleanup temp directory
+    if (tempDir) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
 
     return new Response(finalBuffer, {
       headers: {
@@ -245,6 +260,16 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Audio export error:', error);
+
+    // Cleanup temp directory on error
+    if (tempDir) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (e) {
+        console.error('Failed to cleanup temp directory:', e);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
