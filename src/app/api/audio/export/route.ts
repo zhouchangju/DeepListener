@@ -44,7 +44,7 @@ async function generateSilence(duration: number): Promise<Buffer> {
 
     ffmpeg()
       .input('anullsrc=r=44100:cl=mono')
-      .inputFormat('lavfi')
+      .inputOptions(['-f lavfi'])
       .duration(duration)
       .format('mp3')
       .audioBitrate('192k')
