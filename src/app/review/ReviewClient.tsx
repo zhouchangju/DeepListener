@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, SkipForward, Edit3 } from "lucide-react";
+import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
@@ -108,6 +109,46 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
     }
   };
 
+  const exportAudio = async () => {
+    setIsExporting(true);
+
+    try {
+      const response = await fetch('/api/audio/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'due' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+
+      const filename = response.headers
+        .get('Content-Disposition')
+        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Export.mp3';
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Audio exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
@@ -192,17 +233,27 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
         </CardFooter>
       </Card>
 
-      <EditVaultModal 
-        isOpen={isEditing} 
-        onClose={() => setIsEditing(false)} 
-        item={current} 
+      <EditVaultModal
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        item={current}
         onSaved={() => {
             router.refresh();
             // Don't change index, and optionally hide answer if that's what user wanted
             // "且不要自动显示出reveal answer的内容" -> implies hiding it
-            setShowAnswer(false); 
-        }} 
+            setShowAnswer(false);
+        }}
       />
+
+      <Button
+        onClick={exportAudio}
+        disabled={isExporting}
+        className="fixed bottom-6 right-6 shadow-lg z-50"
+        size="lg"
+      >
+        <Download className="w-4 h-4 mr-2" />
+        {isExporting ? 'Exporting...' : `Export Due (${totalDue})`}
+      </Button>
     </div>
   );
 }

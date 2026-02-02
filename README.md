@@ -28,8 +28,29 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 - **归因诊断系统**：强制记录听不懂的原因（连读、生词、语速等）。
 - **智能复习 (Vault)**：
     - **间隔复习**：类似 Anki 的复习算法。
+    - **音频导出**：将收藏的句子音频合并导出为 MP3，用于泛听复习。每个音频间隔 2 秒静音，支持导出全部、今日复习或单个音频文件的笔记。
 
 ## 🚀 快速开始
+
+### 前置要求
+
+**FFmpeg (必需)**：音频导出功能需要安装 FFmpeg。
+
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt-get update && sudo apt-get install ffmpeg
+
+# Windows
+# 从 https://ffmpeg.org/download.html 下载并添加到 PATH
+```
+
+验证安装：
+```bash
+ffmpeg -version
+```
 
 ### 1. 安装依赖
 ```bash
@@ -78,6 +99,21 @@ npm run dev
 | **Right Drag** | 左右平移波形 |
 | **Left Drag** | 圈选区域并自动循环 (松开即播) |
 | **Alt + Click** | (在 Position 标题上) 开启时间轴调试模式 |
+
+### 音频导出
+
+在以下位置可以导出音频：
+- **Vault 页面**：导出所有收藏的句子或今日需要复习的句子
+- **Review 页面**：右下角浮动按钮，导出今日待复习的句子
+- **Track 练习页面**：导出当前音频文件的所有笔记
+
+导出的 MP3 文件格式：
+- 比特率：192 kbps
+- 句子间隔：2 秒静音
+- 文件命名：`DeepListener_Export_YYYY-MM-DD.mp3`
+- 排序：按来源音频分组，组内按句子顺序排列
+
+导出的音频可用于在其他播放器中进行泛听复习，巩固所学内容。
 
 ## 📚 文档资源
 

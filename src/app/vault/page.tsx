@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import VaultListClient from "./VaultListClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Download, Clock } from "lucide-react";
+import ExportButtons from "./ExportButtons";
 
 export default function VaultPage() {
   return (
@@ -41,11 +44,17 @@ async function VaultContent() {
     orderBy: { createdAt: "desc" },
   });
 
+  const dueCount = await prisma.reviewItem.count({
+    where: {
+      nextReview: {
+        lte: new Date(),
+      },
+    },
+  });
+
   return (
     <>
-      <p className="text-gray-500 text-sm mb-6 -mt-6">
-        Total {items.length} captured sentences
-      </p>
+      <ExportButtons itemCount={items.length} dueCount={dueCount} />
       <VaultListClient initialItems={items} />
     </>
   );

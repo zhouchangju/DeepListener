@@ -10,7 +10,7 @@ import ShadowingConsole from "@/components/feature/ShadowingConsole";
 
 import { Button } from "@/components/ui/button";
 
-import { Eye, EyeOff, Mic2, Loader2, Edit3 } from "lucide-react";
+import { Eye, EyeOff, Mic2, Loader2, Edit3, Download } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -94,6 +94,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   const [isEditing, setIsEditing] = useState(false);
 
+  const [isExporting, setIsExporting] = useState(false);
+
 
 
   // 预加载音频 Buffer，为了 Shadowing 模式下的极速切片
@@ -174,6 +176,46 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   };
 
+  const exportAudio = async () => {
+    setIsExporting(true);
+
+    try {
+      const response = await fetch('/api/audio/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'track', trackId: track.id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+
+      const filename = response.headers
+        .get('Content-Disposition')
+        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Export.mp3';
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Audio exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -185,7 +227,16 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         </div>
 
         <div className="flex gap-2">
-            <Button 
+            <Button
+              variant="outline"
+              onClick={exportAudio}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Exporting...' : 'Export Notes'}
+            </Button>
+
+            <Button
               variant="secondary"
               className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
               disabled={!fullAudioBuffer} // 只有加载完了才能进跟读
@@ -195,7 +246,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
               {fullAudioBuffer ? "Shadowing" : "Loading..."}
             </Button>
 
-            <Button 
+            <Button
               variant={blindMode ? "default" : "outline"}
               onClick={() => setBlindMode(!blindMode)}
               size="icon"
