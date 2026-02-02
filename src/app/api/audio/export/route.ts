@@ -27,6 +27,9 @@ async function gatherSegments(
   switch (type) {
     case 'all':
       reviewItems = await prisma.reviewItem.findMany({
+        where: {
+          isArchived: false,
+        },
         include: {
           sentence: {
             include: { track: true },
@@ -44,6 +47,7 @@ async function gatherSegments(
           nextReview: {
             lte: new Date(),
           },
+          isArchived: false,
         },
         include: {
           sentence: {
@@ -65,6 +69,7 @@ async function gatherSegments(
           sentence: {
             trackId,
           },
+          isArchived: false,
         },
         include: {
           sentence: {

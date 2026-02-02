@@ -20,6 +20,7 @@ async function ReviewContent() {
       nextReview: {
         lte: new Date(),
       },
+      isArchived: false,
     },
   });
 
@@ -29,6 +30,7 @@ async function ReviewContent() {
       nextReview: {
         lte: new Date(),
       },
+      isArchived: false,
     },
     include: {
       sentence: {
