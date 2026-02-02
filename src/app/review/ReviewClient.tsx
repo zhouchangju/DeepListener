@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download } from "lucide-react";
+import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download, Archive } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
@@ -149,6 +149,30 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
     }
   };
 
+  const handleArchive = async () => {
+    try {
+      const res = await fetch(`/api/vault/${current.id}/archive`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error('Failed to archive');
+
+      const data = await res.json();
+
+      toast.success(data.isArchived ? 'Note archived' : 'Note unarchived');
+
+      // Move to next item
+      if (currentIndex < items.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        toast.success('Session completed!');
+        window.location.reload();
+      }
+    } catch {
+      toast.error('Failed to archive note');
+    }
+  };
+
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
@@ -157,9 +181,14 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
             <div className="flex items-center gap-2">
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
             {showAnswer && (
+                <>
+                <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={handleArchive}>
+                  <Archive className="h-3 w-3 mr-1" /> Archive
+                </Button>
                 <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
                 <Edit3 className="h-3 w-3 mr-1" /> Edit Note
                 </Button>
+                </>
             )}
             </div>
         </div>
