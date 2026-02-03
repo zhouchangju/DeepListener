@@ -23,10 +23,18 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
   const current = items[currentIndex];
 
-  // Sync items when prop changes (e.g., after grading completes a batch)
+  // Sync items when prop changes and filter out archived items
   useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
+    const filtered = initialItems.filter(item => !item.isArchived);
+
+    // If items were filtered out (user archived in another tab), adjust index
+    if (filtered.length < items.length && currentIndex >= filtered.length) {
+      setCurrentIndex(Math.max(0, filtered.length - 1));
+    }
+
+    setItems(filtered);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialItems]); // Only re-run when initialItems prop changes
 
   useEffect(() => {
     setMode("REVIEW");
