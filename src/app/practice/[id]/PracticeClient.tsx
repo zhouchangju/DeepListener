@@ -233,7 +233,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
               disabled={isExporting}
             >
               <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export Notes'}
+              {isExporting ? 'Exporting...' : 'Export Audio'}
             </Button>
 
             <Button

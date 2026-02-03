@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DifficultySelector from "./DifficultySelector";
+import RichTextNoteEditor from "./RichTextNoteEditor";
 
 const ERROR_TAGS = [
   { id: "Linking", label: "Linking (连读/吞音)" },
@@ -68,7 +69,7 @@ export default function DiagnosisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" zIndex="z-[60]">
         <DialogHeader>
           <DialogTitle>Why couldn't you catch this?</DialogTitle>
         </DialogHeader>
@@ -96,11 +97,10 @@ export default function DiagnosisModal({
             <DifficultySelector value={difficulty} onChange={setDifficulty} />
           </div>
 
-          <textarea
+          <RichTextNoteEditor
+            initialNote={note}
+            onChange={setNote}
             placeholder="Add a note (e.g., 'of' sounded like 'a')"
-            className="w-full p-3 text-sm border rounded-md focus:ring-2 focus:ring-indigo-500 outline-none min-h-[80px]"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
           />
         </div>
 
