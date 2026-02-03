@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
         // FSRS fields
         stability: next.stability,
         dr: next.difficulty,
-        // For "Again", keep due as now so it stays in current queue after refresh
-        due: isAgain ? new Date() : next.nextReview,
+        // For "Again", set due to 10 minutes in the future so it doesn't immediately reappear on refresh
+        // Client-side queue management handles the current session correctly
+        due: isAgain ? new Date(Date.now() + 10 * 60 * 1000) : next.nextReview,
         retrieval: isAgain
           ? currentItem.retrieval
           : (currentItem.retrieval ?? 0) + 1,
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
           : currentItem.lapse,
 
         // Keep legacy fields in sync for backward compatibility
-        nextReview: isAgain ? new Date() : next.nextReview,
+        nextReview: isAgain ? new Date(Date.now() + 10 * 60 * 1000) : next.nextReview,
       },
     });
 
