@@ -14,6 +14,8 @@ export default function ReviewPage() {
   );
 }
 
+export const revalidate = 0; // Disable caching, always fetch fresh data
+
 async function ReviewContent() {
   const totalDue = await prisma.reviewItem.count({
     where: {
