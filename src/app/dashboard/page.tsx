@@ -93,7 +93,8 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   // Get last 14 days of past reviews
   const past14Days = Array.from({ length: 14 }, (_, i) => {
     const date = new Date();
-    date.setDate(date.getDate() - (13 - i));
+    date.setUTCDate(date.getUTCDate() - (13 - i));
+    date.setUTCHours(0, 0, 0, 0);
     return date.toISOString().split('T')[0];
   });
 
@@ -105,17 +106,17 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   // 2. Future reviews: count by due date
   const futureReviewsByDate: Record<string, number> = {};
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const future30Days = Array.from({ length: 30 }, (_, i) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() + i);
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + i);
+    date.setUTCHours(0, 0, 0, 0);
     return date.toISOString().split('T')[0];
   });
 
   allReviewItems.forEach(item => {
     const dueDate = new Date(item.due);
-    dueDate.setHours(0, 0, 0, 0);
+    dueDate.setUTCHours(0, 0, 0, 0);
     const dateKey = dueDate.toISOString().split('T')[0];
 
     // Only count items due in the next 30 days
