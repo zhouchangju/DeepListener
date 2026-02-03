@@ -181,6 +181,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     userBlob,
     isLooping,
     startFlow: handleStartFlow,
+    playOriginal,
     handleRecAgain,
     stopAll,
     toggleLoop,

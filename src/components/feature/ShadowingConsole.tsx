@@ -46,7 +46,7 @@ export default function ShadowingConsole({
   const [isEditingText, setIsEditingText] = useState(false);
   const [tempText, setTempText] = useState(sentence.text);
 
-  const { mode, originalBlob, userBlob, isLooping, startFlow, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
+  const { mode, originalBlob, userBlob, isLooping, startFlow, playOriginal, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
@@ -84,13 +84,13 @@ export default function ShadowingConsole({
       return;
     }
 
-    // Auto-start playback after 0.5s delay
+    // Auto-start playback after 0.5s delay (without auto-recording)
     const timer = setTimeout(() => {
-      startFlow();
+      playOriginal();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [sentence.id, startFlow]);
+  }, [sentence.id, playOriginal]);
 
   const handleSaveText = async () => {
     try {
