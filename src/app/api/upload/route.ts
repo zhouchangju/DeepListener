@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     // 使用工厂获取当前选定的 Transcription Provider
     const provider = getTranscriptionProvider();
-    
+
     console.log(`Starting transcription using ${process.env.TRANSCRIPTION_PROVIDER || "openai"}...`);
     const transcription = await provider.transcribe(uploadPath);
     console.log("Transcription complete.");
@@ -52,6 +52,79 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(track);
   } catch (error: any) {
     console.error("Upload error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// Batch upload endpoint
+export async function PUT(req: NextRequest) {
+  try {
+    const formData = await req.formData();
+    const files = formData.getAll("files") as File[];
+
+    if (!files || files.length === 0) {
+      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+    }
+
+    const provider = getTranscriptionProvider();
+    const results = {
+      success: [] as Array<{ id: string; title: string; audioUrl: string }>,
+      failed: [] as Array<{ fileName: string; error: string }>,
+    };
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileName = `${uuidv4()}-${file.name}`;
+      const uploadPath = path.join(process.cwd(), "public/uploads", fileName);
+      const audioUrl = `/uploads/${fileName}`;
+
+      try {
+        // Save file
+        const buffer = Buffer.from(await file.arrayBuffer());
+        await writeFile(uploadPath, buffer);
+
+        // Transcribe
+        console.log(`[${i + 1}/${files.length}] Starting transcription: ${file.name}`);
+        const transcription = await provider.transcribe(uploadPath);
+        console.log(`[${i + 1}/${files.length}] Transcription complete: ${file.name}`);
+
+        // Create Track and Sentences
+        const track = await prisma.track.create({
+          data: {
+            title: file.name.replace(/\.[^/.]+$/, ""),
+            audioUrl: audioUrl,
+            transcription: transcription.rawJson,
+            status: "UNLEARNT",
+            sentences: {
+              create: transcription.segments.map((segment, index: number) => ({
+                text: segment.text,
+                startTime: segment.start,
+                endTime: segment.end,
+                orderIndex: index,
+              })),
+            },
+          },
+        });
+
+        results.success.push({
+          id: track.id,
+          title: track.title,
+          audioUrl: track.audioUrl,
+        });
+      } catch (error: any) {
+        console.error(`[${i + 1}/${files.length}] Failed to process ${file.name}:`, error);
+        results.failed.push({
+          fileName: file.name,
+          error: error.message || "Unknown error",
+        });
+      }
+    }
+
+    console.log(`Batch upload complete: ${results.success.length} succeeded, ${results.failed.length} failed`);
+
+    return NextResponse.json(results);
+  } catch (error: any) {
+    console.error("Batch upload error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

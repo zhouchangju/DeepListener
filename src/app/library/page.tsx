@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import UploadButton from "./UploadButton";
+import BatchUploadButton from "./BatchUploadButton";
 import LibraryManager from "./LibraryManager";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,10 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: { archived?: string };
+  searchParams: { archived?: string; batch?: string };
 }) {
-  const { archived } = await searchParams;
+  const { archived, batch } = await searchParams;
   const showArchived = archived === "true";
+  const showBatchUpload = batch === "true";
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -36,9 +38,19 @@ export default async function LibraryPage({
             </Button>
           </Link>
           {!showArchived && (
-            <div className="flex-1 md:flex-none">
-              <UploadButton />
-            </div>
+            <>
+              <Link
+                href={showBatchUpload ? "/library" : "/library?batch=true"}
+                className="flex-1 md:flex-none"
+              >
+                <Button variant="outline" className="w-full">
+                  {showBatchUpload ? "Single" : "Batch"}
+                </Button>
+              </Link>
+              <div className="flex-1 md:flex-none">
+                {showBatchUpload ? <BatchUploadButton /> : <UploadButton />}
+              </div>
+            </>
           )}
         </div>
       </div>
