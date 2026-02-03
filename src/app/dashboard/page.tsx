@@ -106,6 +106,8 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   // 2. Future reviews: count by due date
   const futureReviewsByDate: Record<string, number> = {};
   const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const todayKey = today.toISOString().split('T')[0];
 
   const future30Days = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
@@ -119,8 +121,12 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     dueDate.setUTCHours(0, 0, 0, 0);
     const dateKey = dueDate.toISOString().split('T')[0];
 
-    // Only count items due in the next 30 days
-    if (future30Days.includes(dateKey)) {
+    // Count items: past due items go into today, future items go into their respective dates
+    if (dueDate < today) {
+      // Past due items: count towards today
+      futureReviewsByDate[todayKey] = (futureReviewsByDate[todayKey] || 0) + 1;
+    } else if (future30Days.includes(dateKey)) {
+      // Future items: count towards their due date
       futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
     }
   });
