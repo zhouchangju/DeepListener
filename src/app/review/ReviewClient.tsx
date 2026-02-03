@@ -51,8 +51,9 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditing) return;
 
-      // Reveal answer
-      if (e.key.toLowerCase() === "r" && !showAnswer) {
+      // Reveal answer (Space key)
+      if (e.key === " " && !showAnswer) {
+        e.preventDefault(); // Prevent page scroll
         setShowAnswer(true);
         return;
       }
@@ -291,14 +292,14 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
               )}
             </div>
           ) : (
-            <p className="text-gray-400 italic">Click play to listen. Press 'R' to reveal.</p>
+            <p className="text-gray-400 italic">Click play to listen. Press Space to reveal.</p>
           )}
         </CardContent>
 
         <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-3">
           {!showAnswer ? (
             <Button className="w-full" onClick={() => setShowAnswer(true)}>
-              <Eye className="mr-2 h-4 w-4" /> Reveal Answer (R)
+              <Eye className="mr-2 h-4 w-4" /> Reveal Answer (Space)
             </Button>
           ) : (
             <>
