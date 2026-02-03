@@ -76,6 +76,22 @@ export default function ShadowingConsole({
     setIsEditingText(false); // Reset edit mode
   }, [sentence.id, sentence.formatting, sentence.text]);
 
+  // Auto-play original audio after 0.5s when switching to next sentence
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Auto-start playback after 0.5s delay
+    const timer = setTimeout(() => {
+      startFlow();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [sentence.id, startFlow]);
+
   const handleSaveText = async () => {
     try {
       const res = await fetch(`/api/sentence/${sentence.id}`, {
