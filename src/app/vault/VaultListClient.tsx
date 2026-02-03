@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore } from "lucide-react";
+import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore, X, Filter, Search } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
@@ -14,8 +14,33 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
+
+  // Extract all unique tags and difficulties from items
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    initialItems.forEach(item => {
+      item.tags?.forEach((tag: any) => tagSet.add(tag.name));
+    });
+    return Array.from(tagSet).sort();
+  }, [initialItems]);
+
+  const allDifficulties = ["NORMAL", "HARD", "VERY_HARD"];
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSelectedDifficulties([]);
+    setSelectedTags([]);
+    setSearchQuery("");
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sentence from your vault?")) return;
@@ -46,10 +71,41 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
     }
   };
 
-  // Filter items based on showArchived state
-  const filteredItems = initialItems.filter((item) => {
-    return showArchived ? item.isArchived : !item.isArchived;
-  });
+  // Filter items based on all active filters
+  const filteredItems = useMemo(() => {
+    return initialItems.filter((item) => {
+      // Archive filter
+      if (!showArchived && item.isArchived) return false;
+      if (showArchived && !item.isArchived) return false;
+
+      // Difficulty filter
+      if (selectedDifficulties.length > 0) {
+        const difficulty = item.difficulty || "NORMAL";
+        if (!selectedDifficulties.includes(difficulty)) return false;
+      }
+
+      // Tags filter
+      if (selectedTags.length > 0) {
+        const itemTags = item.tags?.map((t: any) => t.name) || [];
+        const hasAllTags = selectedTags.every(tag => itemTags.includes(tag));
+        if (!hasAllTags) return false;
+      }
+
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const text = item.sentence.text.toLowerCase();
+        const note = (item.userNote || "").toLowerCase();
+        const track = item.sentence.track.title.toLowerCase();
+
+        if (!text.includes(query) && !note.includes(query) && !track.includes(query)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [initialItems, showArchived, selectedDifficulties, selectedTags, searchQuery]);
 
   const playAudio = (item: any) => {
     if (!audioRef.current) {
@@ -126,6 +182,132 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
         >
           {showArchived ? 'Show Active' : 'Show Archived'}
         </Button>
+      </div>
+
+      {/* Advanced Filters */}
+      <div className="bg-white rounded-lg border">
+        {/* Filter Toggle Header */}
+        <div
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">
+              Filters
+            </span>
+            {hasActiveFilters && (
+              <Badge variant="default" className="ml-2">
+                {selectedDifficulties.length + selectedTags.length + (searchQuery ? 1 : 0)}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearFilters();
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                <X className="w-3.5 h-3.5 mr-1" />
+                Clear
+              </Button>
+            )}
+            <div className="text-gray-400">
+              {showFilters ? '▼' : '▶'}
+            </div>
+          </div>
+        </div>
+
+        {/* Expandable Filter Options */}
+        {showFilters && (
+          <div className="px-4 py-3 border-t space-y-4">
+            {/* Search */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">
+                Search
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search in text, notes, or track title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Difficulty Filter */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">
+                Difficulty
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {allDifficulties.map((difficulty) => (
+                  <button
+                    key={difficulty}
+                    onClick={() => {
+                      setSelectedDifficulties(prev =>
+                        prev.includes(difficulty)
+                          ? prev.filter(d => d !== difficulty)
+                          : [...prev, difficulty]
+                      );
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
+                      selectedDifficulties.includes(difficulty)
+                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {difficulty === 'NORMAL' ? 'Normal' : difficulty === 'HARD' ? 'Hard' : 'Very Hard'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tags Filter */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">
+                Tags
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      setSelectedTags(prev =>
+                        prev.includes(tag)
+                          ? prev.filter(t => t !== tag)
+                          : [...prev, tag]
+                      );
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
+                      selectedTags.includes(tag)
+                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Results Summary */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs text-gray-500">
+                Showing {filteredItems.length} of {initialItems.length} notes
+                {hasActiveFilters && ' (filtered)'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {filteredItems.map((item) => {
@@ -215,9 +397,9 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
                   </div>
 
                   {item.userNote && (
-                    <p className="mt-3 text-sm text-gray-500 bg-white/50 p-3 rounded italic border-l-2 border-indigo-200 whitespace-pre-wrap">
-                      {item.userNote}
-                    </p>
+                    <div className="mt-3 text-sm text-gray-700 bg-white/50 p-3 rounded border-l-2 border-indigo-200 prose prose-sm max-w-none">
+                      <div dangerouslySetInnerHTML={{ __html: item.userNote }} />
+                    </div>
                   )}
                 </div>
               </div>

@@ -22,10 +22,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const data: any = {
       userNote,
-      tags: {
-        set: tags.map((t: string) => ({ name: t })),
-      },
     };
+
+    // Only update tags if provided
+    if (tags !== undefined) {
+      data.tags = {
+        set: tags.map((t: string) => ({ name: t })),
+      };
+    }
 
     if (difficulty) data.difficulty = difficulty;
 

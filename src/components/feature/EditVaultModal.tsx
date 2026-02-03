@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import DifficultySelector from "./DifficultySelector";
+import ReviewNoteEditor from "./ReviewNoteEditor";
+import { Copy, Check } from "lucide-react";
 
 const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "Grammar", "Accent"];
 
@@ -19,7 +21,7 @@ interface EditVaultModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: any;
-  onSaved: () => void;
+  onSaved: (updatedItem?: { userNote?: string; tags?: string[]; difficulty?: string }) => void;
 }
 
 export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditVaultModalProps) {
@@ -27,14 +29,29 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("NORMAL");
   const [loading, setLoading] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (item) {
       setNote(item.userNote || "");
       setSelectedTags(item.tags?.map((t: any) => t.name) || []);
       setDifficulty(item.difficulty || "NORMAL");
+      // Force re-mount editor when item changes
+      setEditorKey(prev => prev + 1);
     }
-  }, [item]);
+  }, [item, item?.id]);
+
+  const handleCopyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 
@@ -48,13 +65,13 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
       const res = await fetch(`/api/vault/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userNote: note, tags: selectedTags, difficulty }),
+        body: JSON.stringify({ tags: selectedTags, difficulty }),
       });
 
       if (!res.ok) throw new Error("Failed to update");
-      
+
       toast.success("Saved successfully");
-      onSaved();
+      onSaved({ tags: selectedTags, difficulty });
       onClose();
     } catch (e) {
       toast.error("Failed to save changes");
@@ -65,43 +82,78 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Note</DialogTitle>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="text-sm font-medium">Why was this difficult?</div>
-          <div className="flex flex-wrap gap-2">
-            {ERROR_TAGS.map((tag) => (
-              <Badge
-                key={tag}
-                variant={selectedTags.includes(tag) ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
 
-          <div>
-            <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
-            <DifficultySelector value={difficulty} onChange={setDifficulty} />
-          </div>
+        {item && (
+          <div className="grid gap-4 py-4">
+            {/* Original Text Section */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                  Original Text
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => handleCopyText(item.sentence?.text || "")}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-sm text-slate-800 leading-relaxed">
+                {item.sentence?.text}
+              </p>
+              <div className="mt-2 text-xs text-slate-500">
+                From: {item.sentence?.track?.title || "Unknown Track"}
+              </div>
+            </div>
 
-          <div className="text-sm font-medium mt-2">Personal Note</div>
-          <textarea
-            className="w-full p-3 text-sm border rounded-md min-h-[100px] outline-none focus:ring-2 focus:ring-indigo-500"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Add your realization here..."
-          />
-        </div>
+            <div className="text-sm font-medium">Why was this difficult?</div>
+            <div className="flex flex-wrap gap-2">
+              {ERROR_TAGS.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={selectedTags.includes(tag) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+
+            <div>
+              <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
+              <DifficultySelector value={difficulty} onChange={setDifficulty} />
+            </div>
+
+            <div className="text-sm font-medium mt-2">Personal Note</div>
+            <ReviewNoteEditor
+              key={editorKey}
+              initialNote={item.userNote}
+              reviewItemId={item.id}
+              onNoteChange={(newNote) => setNote(newNote)}
+            />
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={loading}>
+          <Button onClick={handleSave} disabled={loading || !item}>
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>

@@ -4,25 +4,29 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download, Archive } from "lucide-react";
+import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download, Archive, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
-import { useRouter } from "next/navigation";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
-export default function ReviewClient({ items, totalDue }: { items: any[], totalDue: number }) {
+export default function ReviewClient({ items: initialItems, totalDue }: { items: any[], totalDue: number }) {
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [items, setItems] = useState(initialItems);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const router = useRouter();
 
   const current = items[currentIndex];
+
+  // Sync items when prop changes (e.g., after grading completes a batch)
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   useEffect(() => {
     setMode("REVIEW");
@@ -37,13 +41,35 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "r" && !showAnswer && !isEditing) {
+      if (isEditing) return;
+
+      // Reveal answer
+      if (e.key.toLowerCase() === "r" && !showAnswer) {
         setShowAnswer(true);
+        return;
+      }
+
+      // Grade shortcuts (only when answer is revealed)
+      if (showAnswer) {
+        switch (e.key.toLowerCase()) {
+          case '1':
+            handleGrade("again");
+            break;
+          case '2':
+            handleGrade("hard");
+            break;
+          case '3':
+            handleGrade("good");
+            break;
+          case '4':
+            handleGrade("easy");
+            break;
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showAnswer, isEditing]);
+  }, [showAnswer, isEditing, currentIndex]);
 
   // Sync playback rate in real-time
   useEffect(() => {
@@ -85,7 +111,7 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
     audio.play().catch(e => console.log("Auto-play prevented:", e));
   };
 
-  const handleGrade = async (quality: "again" | "good") => {
+  const handleGrade = async (quality: "again" | "hard" | "good" | "easy") => {
     try {
       const res = await fetch("/api/review/grade", {
         method: "POST",
@@ -98,11 +124,31 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
 
       if (!res.ok) throw new Error("Failed to update");
 
-      if (currentIndex < items.length - 1) {
-        setCurrentIndex(currentIndex + 1);
+      // If "Again", move card to end of current session queue
+      if (quality === "again") {
+        setItems(prevItems => {
+          const newItems = [...prevItems];
+          const currentItem = newItems[currentIndex];
+
+          // Remove from current position and add to end
+          newItems.splice(currentIndex, 1);
+          newItems.push(currentItem);
+
+          // Keep currentIndex at same position (now points to next card)
+          // If we were at the last card, stay there (will now be second-to-last)
+          return newItems;
+        });
+
+        // Show feedback
+        toast.success("Moved to end of queue for review");
       } else {
-        toast.success("Batch completed! Loading more...");
-        window.location.reload();
+        // For other ratings, move to next item
+        if (currentIndex < items.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          toast.success("Batch completed! Loading more...");
+          window.location.reload();
+        }
       }
     } catch {
       toast.error("Failed to save progress");
@@ -227,9 +273,13 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
                 ))}
               </div>
               {current.userNote && (
-                <p className="text-sm text-gray-500 bg-gray-50 p-2 rounded italic">
-                  Note: {current.userNote}
-                </p>
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-200">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">NOTE:</div>
+                  <div
+                    className="prose prose-sm max-w-none whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: current.userNote }}
+                  />
+                </div>
               )}
             </div>
           ) : (
@@ -237,26 +287,50 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
           )}
         </CardContent>
 
-        <CardFooter className="bg-gray-50/50 p-6 flex gap-4">
+        <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-3">
           {!showAnswer ? (
             <Button className="w-full" onClick={() => setShowAnswer(true)}>
               <Eye className="mr-2 h-4 w-4" /> Reveal Answer (R)
             </Button>
           ) : (
             <>
-              <Button 
-                variant="outline" 
-                className="flex-1 border-red-200 hover:bg-red-50 text-red-600"
-                onClick={() => handleGrade("again")}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" /> Again
-              </Button>
-              <Button 
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                onClick={() => handleGrade("good")}
-              >
-                <Check className="mr-2 h-4 w-4" /> Good
-              </Button>
+              <div className="grid grid-cols-4 gap-2 w-full">
+                <Button
+                  variant="outline"
+                  className="border-red-200 hover:bg-red-50 text-red-600 flex-col h-auto py-3"
+                  onClick={() => handleGrade("again")}
+                >
+                  <RotateCcw className="h-4 w-4 mb-1" />
+                  <span className="text-xs font-medium">Again</span>
+                  <span className="text-[10px] text-gray-400">1</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-orange-200 hover:bg-orange-50 text-orange-600 flex-col h-auto py-3"
+                  onClick={() => handleGrade("hard")}
+                >
+                  <TrendingDown className="h-4 w-4 mb-1" />
+                  <span className="text-xs font-medium">Hard</span>
+                  <span className="text-[10px] text-gray-400">2</span>
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3"
+                  onClick={() => handleGrade("good")}
+                >
+                  <Check className="h-4 w-4 mb-1" />
+                  <span className="text-xs font-medium">Good</span>
+                  <span className="text-[10px] text-green-200">3</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-blue-200 hover:bg-blue-50 text-blue-600 flex-col h-auto py-3"
+                  onClick={() => handleGrade("easy")}
+                >
+                  <TrendingUp className="h-4 w-4 mb-1" />
+                  <span className="text-xs font-medium">Easy</span>
+                  <span className="text-[10px] text-gray-400">4</span>
+                </Button>
+              </div>
             </>
           )}
         </CardFooter>
@@ -266,10 +340,28 @@ export default function ReviewClient({ items, totalDue }: { items: any[], totalD
         isOpen={isEditing}
         onClose={() => setIsEditing(false)}
         item={current}
-        onSaved={() => {
-            router.refresh();
-            // Don't change index, and optionally hide answer if that's what user wanted
-            // "且不要自动显示出reveal answer的内容" -> implies hiding it
+        onSaved={(updatedItem) => {
+            // Update local state instead of refreshing the entire page
+            if (updatedItem) {
+                setItems(prevItems =>
+                    prevItems.map(item => {
+                        if (item.id === current.id) {
+                            // Convert tag names to tag objects format
+                            const tagObjects = updatedItem.tags?.map(name => {
+                                const existingTag = item.tags.find((t: any) => t.name === name);
+                                return existingTag || { id: `temp-${name}`, name };
+                            }) || item.tags;
+
+                            return {
+                                ...item,
+                                ...updatedItem,
+                                tags: tagObjects,
+                            };
+                        }
+                        return item;
+                    })
+                );
+            }
             setShowAnswer(false);
         }}
       />

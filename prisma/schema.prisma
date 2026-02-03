@@ -63,9 +63,18 @@ model ReviewItem {
   sentenceId  String   @unique
   sentence    Sentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
 
-  level       Int      @default(0) // 当前复习等级 (0-5)
-  difficulty  String   @default("NORMAL") // EASY, NORMAL, HARD, VERY_HARD
-  nextReview  DateTime @default(now()) // 下次复习时间
+  // Legacy fields (kept for backward compatibility, will be deprecated)
+  level       Int      @default(0) // 当前复习等级 (0-5) - DEPRECATED, use stability instead
+  difficulty  String   @default("NORMAL") // EASY, NORMAL, HARD, VERY_HARD - DEPRECATED, use dr (difficulty rating)
+
+  // FSRS (Free Spaced Repetition Scheduler) fields
+  stability   Float    @default(0) // 记忆稳定性 (以天为单位) - S参数
+  dr          Float    @default(0) // 难度评级 (0-10) - D参数
+  due         DateTime @default(now()) // 下次复习时间 - replaces nextReview
+  retrieval   Int      @default(0) // 成功回忆次数
+  lapse       Int      @default(0) // 遗忘次数
+
+  nextReview  DateTime @default(now()) // 下次复习时间 (deprecated, use due)
   isArchived  Boolean  @default(false) // 是否已归档
 
   tags        ErrorTag[]
@@ -75,7 +84,8 @@ model ReviewItem {
 
   logs        ReviewLog[]
 
-  @@index([nextReview])
+  @@index([due])
+  @@index([nextReview]) // Keep for backward compatibility
   @@index([createdAt])
   @@index([isArchived])
 }

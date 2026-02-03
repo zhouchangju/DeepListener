@@ -17,7 +17,7 @@ export default function ReviewPage() {
 async function ReviewContent() {
   const totalDue = await prisma.reviewItem.count({
     where: {
-      nextReview: {
+      due: {
         lte: new Date(),
       },
       isArchived: false,
@@ -27,7 +27,7 @@ async function ReviewContent() {
   const rawItems = await prisma.reviewItem.findMany({
     take: 50,
     where: {
-      nextReview: {
+      due: {
         lte: new Date(),
       },
       isArchived: false,
@@ -41,7 +41,7 @@ async function ReviewContent() {
         select: { logs: true }
       }
     },
-    orderBy: { nextReview: "asc" },
+    orderBy: { due: "asc" },
   });
 
   const items = rawItems.map(item => {

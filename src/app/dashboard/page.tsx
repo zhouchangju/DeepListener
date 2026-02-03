@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import ErrorTagChart, { StatusRingChart, TypeDistributionChart } from "./StatsCharts";
+import { ReviewChart } from "./ReviewChart";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarClock, Headphones, Mic2, Clock } from "lucide-react";
 import { Suspense } from "react";
@@ -57,7 +58,7 @@ export default function DashboardPage() {
 
 async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   // Fetch everything in parallel
-  const [tracks, tags, totalSentences, studySessions] = await Promise.all([
+  const [tracks, tags, totalSentences, studySessions, reviewLogs, allReviewItems] = await Promise.all([
     prisma.track.findMany({
       where: { isArchived: false },
       select: { status: true, trackType: true },
@@ -69,8 +70,64 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     prisma.studySession.findMany({
       orderBy: { date: 'desc' },
       take: 30 // Last 30 sessions (roughly 10 days if 3 types per day)
-    })
+    }),
+    prisma.reviewLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 1000, // Get recent reviews
+      select: { createdAt: true },
+    }),
+    prisma.reviewItem.findMany({
+      where: { isArchived: false },
+      select: { due: true },
+    }),
   ]);
+
+  // Process review data for chart
+  // 1. Past reviews: count by date from ReviewLog
+  const pastReviewsByDate: Record<string, number> = {};
+  reviewLogs.forEach(log => {
+    const dateKey = log.createdAt.toISOString().split('T')[0];
+    pastReviewsByDate[dateKey] = (pastReviewsByDate[dateKey] || 0) + 1;
+  });
+
+  // Get last 14 days of past reviews
+  const past14Days = Array.from({ length: 14 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (13 - i));
+    return date.toISOString().split('T')[0];
+  });
+
+  const pastData = past14Days.map(date => ({
+    date,
+    count: pastReviewsByDate[date] || 0,
+  }));
+
+  // 2. Future reviews: count by due date
+  const futureReviewsByDate: Record<string, number> = {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const future30Days = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+    return date.toISOString().split('T')[0];
+  });
+
+  allReviewItems.forEach(item => {
+    const dueDate = new Date(item.due);
+    dueDate.setHours(0, 0, 0, 0);
+    const dateKey = dueDate.toISOString().split('T')[0];
+
+    // Only count items due in the next 30 days
+    if (future30Days.includes(dateKey)) {
+      futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
+    }
+  });
+
+  const futureData = future30Days.map(date => ({
+    date,
+    count: futureReviewsByDate[date] || 0,
+  }));
 
   // Process Study Time
   const totalDurationSeconds = await prisma.studySession.aggregate({
@@ -216,6 +273,29 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Third Row: Review Statistics Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span>Review Statistics</span>
+            <div className="flex items-center gap-4 text-sm font-normal">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-indigo-500 rounded"></div>
+                <span className="text-gray-600">Completed (Last 14 days)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-500 rounded"></div>
+                <span className="text-gray-600">Scheduled (Next 30 days)</span>
+              </div>
+            </div>
+          </CardTitle>
+          <CardDescription>Track your review history and upcoming workload</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReviewChart pastData={pastData} futureData={futureData} />
+        </CardContent>
+      </Card>
 
       {/* Daily Study Log */}
       <div>

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calculateNextReview } from "@/lib/fsrs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { reviewItemId, quality } = await req.json();
+    const { reviewItemId, quality }: { reviewItemId: string; quality: 'again' | 'hard' | 'good' | 'easy' } = await req.json();
 
     const currentItem = await prisma.reviewItem.findUnique({
       where: { id: reviewItemId },
@@ -13,23 +14,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const intervals = [0, 4, 12, 24, 72, 168]; // hours: 0, 4h, 12h, 1d, 3d, 7d
-    
-    let newLevel = currentItem.level;
-    if (quality === "again") {
-      newLevel = 0;
-    } else if (quality === "good") {
-      newLevel = Math.min(currentItem.level + 1, intervals.length - 1);
-    }
+    // Use FSRS algorithm to calculate next review
+    const next = calculateNextReview(
+      {
+        stability: currentItem.stability,
+        difficulty: currentItem.dr,
+        due: currentItem.due,
+      },
+      quality
+    );
 
-    const nextReviewDate = new Date();
-    nextReviewDate.setHours(nextReviewDate.getHours() + intervals[newLevel]);
-
+    // Update retrieval and lapse counts
+    const isAgain = quality === 'again';
     const updated = await prisma.reviewItem.update({
       where: { id: reviewItemId },
       data: {
-        level: newLevel,
-        nextReview: nextReviewDate,
+        // FSRS fields
+        stability: next.stability,
+        dr: next.difficulty,
+        // For "Again", keep due as now so it stays in current queue after refresh
+        due: isAgain ? new Date() : next.nextReview,
+        retrieval: isAgain
+          ? currentItem.retrieval
+          : (currentItem.retrieval ?? 0) + 1,
+        lapse: isAgain
+          ? (currentItem.lapse ?? 0) + 1
+          : currentItem.lapse,
+
+        // Keep legacy fields in sync for backward compatibility
+        nextReview: isAgain ? new Date() : next.nextReview,
       },
     });
 
