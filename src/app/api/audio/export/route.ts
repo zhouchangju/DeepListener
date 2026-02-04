@@ -6,6 +6,7 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 
 export const maxDuration = 300; // 5 minutes
+export const maxSegments = 500; // Maximum segments to export
 
 interface AudioSegment {
   audioPath: string;
@@ -154,20 +155,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check memory
-    if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
-      if (global.gc) {
-        global.gc();
-      }
-
-      if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
-        return new Response(
-          JSON.stringify({ error: 'Server memory limit exceeded' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
     // Gather segments
     const segments = await gatherSegments(type, trackId);
 
@@ -178,59 +165,98 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (segments.length > 500) {
+      return new Response(
+        JSON.stringify({ error: `Too many sentences to export (${segments.length}). Maximum 500 sentences.` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create temporary directory for intermediate files
     tempDir = fs.mkdtempSync(path.join(tmpdir(), 'deeplistener-export-'));
 
-    // Extract each segment to a temporary file
+    // Extract each segment to a temporary file (process in batches to limit memory)
     const segmentFiles: string[] = [];
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      const duration = seg.endTime - seg.startTime;
-      const outputFile = path.join(tempDir, `segment_${i}.mp3`);
+    const batchSize = 50;
 
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(seg.audioPath)
-          .setStartTime(seg.startTime)
-          .setDuration(duration)
-          .audioBitrate('192k')
-          .on('error', reject)
-          .on('end', () => resolve())
-          .save(outputFile);
+    for (let i = 0; i < segments.length; i += batchSize) {
+      const batch = segments.slice(i, Math.min(i + batchSize, segments.length));
+      const batchPromises = batch.map((seg, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        const duration = seg.endTime - seg.startTime;
+        const outputFile = path.join(tempDir!, `segment_${globalIndex}.mp3`);
+
+        return new Promise<void>((resolve, reject) => {
+          ffmpeg(seg.audioPath)
+            .setStartTime(seg.startTime)
+            .setDuration(duration)
+            .audioBitrate('192k')
+            .on('error', reject)
+            .on('end', () => {
+              segmentFiles[globalIndex] = outputFile;
+              resolve();
+            })
+            .save(outputFile);
+        });
       });
 
-      segmentFiles.push(outputFile);
+      await Promise.all(batchPromises);
+
+      if (global.gc) {
+        global.gc();
+      }
     }
 
     // Create concat list file with silence between segments
-    const concatFilePath = path.join(tempDir, 'concat.txt');
+    const concatFilePath = path.join(tempDir!, 'concat.txt');
     const concatEntries: string[] = [];
 
+    // Generate silence files in batches
+    const silenceBatchSize = 50;
     for (let i = 0; i < segmentFiles.length; i++) {
-      // Add audio segment
       concatEntries.push(`file '${segmentFiles[i]}'`);
 
-      // Add silence (using first segment as source, muted)
       if (i < segmentFiles.length - 1) {
-        const silenceFile = path.join(tempDir, `silence_${i}.mp3`);
-        await new Promise<void>((resolve, reject) => {
-          ffmpeg(segmentFiles[0])
-            .audioFilters([
-              {
-                filter: 'volume',
-                options: '0',  // Mute the audio
-              },
-              {
-                filter: 'aresample',
-                options: '44100',
-              },
-            ])
-            .setDuration(2.0)  // 2 seconds of silence
-            .audioBitrate('192k')
-            .on('error', reject)
-            .on('end', () => resolve())
-            .save(silenceFile);
-        });
+        const silenceFile = path.join(tempDir!, `silence_${i}.mp3`);
         concatEntries.push(`file '${silenceFile}'`);
+
+        // Process silence generation in batches
+        if ((i + 1) % silenceBatchSize === 0 || i === segmentFiles.length - 2) {
+          const silencePromises = [];
+          const startSilence = Math.max(0, i - silenceBatchSize + 1);
+
+          for (let j = startSilence; j <= i; j++) {
+            if (j < segmentFiles.length - 1) {
+              const currentSilenceFile = path.join(tempDir!, `silence_${j}.mp3`);
+              silencePromises.push(
+                new Promise<void>((resolve, reject) => {
+                  ffmpeg(segmentFiles[0]!)
+                    .audioFilters([
+                      {
+                        filter: 'volume',
+                        options: '0',
+                      },
+                      {
+                        filter: 'aresample',
+                        options: '44100',
+                      },
+                    ])
+                    .setDuration(2.0)
+                    .audioBitrate('192k')
+                    .on('error', reject)
+                    .on('end', () => resolve())
+                    .save(currentSilenceFile);
+                })
+              );
+            }
+          }
+
+          await Promise.all(silencePromises);
+
+          if (global.gc) {
+            global.gc();
+          }
+        }
       }
     }
 
@@ -238,7 +264,7 @@ export async function POST(req: NextRequest) {
     fs.writeFileSync(concatFilePath, concatEntries.join('\n'));
 
     // Merge all files using concat demuxer
-    const outputFile = path.join(tempDir, 'output.mp3');
+    const outputFile = path.join(tempDir!, 'output.mp3');
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(concatFilePath)
@@ -249,8 +275,8 @@ export async function POST(req: NextRequest) {
         .save(outputFile);
     });
 
-    // Read final output
-    const finalBuffer = fs.readFileSync(outputFile);
+    // Read final output file (use readFile instead of readSync to avoid blocking)
+    const finalBuffer = await fs.promises.readFile(outputFile);
 
     // Cleanup temp directory
     if (tempDir) {
