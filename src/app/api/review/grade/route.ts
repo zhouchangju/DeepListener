@@ -24,29 +24,18 @@ export async function POST(req: NextRequest) {
       quality
     );
 
-    // Update retrieval and lapse counts
     const isAgain = quality === 'again';
-
-    // For "Again", schedule for tomorrow end of day to prevent same-day re-appearance
-    // This avoids the infinite loop where user clicks Again repeatedly on same item
     const againDue = new Date();
-    againDue.setUTCHours(23, 59, 59, 999); // End of today (UTC)
+    againDue.setUTCHours(23, 59, 59, 999);
 
     const updated = await prisma.reviewItem.update({
       where: { id: reviewItemId },
       data: {
-        // FSRS fields
         stability: next.stability,
         dr: next.difficulty,
         due: isAgain ? againDue : next.nextReview,
-        retrieval: isAgain
-          ? currentItem.retrieval
-          : (currentItem.retrieval ?? 0) + 1,
-        lapse: isAgain
-          ? (currentItem.lapse ?? 0) + 1
-          : currentItem.lapse,
-
-        // Keep legacy fields in sync for backward compatibility
+        retrieval: isAgain ? currentItem.retrieval : (currentItem.retrieval ?? 0) + 1,
+        lapse: isAgain ? (currentItem.lapse ?? 0) + 1 : currentItem.lapse,
         nextReview: isAgain ? againDue : next.nextReview,
       },
     });

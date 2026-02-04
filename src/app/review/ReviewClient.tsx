@@ -23,18 +23,15 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
   const current = items[currentIndex];
 
-  // Sync items when prop changes and filter out archived items
   useEffect(() => {
     const filtered = initialItems.filter(item => !item.isArchived);
 
-    // If items were filtered out (user archived in another tab), adjust index
     if (filtered.length < items.length && currentIndex >= filtered.length) {
       setCurrentIndex(Math.max(0, filtered.length - 1));
     }
 
     setItems(filtered);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialItems]); // Only re-run when initialItems prop changes
+  }, [initialItems]);
 
   useEffect(() => {
     setMode("REVIEW");
@@ -46,19 +43,16 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     playAudio();
   }, [currentIndex]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditing) return;
 
-      // Reveal answer (Space key)
       if (e.key === " " && !showAnswer) {
-        e.preventDefault(); // Prevent page scroll
+        e.preventDefault();
         setShowAnswer(true);
         return;
       }
 
-      // Grade shortcuts (only when answer is revealed)
       if (showAnswer) {
         switch (e.key.toLowerCase()) {
           case '1':
@@ -80,7 +74,6 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showAnswer, isEditing, currentIndex]);
 
-  // Sync playback rate in real-time
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
@@ -102,13 +95,13 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
     const audio = new Audio(items[currentIndex].sentence.track.audioUrl);
     audioRef.current = audio;
-    
+
     audio.src = items[currentIndex].sentence.track.audioUrl;
     audio.currentTime = items[currentIndex].sentence.startTime;
     audio.playbackRate = playbackRate;
-    
+
     const stopTime = items[currentIndex].sentence.endTime;
-    
+
     const onTimeUpdate = () => {
       if (audio.currentTime >= stopTime) {
         audio.pause();
@@ -133,24 +126,19 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
       if (!res.ok) throw new Error("Failed to update");
 
-      // If "Again", item is scheduled for tomorrow and removed from current session
       if (quality === "again") {
-        // Remove from current session items
         setItems(prevItems => {
           const newItems = [...prevItems];
           newItems.splice(currentIndex, 1);
           return newItems;
         });
 
-        // Show feedback
         toast.success("Scheduled for tomorrow");
 
-        // If this was the last item, reload
         if (items.length === 1) {
           window.location.reload();
         }
       } else {
-        // For other ratings, move to next item
         if (currentIndex < items.length - 1) {
           setCurrentIndex(currentIndex + 1);
         } else {

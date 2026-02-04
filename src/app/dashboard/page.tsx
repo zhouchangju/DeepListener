@@ -17,7 +17,6 @@ const STATUS_LABELS: Record<string, string> = {
   LEARNT: "已学习",
 };
 
-// Helper: group items by key and count occurrences
 function groupByCount<T>(items: T[], keyFn: (item: T) => string): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const item of items) {
@@ -27,12 +26,10 @@ function groupByCount<T>(items: T[], keyFn: (item: T) => string): Record<string,
   return counts;
 }
 
-// Helper: convert counts record to chart data array
 function countsToChartData(counts: Record<string, number>): Array<{ name: string; value: number }> {
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
-// Helper: format duration in seconds to human-readable string
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -40,7 +37,6 @@ function formatDuration(seconds: number): string {
 }
 
 export default function DashboardPage() {
-  // 1. TOEFL Countdown (Static, fast)
   const targetDate = new Date("2026-05-10");
   const today = new Date();
   const diffTime = Math.abs(targetDate.getTime() - today.getTime());
@@ -48,7 +44,6 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-8">
-      {/* Async Stats */}
       <Suspense fallback={<StatsSkeleton />}>
         <DashboardContent countdownDays={diffDays} />
       </Suspense>
@@ -57,7 +52,6 @@ export default function DashboardPage() {
 }
 
 async function DashboardContent({ countdownDays }: { countdownDays: number }) {
-  // Fetch everything in parallel
   const [tracks, tags, totalSentences, studySessions, reviewLogs, allReviewItems] = await Promise.all([
     prisma.track.findMany({
       where: { isArchived: false },
@@ -82,8 +76,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     }),
   ]);
 
-  // Process review data for chart
-  // 1. Past reviews: count UNIQUE items by date from ReviewLog (not raw log entries, which includes duplicate "Again" clicks)
   const pastReviewsByDateSet: Record<string, Set<string>> = {};
   reviewLogs.forEach(log => {
     const dateKey = log.createdAt.toISOString().split('T')[0];
@@ -93,13 +85,11 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     pastReviewsByDateSet[dateKey].add(log.reviewItemId);
   });
 
-  // Convert Sets to counts
   const pastReviewsByDate: Record<string, number> = {};
   for (const [date, itemSet] of Object.entries(pastReviewsByDateSet)) {
     pastReviewsByDate[date] = itemSet.size;
   }
 
-  // Get last 14 days of past reviews
   const past14Days = Array.from({ length: 14 }, (_, i) => {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - (13 - i));
@@ -112,7 +102,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     count: pastReviewsByDate[date] || 0,
   }));
 
-  // 2. Future reviews: count by due date
   const futureReviewsByDate: Record<string, number> = {};
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -130,12 +119,9 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     dueDate.setUTCHours(0, 0, 0, 0);
     const dateKey = dueDate.toISOString().split('T')[0];
 
-    // Count items: past due items go into today, future items go into their respective dates
     if (dueDate < today) {
-      // Past due items: count towards today
       futureReviewsByDate[todayKey] = (futureReviewsByDate[todayKey] || 0) + 1;
     } else if (future30Days.includes(dateKey)) {
-      // Future items: count towards their due date
       futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
     }
   });
@@ -145,7 +131,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     count: futureReviewsByDate[date] || 0,
   }));
 
-  // Process Study Time
   const totalDurationSeconds = await prisma.studySession.aggregate({
     _sum: { duration: true }
   }).then(res => res._sum.duration || 0);
@@ -153,7 +138,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   const totalHours = totalDurationSeconds / 3600;
   const c1Progress = Math.min((totalHours / 400) * 100, 100);
 
-  // Group sessions by date for display
   const sessionsByDate: Record<string, { total: number; types: Record<string, number> }> = {};
   for (const s of studySessions) {
     const dateKey = s.date.toISOString().split('T')[0];
@@ -172,11 +156,9 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   const learntCount = tracks.filter(t => t.status === "LEARNT").length;
   const progressPercent = Math.min(Math.round((learntCount / 100) * 100), 100);
 
-  // Group by Status
   const statusCounts = groupByCount(tracks, t => STATUS_LABELS[t.status] || t.status);
   const statusData = countsToChartData(statusCounts);
 
-  // Group by Type (sorted by count desc)
   const typeCounts = groupByCount(tracks, t => t.trackType || "Uncategorized");
   const typeData = countsToChartData(typeCounts).sort((a, b) => b.value - a.value);
 
@@ -184,9 +166,7 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
 
   return (
     <div className="space-y-6 w-full">
-      {/* First Row: Countdown + Progress Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* TOEFL Countdown Card */}
         <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-indigo-100 font-medium text-lg">
@@ -202,7 +182,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
           </CardContent>
         </Card>
 
-        {/* TOEFL 5.0 Progress Card */}
         <Card className="border-indigo-100 shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-indigo-900">
@@ -222,7 +201,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
         </CardContent>
       </Card>
 
-        {/* C1 Fluency Journey Card */}
         <Card className="border-indigo-100 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-indigo-900">
@@ -243,9 +221,7 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
         </Card>
       </div>
 
-      {/* Second Row: Three Chart Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Status Distribution */}
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Learning Status</CardTitle>
@@ -259,7 +235,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
           </CardContent>
         </Card>
 
-        {/* Type Distribution */}
         <Card className="min-w-0">
           <CardHeader>
              <CardTitle className="text-base">Content Types</CardTitle>
@@ -273,7 +248,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
           </CardContent>
         </Card>
 
-        {/* Error Attribution */}
         <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Error Attribution</CardTitle>
@@ -290,7 +264,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
         </Card>
       </div>
 
-      {/* Third Row: Review Statistics Chart */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center justify-between">
@@ -313,7 +286,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
         </CardContent>
       </Card>
 
-      {/* Daily Study Log */}
       <div>
         <h2 className="text-xl font-bold mb-4">Daily Study Log</h2>
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -345,7 +317,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
         </div>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
              <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>

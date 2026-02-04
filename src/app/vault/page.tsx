@@ -1,11 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import VaultListClient from "./VaultListClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Clock } from "lucide-react";
 import ExportButtons from "./ExportButtons";
 
 export default function VaultPage() {

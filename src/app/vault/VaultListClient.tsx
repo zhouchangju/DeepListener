@@ -21,7 +21,6 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
-  // Extract all unique tags and difficulties from items
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     initialItems.forEach(item => {
@@ -32,14 +31,12 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
   const allDifficulties = ["NORMAL", "HARD", "VERY_HARD"];
 
-  // Clear all filters
   const clearFilters = () => {
     setSelectedDifficulties([]);
     setSelectedTags([]);
     setSearchQuery("");
   };
 
-  // Check if any filters are active
   const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
 
   const handleDelete = async (id: string) => {
@@ -50,7 +47,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       if (!res.ok) throw new Error();
       toast.success("Removed from vault");
       router.refresh();
-    } catch (e) {
+    } catch {
       toast.error("Failed to delete");
     }
   };
@@ -66,32 +63,27 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       const data = await res.json();
       toast.success(data.isArchived ? 'Archived' : 'Unarchived');
       router.refresh();
-    } catch (e) {
+    } catch {
       toast.error('Failed to toggle archive');
     }
   };
 
-  // Filter items based on all active filters
   const filteredItems = useMemo(() => {
     return initialItems.filter((item) => {
-      // Archive filter
       if (!showArchived && item.isArchived) return false;
       if (showArchived && !item.isArchived) return false;
 
-      // Difficulty filter
       if (selectedDifficulties.length > 0) {
         const difficulty = item.difficulty || "NORMAL";
         if (!selectedDifficulties.includes(difficulty)) return false;
       }
 
-      // Tags filter
       if (selectedTags.length > 0) {
         const itemTags = item.tags?.map((t: any) => t.name) || [];
         const hasAllTags = selectedTags.every(tag => itemTags.includes(tag));
         if (!hasAllTags) return false;
       }
 
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const text = item.sentence.text.toLowerCase();
@@ -112,8 +104,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       audioRef.current = new Audio();
     }
     const audio = audioRef.current;
-    
-    // 如果点击正在播放的，则停止
+
     if (playingId === item.id) {
       if ((audio as any).activeTimer) clearTimeout((audio as any).activeTimer);
       audio.pause();
@@ -121,7 +112,6 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       return;
     }
 
-    // 播放新句前，先停掉之前的
     if ((audio as any).activeTimer) clearTimeout((audio as any).activeTimer);
     audio.pause();
 
@@ -130,13 +120,9 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     audio.play();
     setPlayingId(item.id);
 
-    // 计算持续时间
     const duration = (item.sentence.endTime - item.sentence.startTime) * 1000;
-    
-    // 使用新的计时器
+
     const timer = setTimeout(() => {
-      // 只有当当前播放的还是这个句子时才停止
-      // 避免快速切换句子导致的错杀
       setPlayingId(prevId => {
         if (prevId === item.id) {
           audio.pause();
@@ -146,8 +132,11 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       });
     }, duration);
 
-    // 在 audio 对象上存一下 timer，方便下次清理
     (audio as any).activeTimer = timer;
+  };
+
+  const toggleFilter = (value: string, current: string[], setter: (vals: string[]) => void) => {
+    setter(current.includes(value) ? current.filter(v => v !== value) : [...current, value]);
   };
 
   const getDifficultyStyle = (difficulty: string) => {
@@ -252,13 +241,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
                 {allDifficulties.map((difficulty) => (
                   <button
                     key={difficulty}
-                    onClick={() => {
-                      setSelectedDifficulties(prev =>
-                        prev.includes(difficulty)
-                          ? prev.filter(d => d !== difficulty)
-                          : [...prev, difficulty]
-                      );
-                    }}
+                    onClick={() => toggleFilter(difficulty, selectedDifficulties, setSelectedDifficulties)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                       selectedDifficulties.includes(difficulty)
                         ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
@@ -280,13 +263,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
                 {allTags.map((tag) => (
                   <button
                     key={tag}
-                    onClick={() => {
-                      setSelectedTags(prev =>
-                        prev.includes(tag)
-                          ? prev.filter(t => t !== tag)
-                          : [...prev, tag]
-                      );
-                    }}
+                    onClick={() => toggleFilter(tag, selectedTags, setSelectedTags)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                       selectedTags.includes(tag)
                         ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
