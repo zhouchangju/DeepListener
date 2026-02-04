@@ -18,10 +18,17 @@ export default function NoteEditor({ initialNote, trackId }: NoteEditorProps) {
 
   // Only update content if trackId changes (new track loaded)
   useEffect(() => {
-    if (editorRef.current) {
+    // Update the ref value
+    lastSavedContentRef.current = initialNote || "";
+
+    // Set content after a delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (editorRef.current) {
         editorRef.current.innerHTML = initialNote || "";
-        lastSavedContentRef.current = initialNote || "";
-    }
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [trackId, initialNote]);
 
   const handleInput = () => {

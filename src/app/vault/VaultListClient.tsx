@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
 
-export default function VaultListClient({ initialItems }: { initialItems: any[] }) {
+export default function VaultListClient({ initialItems, totalCount }: { initialItems: any[], totalCount?: number }) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -303,6 +303,7 @@ export default function VaultListClient({ initialItems }: { initialItems: any[] 
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs text-gray-500">
                 Showing {filteredItems.length} of {initialItems.length} notes
+                {totalCount && ` (Total: ${totalCount} in vault)`}
                 {hasActiveFilters && ' (filtered)'}
               </p>
             </div>

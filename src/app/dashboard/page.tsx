@@ -74,7 +74,7 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     prisma.reviewLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 1000, // Get recent reviews
-      select: { createdAt: true },
+      select: { createdAt: true, reviewItemId: true },
     }),
     prisma.reviewItem.findMany({
       where: { isArchived: false },
@@ -83,12 +83,21 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   ]);
 
   // Process review data for chart
-  // 1. Past reviews: count by date from ReviewLog
-  const pastReviewsByDate: Record<string, number> = {};
+  // 1. Past reviews: count UNIQUE items by date from ReviewLog (not raw log entries, which includes duplicate "Again" clicks)
+  const pastReviewsByDateSet: Record<string, Set<string>> = {};
   reviewLogs.forEach(log => {
     const dateKey = log.createdAt.toISOString().split('T')[0];
-    pastReviewsByDate[dateKey] = (pastReviewsByDate[dateKey] || 0) + 1;
+    if (!pastReviewsByDateSet[dateKey]) {
+      pastReviewsByDateSet[dateKey] = new Set();
+    }
+    pastReviewsByDateSet[dateKey].add(log.reviewItemId);
   });
+
+  // Convert Sets to counts
+  const pastReviewsByDate: Record<string, number> = {};
+  for (const [date, itemSet] of Object.entries(pastReviewsByDateSet)) {
+    pastReviewsByDate[date] = itemSet.size;
+  }
 
   // Get last 14 days of past reviews
   const past14Days = Array.from({ length: 14 }, (_, i) => {

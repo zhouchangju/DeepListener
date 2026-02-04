@@ -52,10 +52,12 @@ async function VaultContent() {
     },
   });
 
+  const totalCount = await prisma.reviewItem.count();
+
   return (
     <>
       <ExportButtons itemCount={items.length} dueCount={dueCount} />
-      <VaultListClient initialItems={items} />
+      <VaultListClient initialItems={items} totalCount={totalCount} />
     </>
   );
 }

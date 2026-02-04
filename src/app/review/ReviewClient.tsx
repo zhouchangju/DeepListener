@@ -133,23 +133,22 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
       if (!res.ok) throw new Error("Failed to update");
 
-      // If "Again", move card to end of current session queue
+      // If "Again", item is scheduled for tomorrow and removed from current session
       if (quality === "again") {
+        // Remove from current session items
         setItems(prevItems => {
           const newItems = [...prevItems];
-          const currentItem = newItems[currentIndex];
-
-          // Remove from current position and add to end
           newItems.splice(currentIndex, 1);
-          newItems.push(currentItem);
-
-          // Keep currentIndex at same position (now points to next card)
-          // If we were at the last card, stay there (will now be second-to-last)
           return newItems;
         });
 
         // Show feedback
-        toast.success("Moved to end of queue for review");
+        toast.success("Scheduled for tomorrow");
+
+        // If this was the last item, reload
+        if (items.length === 1) {
+          window.location.reload();
+        }
       } else {
         // For other ratings, move to next item
         if (currentIndex < items.length - 1) {
