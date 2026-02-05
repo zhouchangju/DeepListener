@@ -16,18 +16,19 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
-    lastSavedContentRef.current = initialNote || "";
+    const content = initialNote || "";
 
-    const timer = setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.innerHTML = initialNote || "";
-      }
-    }, 0);
+    lastSavedContentRef.current = content;
 
-    return () => clearTimeout(timer);
-  }, [trackId, initialNote]);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content;
+    } else {
+      setForceUpdate(prev => prev + 1);
+    }
+  }, [trackId, initialNote, forceUpdate]);
 
   const handleInput = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);

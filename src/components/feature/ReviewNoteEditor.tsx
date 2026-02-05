@@ -16,18 +16,19 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
-    lastSavedContentRef.current = initialNote || "";
+    const content = initialNote || "";
 
-    const timer = setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.innerHTML = initialNote || "";
-      }
-    }, 0);
+    lastSavedContentRef.current = content;
 
-    return () => clearTimeout(timer);
-  }, [reviewItemId, initialNote]);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content;
+    } else {
+      setForceUpdate(prev => prev + 1);
+    }
+  }, [reviewItemId, initialNote, forceUpdate]);
 
   const handleInput = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
