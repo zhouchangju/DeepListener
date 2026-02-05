@@ -2,15 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bold } from "lucide-react";
+import { Bold, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface NoteEditorProps {
   initialNote?: string | null;
   trackId: string;
+  onSaved?: (content: string) => void;
 }
 
-export default function NoteEditor({ initialNote, trackId }: NoteEditorProps) {
+export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -44,12 +45,16 @@ export default function NoteEditor({ initialNote, trackId }: NoteEditorProps) {
 
     setIsSaving(true);
     try {
-      await fetch(`/api/track/${trackId}`, {
+      const res = await fetch(`/api/track/${trackId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: currentContent }),
       });
+
+      if (!res.ok) throw new Error("Failed to save");
+
       lastSavedContentRef.current = currentContent;
+      onSaved?.(currentContent);
     } catch {
       toast.error("Failed to save note");
     } finally {
@@ -61,6 +66,18 @@ export default function NoteEditor({ initialNote, trackId }: NoteEditorProps) {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
     handleInput();
+  };
+
+  const handleCopy = async () => {
+    if (!editorRef.current) return;
+
+    try {
+      const text = editorRef.current.innerText || editorRef.current.textContent || "";
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
   };
 
   return (
@@ -121,6 +138,18 @@ export default function NoteEditor({ initialNote, trackId }: NoteEditorProps) {
                 />
             ))}
         </div>
+
+        <div className="h-4 w-px bg-slate-300 mx-1" />
+
+        <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={handleCopy}
+            title="Copy text"
+        >
+          <Copy className="w-4 h-4" />
+        </Button>
 
         <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
             {isSaving ? (

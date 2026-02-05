@@ -96,6 +96,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   const [isExporting, setIsExporting] = useState(false);
 
+  const [note, setNote] = useState<string | null>(track.note || null);
+
 
 
   // 预加载音频 Buffer，为了 Shadowing 模式下的极速切片
@@ -268,7 +270,11 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         }}
       />
       
-      <NoteEditor trackId={track.id} initialNote={track.note} />
+      <NoteEditor
+        trackId={track.id}
+        initialNote={note}
+        onSaved={(content) => setNote(content)}
+      />
 
       <DiagnosisModal
         isOpen={!!capturingSentenceId}
