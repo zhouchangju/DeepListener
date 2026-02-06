@@ -41,6 +41,7 @@ DeepListener is an advanced English listening practice tool designed for high-le
 ## Architecture Details
 *   `src/lib/transcription`: Provider 工厂模式。
 *   `src/components/feature`: 包含 AudioPlayer 和 ShadowingConsole。
+*   `src/lib/fsrs.ts`: 基于 FSRS-4.5 的复习调度逻辑，详见 [docs/review-system.md](./docs/review-system.md)。
 *   `undici`: 负责全局 fetch 代理拦截。
 
 ---

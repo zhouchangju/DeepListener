@@ -158,7 +158,7 @@ export function getCardStats(item: {
 /**
  * Convert numeric difficulty to label
  */
-function getDifficultyLabel(difficulty: number): string {
+export function getDifficultyLabel(difficulty: number): string {
   if (difficulty <= 3) return 'Easy';
   if (difficulty <= 5) return 'Normal';
   if (difficulty <= 8) return 'Hard';

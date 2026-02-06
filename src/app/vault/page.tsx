@@ -31,6 +31,9 @@ export default function VaultPage() {
 }
 
 async function VaultContent() {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
   const items = await prisma.reviewItem.findMany({
     take: 100, // Limit to 100 recent items for performance. TODO: Add pagination.
     include: {
@@ -44,9 +47,10 @@ async function VaultContent() {
 
   const dueCount = await prisma.reviewItem.count({
     where: {
-      nextReview: {
-        lte: new Date(),
+      due: {
+        lte: endOfToday,
       },
+      isArchived: false,
     },
   });
 

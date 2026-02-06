@@ -41,10 +41,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
     const remainingDue = await prisma.reviewItem.count({
       where: {
         due: {
-          lte: new Date(),
+          lte: endOfToday,
         },
         isArchived: false,
       },

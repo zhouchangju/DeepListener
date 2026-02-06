@@ -17,10 +17,13 @@ export default function ReviewPage() {
 export const revalidate = 0; // Disable caching, always fetch fresh data
 
 async function ReviewContent() {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
   const totalDue = await prisma.reviewItem.count({
     where: {
       due: {
-        lte: new Date(),
+        lte: endOfToday,
       },
       isArchived: false,
     },
@@ -30,7 +33,7 @@ async function ReviewContent() {
     take: 50,
     where: {
       due: {
-        lte: new Date(),
+        lte: endOfToday,
       },
       isArchived: false,
     },

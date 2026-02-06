@@ -66,7 +66,7 @@ Unlike other providers, Deepgram doesn't use utterances. Instead:
 Core models:
 - **Track:** Audio material with metadata (title, type, topic, status, isArchived)
 - **Sentence:** Individual sentences with timing (startTime, endTime, formatting JSON)
-- **ReviewItem:** SRS items linked to sentences (difficulty level, nextReview date, tags)
+- **ReviewItem:** SRS items linked to sentences. Uses **FSRS-4.5** algorithm (stability, dr, due, retrieval, lapse). See `docs/review-system.md` for algorithm details.
 - **ReviewLog:** History of review sessions (rating, duration)
 - **StudySession:** Daily aggregated study time by type (LISTENING, SHADOWING, REVIEW)
 - **ErrorTag:** Diagnostic tags (Linking, Vocab, Speed, Grammar, etc.)

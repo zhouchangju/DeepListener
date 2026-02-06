@@ -4,11 +4,14 @@ import { useState, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore, X, Filter, Search } from "lucide-react";
+import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
+import { getIntervalDescription, getDifficultyLabel } from "@/lib/fsrs";
+
+type SortOption = "createdAt" | "due" | "stability" | "dr";
 
 export default function VaultListClient({ initialItems, totalCount }: { initialItems: any[], totalCount?: number }) {
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -18,6 +21,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("createdAt");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
@@ -69,7 +73,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   };
 
   const filteredItems = useMemo(() => {
-    return initialItems.filter((item) => {
+    const filtered = initialItems.filter((item) => {
       if (!showArchived && item.isArchived) return false;
       if (showArchived && !item.isArchived) return false;
 
@@ -97,7 +101,22 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
       return true;
     });
-  }, [initialItems, showArchived, selectedDifficulties, selectedTags, searchQuery]);
+
+    // Apply sorting
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "due":
+          return new Date(a.due || a.nextReview).getTime() - new Date(b.due || b.nextReview).getTime();
+        case "stability":
+          return (a.stability || 0) - (b.stability || 0);
+        case "dr":
+          return (b.dr || 0) - (a.dr || 0);
+        case "createdAt":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [initialItems, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
 
   const playAudio = (item: any) => {
     if (!audioRef.current) {
@@ -276,6 +295,34 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
               </div>
             </div>
 
+            {/* Sort Options */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">
+                Sort By
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "createdAt", label: "Date Added", icon: Calendar },
+                  { id: "due", label: "Review Date", icon: Clock },
+                  { id: "stability", label: "Stability", icon: Brain },
+                  { id: "dr", label: "Difficulty (FSRS)", icon: BarChart3 },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => setSortBy(option.id as SortOption)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all ${
+                      sortBy === option.id
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <option.icon className="w-3 h-3" />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Results Summary */}
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs text-gray-500">
@@ -337,16 +384,22 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
                     </div>
                   </div>
                   
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    {/* Difficulty Badge */}
-                    {difficulty !== "NORMAL" && (
-                      <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
-                        difficulty === "VERY_HARD" ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"
-                      }`}>
-                        <Flame className="h-3 w-3 fill-current" />
-                        {difficulty === "VERY_HARD" ? "Very Hard" : "Hard"}
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {/* FSRS Stats */}
+                    <div className="flex items-center gap-3 bg-slate-50 px-2 py-1 rounded text-[10px] text-slate-500 border border-slate-100">
+                      <div className="flex items-center gap-1" title="Memory Stability">
+                        <Brain className="h-3 w-3 text-indigo-400" />
+                        <span>S: <span className="font-medium text-slate-700">{getIntervalDescription(item.stability ?? 0)}</span></span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-1" title="Difficulty Rating">
+                        <BarChart3 className="h-3 w-3 text-amber-400" />
+                        <span>D: <span className="font-medium text-slate-700">{(item.dr ?? 5).toFixed(1)} ({getDifficultyLabel(item.dr ?? 5)})</span></span>
+                      </div>
+                      <div className="flex items-center gap-1" title="Retrieval / Lapse">
+                        <ArrowUpDown className="h-3 w-3 text-emerald-400" />
+                        <span>R/L: <span className="font-medium text-slate-700">{item.retrieval ?? 0}/{item.lapse ?? 0}</span></span>
+                      </div>
+                    </div>
 
                     <div className="flex gap-1">
                       {item.tags.map((tag: any) => (
@@ -370,7 +423,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      Next: {new Date(item.nextReview).toLocaleDateString()}
+                      Next: {new Date(item.due || item.nextReview).toLocaleDateString()}
                     </span>
                   </div>
 
