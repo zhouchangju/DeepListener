@@ -19,6 +19,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [items, setItems] = useState(initialItems);
+  const [totalDueCount, setTotalDueCount] = useState(totalDue);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const current = items[currentIndex];
@@ -126,6 +127,9 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
       if (!res.ok) throw new Error("Failed to update");
 
+      // Decrement total count - this item is no longer due
+      setTotalDueCount(prev => Math.max(0, prev - 1));
+
       if (quality === "again") {
         setItems(prevItems => {
           const newItems = [...prevItems];
@@ -219,7 +223,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
         <div className="flex justify-between items-center px-2 text-sm text-gray-500">
-            <span>Session: {currentIndex + 1} / {items.length} <span className="text-slate-400 ml-2">(Total Due: {totalDue})</span></span>
+            <span>Session: {currentIndex + 1} / {items.length} <span className="text-slate-400 ml-2">(Total Due: {totalDueCount})</span></span>
             <div className="flex items-center gap-2">
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
             {showAnswer && (
@@ -369,7 +373,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
         size="lg"
       >
         <Download className="w-4 h-4 mr-2" />
-        {isExporting ? 'Exporting...' : `Export Due (${totalDue})`}
+        {isExporting ? 'Exporting...' : `Export Due (${totalDueCount})`}
       </Button>
     </div>
   );

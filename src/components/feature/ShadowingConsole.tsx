@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck } from "lucide-react";
+import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import SpeedSelector from "./SpeedSelector";
@@ -215,9 +215,9 @@ export default function ShadowingConsole({
             
             {isEditingText ? (
                 <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
-                    <Textarea 
-                        value={tempText} 
-                        onChange={(e) => setTempText(e.target.value)} 
+                    <Textarea
+                        value={tempText}
+                        onChange={(e) => setTempText(e.target.value)}
                         className="text-xl font-medium min-h-[120px] resize-none"
                     />
                     <div className="flex justify-end gap-2">
@@ -237,16 +237,34 @@ export default function ShadowingConsole({
                     onChange={setLocalFormatting}
                     className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
                     />
-                    {/* Edit Button */}
-                    <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setIsEditingText(true)}
-                        title="Edit Text"
-                    >
-                        <Edit3 className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
-                    </Button>
+                    {/* Action Buttons */}
+                    <div className="absolute -right-16 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setIsEditingText(true)}
+                            title="Edit Text"
+                        >
+                            <Edit3 className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
+                        </Button>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(sentence.text);
+                                    toast.success("Copied to clipboard");
+                                } catch {
+                                    toast.error("Failed to copy");
+                                }
+                            }}
+                            title="Copy text"
+                        >
+                            <Copy className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
+                        </Button>
+                    </div>
                 </div>
             )}
             

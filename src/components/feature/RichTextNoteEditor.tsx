@@ -24,13 +24,20 @@ export default function RichTextNoteEditor({
 }: RichTextNoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState(initialNote || "");
+  const initializedRef = useRef(false);
 
   // Update content when initialNote changes
   useEffect(() => {
-    if (editorRef.current && initialNote !== content) {
-      editorRef.current.innerHTML = initialNote || "";
-      setContent(initialNote || "");
-    }
+    // Use requestAnimationFrame to ensure DOM is ready
+    const updateContent = () => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = initialNote || "";
+        setContent(initialNote || "");
+        initializedRef.current = true;
+      }
+    };
+
+    requestAnimationFrame(updateContent);
   }, [initialNote]);
 
   const handleInput = () => {

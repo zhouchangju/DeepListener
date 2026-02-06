@@ -17,18 +17,22 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
   const [forceUpdate, setForceUpdate] = useState(0);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     const content = initialNote || "";
-
     lastSavedContentRef.current = content;
 
-    if (editorRef.current) {
-      editorRef.current.innerHTML = content;
-    } else {
-      setForceUpdate(prev => prev + 1);
-    }
-  }, [reviewItemId, initialNote, forceUpdate]);
+    // Use requestAnimationFrame to ensure DOM is ready
+    const updateContent = () => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = content;
+        initializedRef.current = true;
+      }
+    };
+
+    requestAnimationFrame(updateContent);
+  }, [reviewItemId, initialNote]);
 
   const handleInput = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);

@@ -4,7 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [2026-02-01]
+## [2026-02-06]
+- fix: ensure note editors always display content on mount
+  - Fix NoteEditor, ReviewNoteEditor, and RichTextNoteEditor to properly load saved notes
+  - Replace forceUpdate-based approach with requestAnimationFrame for DOM readiness
+  - Remove infinite loop caused by forceUpdate in dependency arrays
+- feat: improve note editors with copy button and proper state management
+- fix: optimize audio export to prevent memory limit exceeded
+- refactor: simplify code by removing redundant comments
+- fix: resolve Again infinite loop and fix Analytics statistics
 - fix: resolve dashboard layout imbalance and Recharts dimension warnings
   - Reorganize dashboard layout with unified grid structure for consistent card widths
   - Move Countdown card into DashboardContent to share grid system with progress cards
