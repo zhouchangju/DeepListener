@@ -16,18 +16,27 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
-  const [forceUpdate, setForceUpdate] = useState(0);
-  const initializedRef = useRef(false);
+  const lastLoadedContentRef = useRef("");
+  const isUserEditingRef = useRef(false);
 
   useEffect(() => {
     const content = initialNote || "";
+
+    // Only update if content is different
+    if (content === lastLoadedContentRef.current) return;
+
+    // Don't update if user has unsaved changes
+    if (isUserEditingRef.current && editorRef.current?.innerHTML !== lastSavedContentRef.current) {
+      return;
+    }
+
+    lastLoadedContentRef.current = content;
     lastSavedContentRef.current = content;
 
     // Use requestAnimationFrame to ensure DOM is ready
     const updateContent = () => {
       if (editorRef.current) {
         editorRef.current.innerHTML = content;
-        initializedRef.current = true;
       }
     };
 
@@ -35,6 +44,7 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   }, [reviewItemId, initialNote]);
 
   const handleInput = () => {
+    isUserEditingRef.current = true;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     typingTimeoutRef.current = setTimeout(() => {
@@ -59,6 +69,7 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
       if (!res.ok) throw new Error("Failed to save");
 
       lastSavedContentRef.current = currentContent;
+      isUserEditingRef.current = false; // Reset editing flag after save
       onNoteChange?.(currentContent);
     } catch {
       toast.error("Failed to save note");

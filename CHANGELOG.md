@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
   - Fix NoteEditor, ReviewNoteEditor, and RichTextNoteEditor to properly load saved notes
   - Replace forceUpdate-based approach with requestAnimationFrame for DOM readiness
   - Remove infinite loop caused by forceUpdate in dependency arrays
+  - Add content diff checking to prevent unnecessary re-renders
+  - Add user editing detection to prevent cursor jumping and flickering
 - feat: improve note editors with copy button and proper state management
 - fix: optimize audio export to prevent memory limit exceeded
 - refactor: simplify code by removing redundant comments
