@@ -17,7 +17,16 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
   const lastInitialNoteRef = useRef(initialNote || "");
+  const lastTrackIdRef = useRef(trackId);
   const isUserEditingRef = useRef(false);
+
+  // Reset editing state when trackId changes (different track)
+  useEffect(() => {
+    if (trackId !== lastTrackIdRef.current) {
+      isUserEditingRef.current = false;
+      lastTrackIdRef.current = trackId;
+    }
+  }, [trackId]);
 
   // Load initial content only when it's different and user is not editing
   useEffect(() => {
@@ -43,7 +52,6 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
 
     typingTimeoutRef.current = setTimeout(() => {
       saveNote();
-      isUserEditingRef.current = false; // Reset after save
     }, 1500);
   };
 
@@ -64,6 +72,8 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
       if (!res.ok) throw new Error("Failed to save");
 
       lastSavedContentRef.current = currentContent;
+      lastInitialNoteRef.current = currentContent; // Update to prevent re-load
+      isUserEditingRef.current = false; // Reset editing flag immediately after save
       onSaved?.(currentContent);
     } catch {
       toast.error("Failed to save note");

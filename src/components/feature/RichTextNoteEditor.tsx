@@ -25,17 +25,13 @@ export default function RichTextNoteEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState(initialNote || "");
   const lastInitialNoteRef = useRef(initialNote || "");
-  const isUserEditingRef = useRef(false);
 
-  // Update content when initialNote changes, only if different and user not editing
+  // Update content when initialNote changes (parent-controlled component)
   useEffect(() => {
     const newContent = initialNote || "";
 
     // Skip if content hasn't actually changed
     if (newContent === lastInitialNoteRef.current) return;
-
-    // Skip if user is currently editing
-    if (isUserEditingRef.current) return;
 
     // Update the editor
     if (editorRef.current) {
@@ -47,7 +43,6 @@ export default function RichTextNoteEditor({
 
   const handleInput = () => {
     if (!editorRef.current) return;
-    isUserEditingRef.current = true;
     const currentContent = editorRef.current.innerHTML;
     setContent(currentContent);
     onChange?.(currentContent);
