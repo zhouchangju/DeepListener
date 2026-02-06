@@ -19,6 +19,8 @@ export const revalidate = 0; // Disable caching, always fetch fresh data
 async function ReviewContent() {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
 
   const totalDue = await prisma.reviewItem.count({
     where: {
@@ -29,31 +31,52 @@ async function ReviewContent() {
     },
   });
 
-  const rawItems = await prisma.reviewItem.findMany({
-    take: 50,
-    where: {
-      due: {
-        lte: endOfToday,
+  const [rawItems, todayReviewedCount] = await Promise.all([
+    prisma.reviewItem.findMany({
+      take: 50,
+      where: {
+        due: {
+          lte: endOfToday,
+        },
+        isArchived: false,
       },
-      isArchived: false,
-    },
-    include: {
-      sentence: {
-        include: { track: true }
+      include: {
+        sentence: {
+          include: { track: true }
+        },
+        tags: true,
+        logs: {
+          where: {
+            createdAt: {
+              gte: startOfToday,
+              lte: endOfToday,
+            },
+          },
+          select: { id: true },
+        },
+        _count: {
+          select: { logs: true }
+        }
       },
-      tags: true,
-      _count: {
-        select: { logs: true }
-      }
-    },
-    orderBy: { due: "asc" },
-  });
+      orderBy: { due: "asc" },
+    }),
+    prisma.reviewLog.count({
+      where: {
+        createdAt: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
+      },
+      distinct: ["reviewItemId"],
+    }),
+  ]);
 
   const items = rawItems.map(item => {
     const daysSinceCreation = Math.max(1, Math.floor((new Date().getTime() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
     const averageDailyListens = item._count.logs / daysSinceCreation;
     return {
       ...item,
+      reviewedToday: item.logs.length > 0,
       stats: {
         totalListens: item._count.logs,
         averageDailyListens
@@ -69,7 +92,7 @@ async function ReviewContent() {
     );
   }
 
-  return <ReviewClient items={items} totalDue={totalDue} />;
+  return <ReviewClient items={items} totalDue={totalDue} todayReviewedCount={todayReviewedCount} />;
 }
 
 function ReviewSkeleton() {

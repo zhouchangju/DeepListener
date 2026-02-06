@@ -31,6 +31,7 @@ type ReviewItem = {
     totalListens: number;
     averageDailyListens: number;
   };
+  reviewedToday?: boolean;
 };
 
 type ReviewGradeResponse = {
@@ -42,7 +43,15 @@ type EditSavedItem = Partial<ReviewItem> & {
   tags?: string[];
 };
 
-export default function ReviewClient({ items: initialItems, totalDue }: { items: ReviewItem[]; totalDue: number }) {
+export default function ReviewClient({
+  items: initialItems,
+  totalDue,
+  todayReviewedCount,
+}: {
+  items: ReviewItem[];
+  totalDue: number;
+  todayReviewedCount: number;
+}) {
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -51,9 +60,21 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   const [isExporting, setIsExporting] = useState(false);
   const [items, setItems] = useState(initialItems);
   const [totalDueCount, setTotalDueCount] = useState(totalDue);
+  const [studiedTodayCount, setStudiedTodayCount] = useState(todayReviewedCount);
+  const studiedTodayIdsRef = useRef(new Set<string>());
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const current = items[currentIndex];
+
+  useEffect(() => {
+    studiedTodayIdsRef.current = new Set(
+      initialItems.filter((item) => item.reviewedToday).map((item) => item.id)
+    );
+  }, [initialItems]);
+
+  useEffect(() => {
+    setStudiedTodayCount(todayReviewedCount);
+  }, [todayReviewedCount]);
 
   useEffect(() => {
     const filtered = initialItems.filter((item) => !item.isArchived);
@@ -170,6 +191,11 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
         setTotalDueCount(prev => Math.max(0, prev - 1));
       }
 
+      if (!studiedTodayIdsRef.current.has(current.id)) {
+        studiedTodayIdsRef.current.add(current.id);
+        setStudiedTodayCount((prev) => prev + 1);
+      }
+
       if (quality === "again") {
         setItems(prevItems => {
           const newItems = [...prevItems];
@@ -280,7 +306,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
         <div className="flex justify-between items-center px-2 text-sm text-gray-500">
-            <span>Session: {currentIndex + 1} / {items.length} <span className="text-slate-400 ml-2">(Total Due: {totalDueCount})</span></span>
+            <span>今日已学习: {studiedTodayCount} <span className="text-slate-400 ml-2">(Total Due: {totalDueCount})</span></span>
             <div className="flex items-center gap-2">
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
             {showAnswer && (
