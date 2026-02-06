@@ -98,6 +98,33 @@ src/app/
 ├── practice/[id]/page.tsx            # Main practice interface (RSC + client component)
 ├── review/page.tsx                   # Spaced repetition review queue
 ├── vault/page.tsx                    # Saved sentence collection
+│   └── VaultListClient.tsx          # Vault list with FSRS stats display
+└── api/
+    ├── upload/                       # Audio upload & transcription
+    ├── track/                        # Track CRUD operations
+    ├── sentence/                     # Sentence updates (formatting, difficulty)
+    ├── review/
+    │   ├── grade/route.ts            # FSRS algorithm integration
+    │   └── log/route.ts              # Review logging
+    ├── vault/                        # Vault item management
+    └── study-time/                   # Study session logging
+```
+
+### Review System Statistics
+
+**Review Page (`/review`):**
+- **Reviewed**: Today's total reviewed cards (from `ReviewLog` table, deduplicated)
+- **In Queue**: Current queue size (items `due <= today` AND not reviewed today)
+- Key design: Query excludes already-reviewed items to prevent infinite loops
+- Real-time updates: Each grade increments `reviewed` and decrements `queue`
+
+**Vault Page (`/vault`):**
+- Displays FSRS metrics for each saved sentence:
+  - **Stability (S)**: Memory duration in days
+  - **Difficulty (D)**: Absolute difficulty 1-10
+  - **R/L**: Retrieval/Lapse counts
+- Sorting options: Date added, Review date, Stability, Difficulty
+- See `docs/review-system.md` for algorithm details
 └── api/                              # API routes
     ├── upload/                       # Audio upload & transcription
     ├── track/                        # Track CRUD operations

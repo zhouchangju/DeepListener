@@ -35,7 +35,6 @@ type ReviewItem = {
 };
 
 type ReviewGradeResponse = {
-  remainingDue?: number;
   isArchived?: boolean;
 };
 
@@ -45,12 +44,10 @@ type EditSavedItem = Partial<ReviewItem> & {
 
 export default function ReviewClient({
   items: initialItems,
-  totalDue,
-  todayReviewedCount,
+  reviewedCount,
 }: {
   items: ReviewItem[];
-  totalDue: number;
-  todayReviewedCount: number;
+  reviewedCount: number;
 }) {
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -59,22 +56,16 @@ export default function ReviewClient({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [items, setItems] = useState(initialItems);
-  const [totalDueCount, setTotalDueCount] = useState(totalDue);
-  const [studiedTodayCount, setStudiedTodayCount] = useState(todayReviewedCount);
-  const studiedTodayIdsRef = useRef(new Set<string>());
+  const [reviewed, setReviewed] = useState(reviewedCount);
+  const [remaining, setRemaining] = useState(initialItems.length);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const current = items[currentIndex];
 
   useEffect(() => {
-    studiedTodayIdsRef.current = new Set(
-      initialItems.filter((item) => item.reviewedToday).map((item) => item.id)
-    );
-  }, [initialItems]);
-
-  useEffect(() => {
-    setStudiedTodayCount(todayReviewedCount);
-  }, [todayReviewedCount]);
+    setReviewed(reviewedCount);
+    setRemaining(initialItems.length);
+  }, [reviewedCount, initialItems.length]);
 
   useEffect(() => {
     const filtered = initialItems.filter((item) => !item.isArchived);
@@ -142,13 +133,6 @@ export default function ReviewClient({
       audioRef.current = null;
     }
 
-    // Log playback
-    fetch("/api/review/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewItemId: current.id }),
-    }).catch(console.error);
-
     const audio = new Audio(current.sentence.track.audioUrl);
     audioRef.current = audio;
 
@@ -184,26 +168,23 @@ export default function ReviewClient({
 
       if (!res.ok) throw new Error("Failed to update");
 
-      const data: ReviewGradeResponse = await res.json();
-      if (typeof data.remainingDue === "number") {
-        setTotalDueCount(data.remainingDue);
-      } else {
-        setTotalDueCount(prev => Math.max(0, prev - 1));
-      }
+      // Update counts
+      setReviewed((prev) => prev + 1);
+      setRemaining((prev) => Math.max(0, prev - 1));
 
-      if (!studiedTodayIdsRef.current.has(current.id)) {
-        studiedTodayIdsRef.current.add(current.id);
-        setStudiedTodayCount((prev) => prev + 1);
-      }
-
-      if (quality === "again") {
+      // Remove from current session for both 'again' and 'hard'
+      if (quality === "again" || quality === "hard") {
         setItems(prevItems => {
           const newItems = [...prevItems];
           newItems.splice(currentIndex, 1);
           return newItems;
         });
 
-        toast.success("Scheduled for next day");
+        if (quality === "again") {
+          toast.success("Scheduled for next day");
+        } else {
+          toast.success("Marked as hard - will review again tomorrow");
+        }
 
         if (items.length === 1) {
           window.location.reload();
@@ -276,7 +257,7 @@ export default function ReviewClient({
       toast.success(data.isArchived ? 'Note archived' : 'Note unarchived');
 
       if (data.isArchived) {
-        setTotalDueCount((prev) => Math.max(0, prev - 1));
+        setRemaining((prev) => Math.max(0, prev - 1));
       }
 
       setItems((prevItems) => {
@@ -305,27 +286,41 @@ export default function ReviewClient({
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
-        <div className="flex justify-between items-center px-2 text-sm text-gray-500">
-            <span>今日已学习: {studiedTodayCount} <span className="text-slate-400 ml-2">(Total Due: {totalDueCount})</span></span>
-            <div className="flex items-center gap-2">
-            <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
-            {showAnswer && (
-                <>
-                <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={handleArchive}>
-                  <Archive className="h-3 w-3 mr-1" /> Archive
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
-                <Edit3 className="h-3 w-3 mr-1" /> Edit Note
-                </Button>
-                </>
-            )}
+        {/* Progress Bar - Simple & Clear */}
+        <div className="flex items-center justify-between px-3 py-2 bg-white border border-gray-100 rounded-lg">
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-500">Reviewed</span>
+              <span className="font-bold text-green-600">{reviewed}</span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-500">In Queue</span>
+              <span className="font-bold text-blue-600">{remaining}</span>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            <span>播放: {current.stats?.totalListens || 0}</span>
+            <span className="text-slate-300 mx-1">|</span>
+            <span>日均: {current.stats?.averageDailyListens?.toFixed(1) || "0.0"}</span>
+          </div>
         </div>
-        
-        {/* Stats Bar */}
-        <div className="flex justify-center gap-4 text-xs text-slate-400 bg-slate-50 py-1 rounded-md">
-            <span>Total Listens: <span className="font-semibold text-slate-600">{current.stats?.totalListens || 0}</span></span>
-            <span>Avg Daily: <span className="font-semibold text-slate-600">{current.stats?.averageDailyListens?.toFixed(1) || "0.0"}</span></span>
+
+        {/* Action Bar */}
+        <div className="flex items-center justify-between px-2">
+          <div className="w-24">
+            <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
+          </div>
+          {showAnswer && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={handleArchive}>
+                <Archive className="h-3.5 w-3.5 mr-1.5" /> 归档
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
+                <Edit3 className="h-3.5 w-3.5 mr-1.5" /> 笔记
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -456,7 +451,7 @@ export default function ReviewClient({
         size="lg"
       >
         <Download className="w-4 h-4 mr-2" />
-        {isExporting ? 'Exporting...' : `Export Due (${totalDueCount})`}
+        {isExporting ? 'Exporting...' : `Export Due (${remaining})`}
       </Button>
     </div>
   );

@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateNextReview } from "@/lib/fsrs";
 
+function mapRatingToNumber(quality: 'again' | 'hard' | 'good' | 'easy'): number {
+  switch (quality) {
+    case 'again': return 1;
+    case 'hard': return 2;
+    case 'good': return 3;
+    case 'easy': return 4;
+    default: return 3;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { reviewItemId, quality }: { reviewItemId: string; quality: 'again' | 'hard' | 'good' | 'easy' } = await req.json();
@@ -25,37 +35,37 @@ export async function POST(req: NextRequest) {
     );
 
     const isAgain = quality === 'again';
-    const againDue = new Date();
-    againDue.setDate(againDue.getDate() + 1);
-    againDue.setHours(0, 0, 0, 0);
+    const isHard = quality === 'hard';
+
+    // Set minimum due date for again and hard to tomorrow
+    const minimumDue = new Date();
+    minimumDue.setDate(minimumDue.getDate() + 1);
+    minimumDue.setHours(0, 0, 0, 0);
+
+    // Use the later of: algorithm's due date vs minimum due date
+    const actualDue = (isAgain || isHard) && next.nextReview < minimumDue
+      ? minimumDue
+      : next.nextReview;
 
     const updated = await prisma.reviewItem.update({
       where: { id: reviewItemId },
       data: {
         stability: next.stability,
         dr: next.difficulty,
-        due: isAgain ? againDue : next.nextReview,
+        due: actualDue,
         retrieval: isAgain ? currentItem.retrieval : (currentItem.retrieval ?? 0) + 1,
         lapse: isAgain ? (currentItem.lapse ?? 0) + 1 : currentItem.lapse,
-        nextReview: isAgain ? againDue : next.nextReview,
-      },
-    });
-
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-
-    const remainingDue = await prisma.reviewItem.count({
-      where: {
-        due: {
-          lte: endOfToday,
+        nextReview: actualDue,
+        logs: {
+          create: {
+            rating: mapRatingToNumber(quality),
+          },
         },
-        isArchived: false,
       },
     });
 
     return NextResponse.json({
       updated,
-      remainingDue,
     });
   } catch (error: unknown) {
     console.error("Grade error:", error);

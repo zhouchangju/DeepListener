@@ -55,7 +55,6 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
       if (!res.ok) throw new Error("Failed to save");
 
       lastSavedContentRef.current = currentContent;
-      lastInitialNoteRef.current = currentContent; // Update to prevent re-load
       onNoteChange?.(currentContent);
     } catch {
       toast.error("Failed to save note");

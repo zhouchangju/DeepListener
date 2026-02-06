@@ -55,7 +55,6 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
       if (!res.ok) throw new Error("Failed to save");
 
       lastSavedContentRef.current = currentContent;
-      lastInitialNoteRef.current = currentContent; // Update to prevent re-load
       onSaved?.(currentContent);
     } catch {
       toast.error("Failed to save note");

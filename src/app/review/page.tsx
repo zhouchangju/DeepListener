@@ -22,54 +22,55 @@ async function ReviewContent() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const totalDue = await prisma.reviewItem.count({
+  // Get today's review logs
+  const todayLogs = await prisma.reviewLog.findMany({
+    where: {
+      createdAt: {
+        gte: startOfToday,
+        lte: endOfToday,
+      },
+    },
+    select: {
+      reviewItemId: true,
+    },
+  });
+
+  // Count unique items reviewed today
+  const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
+  const todayReviewedCount = reviewedItemIds.size;
+
+  // Get current queue: first 50 due items that HAVEN'T been reviewed today
+  const rawItems = await prisma.reviewItem.findMany({
+    take: 50,
     where: {
       due: {
         lte: endOfToday,
       },
       isArchived: false,
+      id: {
+        notIn: Array.from(reviewedItemIds),  // 排除今天已复习过的
+      },
     },
-  });
-
-  const [rawItems, todayReviewedCount] = await Promise.all([
-    prisma.reviewItem.findMany({
-      take: 50,
-      where: {
-        due: {
-          lte: endOfToday,
-        },
-        isArchived: false,
+    include: {
+      sentence: {
+        include: { track: true }
       },
-      include: {
-        sentence: {
-          include: { track: true }
-        },
-        tags: true,
-        logs: {
-          where: {
-            createdAt: {
-              gte: startOfToday,
-              lte: endOfToday,
-            },
+      tags: true,
+      logs: {
+        where: {
+          createdAt: {
+            gte: startOfToday,
+            lte: endOfToday,
           },
-          select: { id: true },
         },
-        _count: {
-          select: { logs: true }
-        }
+        select: { id: true },
       },
-      orderBy: { due: "asc" },
-    }),
-    prisma.reviewLog.count({
-      where: {
-        createdAt: {
-          gte: startOfToday,
-          lte: endOfToday,
-        },
-      },
-      distinct: ["reviewItemId"],
-    }),
-  ]);
+      _count: {
+        select: { logs: true }
+      }
+    },
+    orderBy: { due: "asc" },
+  });
 
   const items = rawItems.map(item => {
     const daysSinceCreation = Math.max(1, Math.floor((new Date().getTime() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
@@ -92,7 +93,12 @@ async function ReviewContent() {
     );
   }
 
-  return <ReviewClient items={items} totalDue={totalDue} todayReviewedCount={todayReviewedCount} />;
+  return (
+    <ReviewClient
+      items={items}
+      reviewedCount={todayReviewedCount}
+    />
+  );
 }
 
 function ReviewSkeleton() {

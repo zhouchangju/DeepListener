@@ -64,6 +64,63 @@ DeepListener 默认设置 `request_retention: 0.9`。这意味着算法会调整
 - `retrieval`：累计成功回忆次数。
 - `lapse`：累计遗忘次数。
 
+## 复习界面统计说明
+
+复习页面（`/review`）显示两个核心统计数据：
+
+### Reviewed（已复习）
+- **定义**：今天已经复习过的不同项目总数
+- **数据来源**：从数据库 `ReviewLog` 表统计（去重）
+- **更新时机**：
+  - 页面加载时：统计数据库中今天的复习记录
+  - 每次评分后：实时 +1
+
+### In Queue（待复习）
+- **定义**：当前队列中未复习的项目数
+- **数据来源**：从数据库查询前 50 个 `due <= 今天` 且**今天未复习过**的项目
+- **更新时机**：
+  - 页面加载时：当前队列长度
+  - 每次评分后：实时 -1
+  - 刷新页面：重新从数据库获取最新队列
+
+### 关键设计逻辑
+
+**服务端查询（`src/app/review/page.tsx`）：**
+```typescript
+// 1. 统计今天已复习的项目ID
+const todayLogs = await prisma.reviewLog.findMany({
+  where: { createdAt: { gte: 今天0点, lte: 今天23:59 } }
+});
+const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
+
+// 2. 查询待复习队列（排除今天已复习的）
+const rawItems = await prisma.reviewItem.findMany({
+  take: 50,
+  where: {
+    due: { lte: 今天23:59 },
+    isArchived: false,
+    id: { notIn: Array.from(reviewedItemIds) }  // 关键：排除已复习的
+  }
+});
+```
+
+**为什么需要排除已复习的项目？**
+- FSRS 算法计算出的下次复习时间可能仍是今天（对于稳定性低的新卡片）
+- 如果不排除，已复习的项目会再次出现在队列中
+- 导致"永无止境"的复习体验
+
+**评分处理（`src/app/api/review/grade/route.ts`）：**
+1. 创建 `ReviewLog` 记录（保存 rating 信息）
+2. 更新 `ReviewItem` 的 `stability`、`dr`、`due` 等字段
+3. **Again/Hard 特殊处理**：确保下次复习时间至少到明天（避免当日重复）
+
+### 前端实时更新
+
+复习客户端（`ReviewClient.tsx`）在每次评分后：
+- `reviewed++`：增加已复习计数
+- `remaining--`：减少待复习计数
+- 刷新页面后，数据会与服务端重新同步
+
 ## 参考资料
 - [FSRS-4.5 算法论文](https://github.com/open-spaced-repetition/fsrs-rs/blob/main/algorithm.md)
 - [ts-fsrs 实现库](https://github.com/open-spaced-repetition/ts-fsrs)
