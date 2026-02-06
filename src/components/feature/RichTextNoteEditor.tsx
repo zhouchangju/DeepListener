@@ -24,26 +24,18 @@ export default function RichTextNoteEditor({
 }: RichTextNoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState(initialNote || "");
-  const lastInitialNoteRef = useRef(initialNote || "");
 
-  // Update content when initialNote changes - simple and reliable
+  // Load content - just like the original working version
   useEffect(() => {
-    const newContent = initialNote || "";
+    setContent(initialNote || "");
 
-    // Only update if content actually changed
-    if (newContent !== lastInitialNoteRef.current) {
-      lastInitialNoteRef.current = newContent;
-      setContent(newContent);
+    const timer = setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = initialNote || "";
+      }
+    }, 0);
 
-      // Use setTimeout to ensure DOM is ready
-      const timer = setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = newContent;
-        }
-      }, 0);
-
-      return () => clearTimeout(timer);
-    }
+    return () => clearTimeout(timer);
   }, [initialNote]);
 
   const handleInput = () => {

@@ -16,26 +16,18 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
-  const lastInitialNoteRef = useRef(initialNote || "");
 
-  // Load initial content - simple and reliable
+  // Load content - just like the original working version
   useEffect(() => {
-    const newContent = initialNote || "";
+    lastSavedContentRef.current = initialNote || "";
 
-    // Only update if content actually changed
-    if (newContent !== lastInitialNoteRef.current) {
-      lastSavedContentRef.current = newContent;
-      lastInitialNoteRef.current = newContent;
+    const timer = setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = initialNote || "";
+      }
+    }, 0);
 
-      // Use setTimeout to ensure DOM is ready
-      const timer = setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.innerHTML = newContent;
-        }
-      }, 0);
-
-      return () => clearTimeout(timer);
-    }
+    return () => clearTimeout(timer);
   }, [reviewItemId, initialNote]);
 
   const handleInput = () => {
