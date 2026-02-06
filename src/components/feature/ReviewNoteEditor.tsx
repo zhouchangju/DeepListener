@@ -17,37 +17,28 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
   const lastInitialNoteRef = useRef(initialNote || "");
-  const lastItemIdRef = useRef(reviewItemId);
-  const isUserEditingRef = useRef(false);
 
-  // Reset editing state when reviewItemId changes (different item)
-  useEffect(() => {
-    if (reviewItemId !== lastItemIdRef.current) {
-      isUserEditingRef.current = false;
-      lastItemIdRef.current = reviewItemId;
-    }
-  }, [reviewItemId]);
-
-  // Load initial content only when it's different and user is not editing
+  // Load initial content - simple and reliable
   useEffect(() => {
     const newContent = initialNote || "";
 
-    // Skip if content hasn't actually changed
-    if (newContent === lastInitialNoteRef.current) return;
-
-    // Skip if user is currently editing
-    if (isUserEditingRef.current) return;
-
-    // Update the editor
-    if (editorRef.current) {
-      editorRef.current.innerHTML = newContent;
+    // Only update if content actually changed
+    if (newContent !== lastInitialNoteRef.current) {
       lastSavedContentRef.current = newContent;
       lastInitialNoteRef.current = newContent;
+
+      // Use setTimeout to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = newContent;
+        }
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [reviewItemId, initialNote]);
 
   const handleInput = () => {
-    isUserEditingRef.current = true;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     typingTimeoutRef.current = setTimeout(() => {
@@ -73,7 +64,6 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
 
       lastSavedContentRef.current = currentContent;
       lastInitialNoteRef.current = currentContent; // Update to prevent re-load
-      isUserEditingRef.current = false; // Reset editing flag immediately after save
       onNoteChange?.(currentContent);
     } catch {
       toast.error("Failed to save note");

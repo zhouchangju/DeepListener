@@ -26,18 +26,23 @@ export default function RichTextNoteEditor({
   const [content, setContent] = useState(initialNote || "");
   const lastInitialNoteRef = useRef(initialNote || "");
 
-  // Update content when initialNote changes (parent-controlled component)
+  // Update content when initialNote changes - simple and reliable
   useEffect(() => {
     const newContent = initialNote || "";
 
-    // Skip if content hasn't actually changed
-    if (newContent === lastInitialNoteRef.current) return;
-
-    // Update the editor
-    if (editorRef.current) {
-      editorRef.current.innerHTML = newContent;
-      setContent(newContent);
+    // Only update if content actually changed
+    if (newContent !== lastInitialNoteRef.current) {
       lastInitialNoteRef.current = newContent;
+      setContent(newContent);
+
+      // Use setTimeout to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = newContent;
+        }
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [initialNote]);
 
