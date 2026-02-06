@@ -18,11 +18,13 @@ export const useTimeTracking = () => useContext(TimeTrackingContext);
 
 export function TimeTrackingProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<StudyMode>("IDLE");
-  const lastActiveRef = useRef(Date.now());
+  const lastActiveRef = useRef(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Activity detection
   useEffect(() => {
+    lastActiveRef.current = Date.now();
+
     const updateActivity = () => {
       lastActiveRef.current = Date.now();
     };

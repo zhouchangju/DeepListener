@@ -1,17 +1,48 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, SkipForward, Edit3, Download, Archive, TrendingDown, TrendingUp } from "lucide-react";
+import { Play, Eye, RotateCcw, Check, Edit3, Download, Archive, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
-export default function ReviewClient({ items: initialItems, totalDue }: { items: any[], totalDue: number }) {
+type ReviewQuality = "again" | "hard" | "good" | "easy";
+
+type ReviewItem = {
+  id: string;
+  isArchived: boolean;
+  userNote?: string | null;
+  sentence: {
+    text: string;
+    formatting?: string | null;
+    startTime: number;
+    endTime: number;
+    track: {
+      audioUrl: string;
+    };
+  };
+  tags: Array<{ id: string; name: string }>;
+  stats?: {
+    totalListens: number;
+    averageDailyListens: number;
+  };
+};
+
+type ReviewGradeResponse = {
+  remainingDue?: number;
+  isArchived?: boolean;
+};
+
+type EditSavedItem = Partial<ReviewItem> & {
+  tags?: string[];
+};
+
+export default function ReviewClient({ items: initialItems, totalDue }: { items: ReviewItem[]; totalDue: number }) {
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -25,7 +56,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   const current = items[currentIndex];
 
   useEffect(() => {
-    const filtered = initialItems.filter(item => !item.isArchived);
+    const filtered = initialItems.filter((item) => !item.isArchived);
 
     if (filtered.length < items.length && currentIndex >= filtered.length) {
       setCurrentIndex(Math.max(0, filtered.length - 1));
@@ -40,9 +71,10 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   }, [setMode]);
 
   useEffect(() => {
+    if (!current) return;
     setShowAnswer(false);
     playAudio();
-  }, [currentIndex]);
+  }, [currentIndex, current]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -82,6 +114,8 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   }, [playbackRate]);
 
   const playAudio = () => {
+    if (!current) return;
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -91,17 +125,17 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     fetch("/api/review/log", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewItemId: items[currentIndex].id }),
+      body: JSON.stringify({ reviewItemId: current.id }),
     }).catch(console.error);
 
-    const audio = new Audio(items[currentIndex].sentence.track.audioUrl);
+    const audio = new Audio(current.sentence.track.audioUrl);
     audioRef.current = audio;
 
-    audio.src = items[currentIndex].sentence.track.audioUrl;
-    audio.currentTime = items[currentIndex].sentence.startTime;
+    audio.src = current.sentence.track.audioUrl;
+    audio.currentTime = current.sentence.startTime;
     audio.playbackRate = playbackRate;
 
-    const stopTime = items[currentIndex].sentence.endTime;
+    const stopTime = current.sentence.endTime;
 
     const onTimeUpdate = () => {
       if (audio.currentTime >= stopTime) {
@@ -114,7 +148,9 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
     audio.play().catch(e => console.log("Auto-play prevented:", e));
   };
 
-  const handleGrade = async (quality: "again" | "hard" | "good" | "easy") => {
+  const handleGrade = async (quality: ReviewQuality) => {
+    if (!current) return;
+
     try {
       const res = await fetch("/api/review/grade", {
         method: "POST",
@@ -127,8 +163,12 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
       if (!res.ok) throw new Error("Failed to update");
 
-      // Decrement total count - this item is no longer due
-      setTotalDueCount(prev => Math.max(0, prev - 1));
+      const data: ReviewGradeResponse = await res.json();
+      if (typeof data.remainingDue === "number") {
+        setTotalDueCount(data.remainingDue);
+      } else {
+        setTotalDueCount(prev => Math.max(0, prev - 1));
+      }
 
       if (quality === "again") {
         setItems(prevItems => {
@@ -137,7 +177,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
           return newItems;
         });
 
-        toast.success("Scheduled for tomorrow");
+        toast.success("Scheduled for next day");
 
         if (items.length === 1) {
           window.location.reload();
@@ -196,6 +236,8 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
   };
 
   const handleArchive = async () => {
+    if (!current) return;
+
     try {
       const res = await fetch(`/api/vault/${current.id}/archive`, {
         method: 'POST',
@@ -203,14 +245,21 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
 
       if (!res.ok) throw new Error('Failed to archive');
 
-      const data = await res.json();
+      const data: ReviewGradeResponse = await res.json();
 
       toast.success(data.isArchived ? 'Note archived' : 'Note unarchived');
 
-      // Move to next item
-      if (currentIndex < items.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
+      if (data.isArchived) {
+        setTotalDueCount((prev) => Math.max(0, prev - 1));
+      }
+
+      setItems((prevItems) => {
+        const newItems = [...prevItems];
+        newItems.splice(currentIndex, 1);
+        return newItems;
+      });
+
+      if (items.length === 1) {
         toast.success('Session completed!');
         window.location.reload();
       }
@@ -218,6 +267,14 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
       toast.error('Failed to archive note');
     }
   };
+
+  if (!current) {
+    return (
+      <div className="text-center py-20 bg-white rounded-xl border border-dashed">
+        <p className="text-gray-500">No sentences due for review. Great job!</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto">
@@ -268,7 +325,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
                 />
               </div>
               <div className="flex flex-wrap justify-center gap-2">
-                {current.tags.map((tag: any) => (
+                {current.tags.map((tag) => (
                   <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
                 ))}
               </div>
@@ -340,7 +397,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
         isOpen={isEditing}
         onClose={() => setIsEditing(false)}
         item={current}
-        onSaved={(updatedItem) => {
+        onSaved={(updatedItem: EditSavedItem | undefined) => {
             // Update local state instead of refreshing the entire page
             if (updatedItem) {
                 setItems(prevItems =>
@@ -348,7 +405,7 @@ export default function ReviewClient({ items: initialItems, totalDue }: { items:
                         if (item.id === current.id) {
                             // Convert tag names to tag objects format
                             const tagObjects = updatedItem.tags?.map(name => {
-                                const existingTag = item.tags.find((t: any) => t.name === name);
+                                const existingTag = item.tags.find((t) => t.name === name);
                                 return existingTag || { id: `temp-${name}`, name };
                             }) || item.tags;
 

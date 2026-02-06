@@ -36,7 +36,7 @@ export function calculateNextReview(
   rating: ReviewRating
 ) {
   // Initialize or load card
-  let card = createEmptyCard();
+  const card = createEmptyCard();
 
   // Load existing state if available
   if (currentState.stability !== null && currentState.stability !== undefined) {

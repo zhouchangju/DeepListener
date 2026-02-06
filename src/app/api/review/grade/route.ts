@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
 
     const isAgain = quality === 'again';
     const againDue = new Date();
-    againDue.setUTCHours(23, 59, 59, 999);
+    againDue.setDate(againDue.getDate() + 1);
+    againDue.setHours(0, 0, 0, 0);
 
     const updated = await prisma.reviewItem.update({
       where: { id: reviewItemId },
@@ -40,9 +41,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(updated);
-  } catch (error: any) {
+    const remainingDue = await prisma.reviewItem.count({
+      where: {
+        due: {
+          lte: new Date(),
+        },
+        isArchived: false,
+      },
+    });
+
+    return NextResponse.json({
+      updated,
+      remainingDue,
+    });
+  } catch (error: unknown) {
     console.error("Grade error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
