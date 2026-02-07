@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,17 +8,16 @@ datasource db {
 }
 
 model Track {
-  id            String     @id @default(uuid())
+  id            String          @id @default(uuid())
   title         String
   audioUrl      String
-  transcription String     // JSON string storing Whisper word-level data
-  note          String?    // User's free-text note for the track
-  trackType     String?    // Conversation, Lecture, Other
-  trackTopic    String?    // 校园生活, 社会科学, etc.
-  isArchived    Boolean    @default(false)
-  status        String     @default("UNLEARNT") // UNLEARNT, INTENSIVE, ANALYSIS, SHADOWING, SPEED_SHADOWING, PARAPHRASE, LEARNT
-  createdAt     DateTime   @default(now())
-  
+  transcription String
+  note          String?
+  trackType     String?
+  trackTopic    String?
+  isArchived    Boolean         @default(false)
+  status        String          @default("UNLEARNT")
+  createdAt     DateTime        @default(now())
   sentences     Sentence[]
   categories    TrackCategory[]
 
@@ -31,61 +27,52 @@ model Track {
 }
 
 model Category {
-  id    String @id @default(uuid())
-  name  String @unique
+  id     String          @id @default(uuid())
+  name   String          @unique
   tracks TrackCategory[]
 }
 
 model TrackCategory {
   trackId    String
   categoryId String
-  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
   @@id([trackId, categoryId])
 }
 
 model Sentence {
-  id          String   @id @default(uuid())
-  trackId     String
-  track       Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  
-  text        String
-  startTime   Float    // In seconds
-  endTime     Float    // In seconds
-  orderIndex  Int
-  formatting  String?  // JSON string storing phonetic notations
-
-  reviewItem  ReviewItem?
+  id         String      @id @default(uuid())
+  trackId    String
+  text       String
+  startTime  Float
+  endTime    Float
+  orderIndex Int
+  formatting String?
+  reviewItem ReviewItem?
+  track      Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
 }
 
 model ReviewItem {
-  id          String   @id @default(uuid())
-  sentenceId  String   @unique
-  sentence    Sentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
-
-  // Legacy fields (kept for backward compatibility, will be deprecated)
-  level       Int      @default(0) // 当前复习等级 (0-5) - DEPRECATED, use stability instead
-  difficulty  String   @default("NORMAL") // EASY, NORMAL, HARD, VERY_HARD - DEPRECATED, use dr (difficulty rating)
-
-  // FSRS (Free Spaced Repetition Scheduler) fields
-  stability   Float    @default(0) // 记忆稳定性 (以天为单位) - S参数
-  dr          Float    @default(0) // 难度评级 (0-10) - D参数
-  due         DateTime @default(now()) // 下次复习时间 - replaces nextReview
-  retrieval   Int      @default(0) // 成功回忆次数
-  lapse       Int      @default(0) // 遗忘次数
-
-  nextReview  DateTime @default(now()) // 下次复习时间 (deprecated, use due)
-  isArchived  Boolean  @default(false) // 是否已归档
-
-  tags        ErrorTag[]
-
-  userNote    String?
-  createdAt   DateTime @default(now())
-
-  logs        ReviewLog[]
+  id         String      @id @default(uuid())
+  sentenceId String      @unique
+  level      Int         @default(0)
+  difficulty String      @default("NORMAL")
+  stability  Float       @default(0)
+  dr         Float       @default(0)
+  due        DateTime    @default(now())
+  retrieval  Int         @default(0)
+  lapse      Int         @default(0)
+  nextReview DateTime    @default(now())
+  isArchived Boolean     @default(false)
+  userNote   String?
+  createdAt  DateTime    @default(now())
+  sentence   Sentence    @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+  logs       ReviewLog[]
+  tags       ErrorTag[]  @relation("ErrorTagToReviewItem")
 
   @@index([due])
-  @@index([nextReview]) // Keep for backward compatibility
+  @@index([nextReview])
   @@index([createdAt])
   @@index([isArchived])
 }
@@ -93,27 +80,26 @@ model ReviewItem {
 model ReviewLog {
   id           String     @id @default(uuid())
   reviewItemId String
+  reviewType   String     @default("STANDARD")
+  rating       Int        @default(0)
+  duration     Int        @default(0)
+  createdAt    DateTime   @default(now())
   reviewItem   ReviewItem @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
-  
-  reviewType   String     @default("STANDARD") // STANDARD, BLIND, SHADOWING
-  rating       Int        @default(0) // 0-5
-  duration     Int        @default(0) // Seconds spent
-    createdAt   DateTime   @default(now())
-  }
-  
-  model StudySession {
-    id        String   @id @default(uuid())
-    date      DateTime // Normalized to 00:00:00
-    duration  Int      // In seconds
-    type      String   // LISTENING, SHADOWING, REVIEW
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-  
-    @@unique([date, type])
-  }
+}
+
+model StudySession {
+  id        String   @id @default(uuid())
+  date      DateTime
+  duration  Int
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, type])
+}
 
 model ErrorTag {
   id          String       @id @default(uuid())
-  name        String       @unique // "Linking", "Vocab", "Speed", "Grammar", etc.
-  reviewItems ReviewItem[]
+  name        String       @unique
+  reviewItems ReviewItem[] @relation("ErrorTagToReviewItem")
 }
