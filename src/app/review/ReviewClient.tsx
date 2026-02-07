@@ -62,9 +62,13 @@ export default function ReviewClient({
 
   const current = items[currentIndex];
 
+  // Debug: Log initial props
+  console.log('[ReviewClient] Initialized with reviewedCount:', reviewedCount, 'items.length:', initialItems.length);
+
   useEffect(() => {
     setReviewed(reviewedCount);
     setRemaining(initialItems.length);
+    console.log('[ReviewClient] State updated - reviewed:', reviewedCount, 'remaining:', initialItems.length);
   }, [reviewedCount, initialItems.length]);
 
   useEffect(() => {
