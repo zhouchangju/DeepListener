@@ -185,9 +185,9 @@ export default function ReviewClient({
         });
 
         if (quality === "again") {
-          toast.success("Scheduled for next day");
+          toast.success("Will review again in 5 minutes");
         } else {
-          toast.success("Marked as hard - will review again tomorrow");
+          toast.success("Will review again in 15 minutes");
         }
 
         if (items.length === 1) {

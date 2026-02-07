@@ -46,16 +46,48 @@ async function ReviewContent() {
 
   console.log('[Review] Reviewed today:', todayReviewedCount, 'Unique items:', Array.from(reviewedItemIds));
 
-  // Get ALL due items that HAVEN'T been reviewed today (no limit)
+  // Get today's latest review rating for each reviewed item
+  const todayReviews = await prisma.reviewLog.groupBy({
+    by: ['reviewItemId'],
+    where: {
+      createdAt: { gte: startOfToday, lte: endOfToday },
+    },
+    _max: {
+      rating: true,
+    },
+  });
+
+  // Map items to their latest rating
+  const latestRatings = new Map<string, number>();
+  todayReviews.forEach(review => {
+    if (review._max.rating) {
+      latestRatings.set(review.reviewItemId, review._max.rating);
+    }
+  });
+
+  // Identify relearning items (Again=1 or Hard=2)
+  const relearningItemIds = Array.from(latestRatings.entries())
+    .filter(([_, rating]) => rating === 1 || rating === 2)
+    .map(([itemId, _]) => itemId);
+
+  // Get items that are due NOW with special handling:
+  // - Cards NOT reviewed today: show if due
+  // - Cards reviewed today with Again/Hard (relearning): show if due (they have new short intervals)
+  // - Cards reviewed today with Good/Easy: DON'T show (already learned for today)
+  const now = new Date();
+
   const rawItems = await prisma.reviewItem.findMany({
     where: {
       due: {
-        lte: endOfToday,
+        lte: now, // Only show cards that are already due
       },
       isArchived: false,
-      id: {
-        notIn: Array.from(reviewedItemIds),  // 排除今天已复习过的
-      },
+      OR: [
+        // Not reviewed today
+        { id: { notIn: Array.from(reviewedItemIds) } },
+        // OR reviewed today but it's a relearning card (Again/Hard)
+        { id: { in: relearningItemIds } }
+      ]
     },
     include: {
       sentence: {

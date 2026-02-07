@@ -26,10 +26,18 @@ DeepListener 默认设置 `request_retention: 0.9`。这意味着算法会调整
 | **Good** | 3 (Good) | 正常想起，稍有犹豫。 | **稳定性标准增长**；**难度保持稳定**。 |
 | **Easy** | 4 (Easy) | 瞬间想起，毫无压力。 | **稳定性大幅增长**；**难度降低**。 |
 
-### 特殊逻辑：Again 的复习时间
-在 DeepListener 的实现中（`src/app/api/review/grade/route.ts`），为了简化“重学阶段”的处理：
-- 如果选择 **Again**，下次复习时间会被固定设置为 **明天凌晨 (00:00:00)**。
-- 这确保了用户能在第二天第一时间巩固遗忘的内容，而不是由算法计算一个可能过长或过短的间隔。
+### 特殊逻辑：Again/Hard 的短间隔重学（Anki-style Relearning）
+在 DeepListener 的实现中（`src/app/api/review/grade/route.ts`），实现了类似 Anki 的短间隔重学机制：
+- 如果选择 **Again**，下次复习时间设置为 **当前时间 + 5 分钟**。
+- 如果选择 **Hard**，下次复习时间设置为 **当前时间 + 15 分钟**。
+- 这允许用户在当天内多次复习困难内容，强化记忆。
+
+**实现细节：**
+1. 服务端设置短间隔（覆盖 FSRS 默认的长间隔）
+2. 队列查询通过 `ReviewLog.rating` 精确判断：
+   - 今天已复习且评级为 Good/Easy (rating 3/4) 的卡片：**不显示**（避免重复）
+   - 今天已复习且评级为 Again/Hard (rating 1/2) 的卡片：**显示**（重学阶段，时间到后重新出现）
+   - 未复习过的卡片：正常显示
 
 ## 复习时间计算规则
 
@@ -76,43 +84,51 @@ DeepListener 默认设置 `request_retention: 0.9`。这意味着算法会调整
   - 每次评分后：实时 +1
 
 ### In Queue（待复习）
-- **定义**：当前队列中未复习的项目数
-- **数据来源**：从数据库查询前 50 个 `due <= 今天` 且**今天未复习过**的项目
+- **定义**：当前队列中未复习的项目数（包含重学阶段的卡片）
+- **数据来源**：从数据库查询所有 `due <= 当前时间` 的项目
 - **更新时机**：
   - 页面加载时：当前队列长度
   - 每次评分后：实时 -1
-  - 刷新页面：重新从数据库获取最新队列
+  - 刷新页面：重新从数据库获取最新队列（Again/Hard 卡片时间到后会重新出现）
 
 ### 关键设计逻辑
 
 **服务端查询（`src/app/review/page.tsx`）：**
 ```typescript
-// 1. 统计今天已复习的项目ID
-const todayLogs = await prisma.reviewLog.findMany({
-  where: { createdAt: { gte: 今天0点, lte: 今天23:59 } }
+// 1. 统计今天已复习的项目及其最新评分
+const todayReviews = await prisma.reviewLog.groupBy({
+  by: ['reviewItemId'],
+  where: { createdAt: { gte: 今天0点, lte: 今天23:59 } },
+  _max: { rating: true },
 });
-const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
 
-// 2. 查询待复习队列（排除今天已复习的）
+// 2. 识别重学阶段的卡片（Again=1 或 Hard=2）
+const relearningItemIds = todayReviews
+  .filter(r => r._max.rating === 1 || r._max.rating === 2)
+  .map(r => r.reviewItemId);
+
+// 3. 查询待复习队列
 const rawItems = await prisma.reviewItem.findMany({
-  take: 50,
   where: {
-    due: { lte: 今天23:59 },
+    due: { lte: 当前时间 },  // 只显示已到期的卡片
     isArchived: false,
-    id: { notIn: Array.from(reviewedItemIds) }  // 关键：排除已复习的
+    OR: [
+      { id: { notIn: todayReviewedIds } },  // 未复习过
+      { id: { in: relearningItemIds } }     // 或处于重学阶段
+    ]
   }
 });
 ```
 
-**为什么需要排除已复习的项目？**
-- FSRS 算法计算出的下次复习时间可能仍是今天（对于稳定性低的新卡片）
-- 如果不排除，已复习的项目会再次出现在队列中
-- 导致"永无止境"的复习体验
+**为什么需要区分重学卡片？**
+- Again/Hard 设置了短间隔（5-15分钟），时间到后应重新出现
+- Good/Easy 已成功复习，今天不应重复出现
+- 通过 ReviewLog.rating 精确控制显示逻辑
 
 **评分处理（`src/app/api/review/grade/route.ts`）：**
 1. 创建 `ReviewLog` 记录（保存 rating 信息）
 2. 更新 `ReviewItem` 的 `stability`、`dr`、`due` 等字段
-3. **Again/Hard 特殊处理**：确保下次复习时间至少到明天（避免当日重复）
+3. **Again/Hard 特殊处理**：设置短间隔（5/15分钟），允许当天重学
 
 ### 前端实时更新
 

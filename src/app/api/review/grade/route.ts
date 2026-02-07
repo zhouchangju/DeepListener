@@ -37,14 +37,14 @@ export async function POST(req: NextRequest) {
     const isAgain = quality === 'again';
     const isHard = quality === 'hard';
 
-    // Set minimum due date for again and hard to tomorrow
-    const minimumDue = new Date();
-    minimumDue.setDate(minimumDue.getDate() + 1);
-    minimumDue.setHours(0, 0, 0, 0);
-
-    // Use the later of: algorithm's due date vs minimum due date
-    const actualDue = (isAgain || isHard) && next.nextReview < minimumDue
-      ? minimumDue
+    // Apply custom intervals for Again/Hard (override FSRS)
+    const shortInterval = isAgain ? 5 : isHard ? 15 : 0;
+    const actualDue = shortInterval > 0
+      ? (() => {
+          const due = new Date();
+          due.setMinutes(due.getMinutes() + shortInterval);
+          return due;
+        })()
       : next.nextReview;
 
     const updated = await prisma.reviewItem.update({
