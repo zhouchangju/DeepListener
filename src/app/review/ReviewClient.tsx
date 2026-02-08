@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, Edit3, Download, Archive, TrendingDown, TrendingUp } from "lucide-react";
+import { Play, Eye, RotateCcw, Check, Edit3, Download, Archive, TrendingDown, TrendingUp, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
@@ -53,14 +53,21 @@ export default function ReviewClient({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showHelpTooltip, setShowHelpTooltip] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [items, setItems] = useState(initialItems);
   const [reviewed, setReviewed] = useState(reviewedCount);
   const [remaining, setRemaining] = useState(initialItems.length);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentItemRef = useRef<ReviewItem | null>(null);
 
   const current = items[currentIndex];
+
+  // Keep ref in sync with current item
+  useEffect(() => {
+    currentItemRef.current = current;
+  }, [current]);
 
   // Debug: Log initial props
   console.log('[ReviewClient] Initialized with reviewedCount:', reviewedCount, 'items.length:', initialItems.length);
@@ -86,42 +93,66 @@ export default function ReviewClient({
     return () => setMode("IDLE");
   }, [setMode]);
 
+  // Close help tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (showHelpTooltip) {
+        setShowHelpTooltip(false);
+      }
+    };
+    if (showHelpTooltip) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showHelpTooltip]);
+
   useEffect(() => {
     if (!current) return;
     setShowAnswer(false);
-    playAudio();
+    // Delay audio playback by 500ms when switching to a new card
+    const timer = setTimeout(() => {
+      playAudio();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [currentIndex, current]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditing) return;
 
-      if (e.key === " " && !showAnswer) {
+      // Space key: toggle answer visibility
+      if (e.key === " ") {
         e.preventDefault();
-        setShowAnswer(true);
+        setShowAnswer(prev => !prev);
         return;
       }
 
-      if (showAnswer) {
-        switch (e.key.toLowerCase()) {
-          case '1':
-            handleGrade("again");
-            break;
-          case '2':
-            handleGrade("hard");
-            break;
-          case '3':
-            handleGrade("good");
-            break;
-          case '4':
-            handleGrade("easy");
-            break;
-        }
+      // R key: replay audio immediately
+      if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        playAudio();
+        return;
+      }
+
+      // Number keys: always work for grading
+      switch (e.key.toLowerCase()) {
+        case '1':
+          handleGrade("again");
+          break;
+        case '2':
+          handleGrade("hard");
+          break;
+        case '3':
+          handleGrade("good");
+          break;
+        case '4':
+          handleGrade("easy");
+          break;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showAnswer, isEditing, currentIndex]);
+  }, [isEditing, currentIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -130,21 +161,22 @@ export default function ReviewClient({
   }, [playbackRate]);
 
   const playAudio = () => {
-    if (!current) return;
+    const currentItem = currentItemRef.current;
+    if (!currentItem) return;
 
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
 
-    const audio = new Audio(current.sentence.track.audioUrl);
+    const audio = new Audio(currentItem.sentence.track.audioUrl);
     audioRef.current = audio;
 
-    audio.src = current.sentence.track.audioUrl;
-    audio.currentTime = current.sentence.startTime;
+    audio.src = currentItem.sentence.track.audioUrl;
+    audio.currentTime = currentItem.sentence.startTime;
     audio.playbackRate = playbackRate;
 
-    const stopTime = current.sentence.endTime;
+    const stopTime = currentItem.sentence.endTime;
 
     const onTimeUpdate = () => {
       if (audio.currentTime >= stopTime) {
@@ -329,21 +361,45 @@ export default function ReviewClient({
       </div>
 
       <Card className="min-h-[300px] flex flex-col justify-between relative">
+        {/* Help icon in top-right corner */}
+        <div className="absolute top-4 right-4 z-10">
+          <HelpCircle
+            className="h-5 w-5 text-gray-400 cursor-help hover:text-gray-600 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowHelpTooltip(!showHelpTooltip);
+            }}
+          />
+          <div
+            className={`absolute top-6 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 transition-opacity shadow-lg z-50 ${
+              showHelpTooltip ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            } hover:opacity-100 md:group-hover:opacity-100 md:pointer-events-auto`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="font-semibold mb-2">快捷键指南：</div>
+            <div className="space-y-1">
+              <div>• 点击播放按钮或按 <kbd className="bg-gray-700 px-1 rounded">R</kbd> 重播音频</div>
+              <div>• 按 <kbd className="bg-gray-700 px-1 rounded">Space</kbd> 显示/隐藏答案</div>
+              <div>• 按 <kbd className="bg-gray-700 px-1 rounded">1-4</kbd> 评分（Again/Hard/Good/Easy）</div>
+            </div>
+          </div>
+        </div>
+
         <CardContent className="pt-10 text-center flex-grow">
-          <Button 
-            variant="secondary" 
-            size="lg" 
-            className="rounded-full h-16 w-16 mb-8"
+          <Button
+            variant="secondary"
+            size="lg"
+            className="rounded-full h-16 w-16 mb-4"
             onClick={playAudio}
           >
             <Play className="h-8 w-8" />
           </Button>
 
-          {showAnswer ? (
+          {showAnswer && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
               <div className="flex justify-center">
-                <InteractiveText 
-                  text={current.sentence.text} 
+                <InteractiveText
+                  text={current.sentence.text}
                   formatting={current.sentence.formatting}
                   mode="read"
                   className="text-lg font-medium leading-relaxed text-gray-800 text-center justify-center"
@@ -364,57 +420,51 @@ export default function ReviewClient({
                 </div>
               )}
             </div>
-          ) : (
-            <p className="text-gray-400 italic">Click play to listen. Press Space to reveal.</p>
           )}
         </CardContent>
 
-        <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-3">
-          {!showAnswer ? (
-            <Button className="w-full" onClick={() => setShowAnswer(true)}>
-              <Eye className="mr-2 h-4 w-4" /> Reveal Answer (Space)
+        <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-5">
+          <Button className="w-full h-12 text-base" onClick={() => setShowAnswer(!showAnswer)}>
+            <Eye className="mr-2 h-5 w-5" /> {showAnswer ? 'Hide' : 'Reveal'} Answer (Space)
+          </Button>
+
+          <div className="grid grid-cols-4 gap-2 w-full">
+            <Button
+              variant="outline"
+              className="border-red-200 hover:bg-red-50 text-red-600 flex-col h-auto py-3"
+              onClick={() => handleGrade("again")}
+            >
+              <RotateCcw className="h-4 w-4 mb-1" />
+              <span className="text-xs font-medium">Again</span>
+              <span className="text-[10px] text-gray-400">1</span>
             </Button>
-          ) : (
-            <>
-              <div className="grid grid-cols-4 gap-2 w-full">
-                <Button
-                  variant="outline"
-                  className="border-red-200 hover:bg-red-50 text-red-600 flex-col h-auto py-3"
-                  onClick={() => handleGrade("again")}
-                >
-                  <RotateCcw className="h-4 w-4 mb-1" />
-                  <span className="text-xs font-medium">Again</span>
-                  <span className="text-[10px] text-gray-400">1</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-orange-200 hover:bg-orange-50 text-orange-600 flex-col h-auto py-3"
-                  onClick={() => handleGrade("hard")}
-                >
-                  <TrendingDown className="h-4 w-4 mb-1" />
-                  <span className="text-xs font-medium">Hard</span>
-                  <span className="text-[10px] text-gray-400">2</span>
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3"
-                  onClick={() => handleGrade("good")}
-                >
-                  <Check className="h-4 w-4 mb-1" />
-                  <span className="text-xs font-medium">Good</span>
-                  <span className="text-[10px] text-green-200">3</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-blue-200 hover:bg-blue-50 text-blue-600 flex-col h-auto py-3"
-                  onClick={() => handleGrade("easy")}
-                >
-                  <TrendingUp className="h-4 w-4 mb-1" />
-                  <span className="text-xs font-medium">Easy</span>
-                  <span className="text-[10px] text-gray-400">4</span>
-                </Button>
-              </div>
-            </>
-          )}
+            <Button
+              variant="outline"
+              className="border-orange-200 hover:bg-orange-50 text-orange-600 flex-col h-auto py-3"
+              onClick={() => handleGrade("hard")}
+            >
+              <TrendingDown className="h-4 w-4 mb-1" />
+              <span className="text-xs font-medium">Hard</span>
+              <span className="text-[10px] text-gray-400">2</span>
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3"
+              onClick={() => handleGrade("good")}
+            >
+              <Check className="h-4 w-4 mb-1" />
+              <span className="text-xs font-medium">Good</span>
+              <span className="text-[10px] text-green-200">3</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="border-blue-200 hover:bg-blue-50 text-blue-600 flex-col h-auto py-3"
+              onClick={() => handleGrade("easy")}
+            >
+              <TrendingUp className="h-4 w-4 mb-1" />
+              <span className="text-xs font-medium">Easy</span>
+              <span className="text-[10px] text-gray-400">4</span>
+            </Button>
+          </div>
         </CardFooter>
       </Card>
 
