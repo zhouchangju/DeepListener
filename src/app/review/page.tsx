@@ -44,8 +44,6 @@ async function ReviewContent() {
   const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
   const todayReviewedCount = reviewedItemIds.size;
 
-  console.log('[Review] Reviewed today:', todayReviewedCount, 'Unique items:', Array.from(reviewedItemIds));
-
   // Get today's latest review rating for each reviewed item
   const todayReviews = await prisma.reviewLog.groupBy({
     by: ['reviewItemId'],

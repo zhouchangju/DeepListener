@@ -79,22 +79,23 @@ export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
     <ChartWrapper fallbackHeight={350}>
       <BarChart
         data={chartData}
-        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        barGap={0}
       >
         <XAxis
           dataKey="date"
-          angle={-45}
-          textAnchor="end"
-          height={80}
+          height={50}
           interval={0}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: '#64748b' }}
+          axisLine={false}
+          tickLine={false}
         />
-        <YAxis />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend />
-        <ReferenceLine x={pastData.length - 0.5} stroke="#94a3b8" strokeDasharray="3 3" />
-        <Bar dataKey="past" name="Completed Reviews" fill="#6366f1" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="future" name="Scheduled Reviews" fill="#10b981" radius={[4, 4, 0, 0]} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
+        <Legend verticalAlign="top" height={36}/>
+        <ReferenceLine x={pastData.length - 0.5} stroke="#cbd5e1" strokeDasharray="3 3" />
+        <Bar dataKey="past" name="Completed Reviews" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
+        <Bar dataKey="future" name="Scheduled Reviews" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
       </BarChart>
     </ChartWrapper>
   );

@@ -1,11 +1,28 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import ErrorTagChart, { StatusRingChart, TypeDistributionChart } from "./StatsCharts";
-import { ReviewChart } from "./ReviewChart";
-import { Progress } from "@/components/ui/progress";
-import { Trophy, CalendarClock, Headphones, Mic2, Clock } from "lucide-react";
+import { DashboardTabs } from "./DashboardTabs";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+export default function DashboardPage() {
+  const targetDate = new Date("2026-05-10");
+  const today = new Date();
+  const diffTime = Math.abs(targetDate.getTime() - today.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return (
+    <div className="container mx-auto py-8 px-4 space-y-8">
+      <Suspense fallback={<StatsSkeleton />}>
+        <DashboardContent countdownDays={diffDays} />
+      </Suspense>
+    </div>
+  );
+}
 
 const STATUS_LABELS: Record<string, string> = {
   UNLEARNT: "未学习",
@@ -30,29 +47,12 @@ function countsToChartData(counts: Record<string, number>): Array<{ name: string
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
 }
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-export default function DashboardPage() {
-  const targetDate = new Date("2026-05-10");
-  const today = new Date();
-  const diffTime = Math.abs(targetDate.getTime() - today.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return (
-    <div className="container mx-auto py-8 px-4 space-y-8">
-      <Suspense fallback={<StatsSkeleton />}>
-        <DashboardContent countdownDays={diffDays} />
-      </Suspense>
-    </div>
-  );
-}
-
 async function DashboardContent({ countdownDays }: { countdownDays: number }) {
-  const [tracks, tags, totalSentences, studySessions, reviewLogs, allReviewItems] = await Promise.all([
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const [tracks, tags, totalSentences, studySessions, reviewLogs, allReviewItems, leeches] = await Promise.all([
     prisma.track.findMany({
       where: { isArchived: false },
       select: { status: true, trackType: true },
@@ -62,229 +62,183 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
     }),
     prisma.reviewItem.count(),
     prisma.studySession.findMany({
+      where: {
+        date: { gte: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) }
+      },
       orderBy: { date: 'desc' },
-      take: 30 // Last 30 sessions (roughly 10 days if 3 types per day)
     }),
     prisma.reviewLog.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 1000, // Get recent reviews
-      select: { createdAt: true, reviewItemId: true },
+      take: 2000,
+      select: { createdAt: true, reviewItemId: true, rating: true },
     }),
     prisma.reviewItem.findMany({
       where: { isArchived: false },
-      select: { due: true },
+      select: {
+        due: true,
+        stability: true,
+        difficulty: true,
+        lapse: true,
+        sentence: {
+          select: {
+            track: { select: { trackType: true } }
+          }
+        }
+      },
     }),
+    prisma.reviewItem.findMany({
+      where: {
+        isArchived: false,
+        dr: { gt: 8 },
+        lapse: { gt: 5 }
+      },
+      select: { id: true, sentence: { select: { text: true } } },
+      take: 5
+    })
   ]);
+
+  // Data Aggregation
+  const stabilityBins = { "New": 0, "Short-term": 0, "Mid-term": 0, "Long-term": 0, "Mature": 0 };
+  allReviewItems.forEach(item => {
+    const s = item.stability;
+    if (s === 0) stabilityBins["New"]++;
+    else if (s < 7) stabilityBins["Short-term"]++;
+    else if (s < 30) stabilityBins["Mid-term"]++;
+    else if (s < 365) stabilityBins["Long-term"]++;
+    else stabilityBins["Mature"]++;
+  });
+  const stabilityData = Object.entries(stabilityBins).map(([name, value]) => ({ name, value }));
+
+  const dailyRetention: Record<string, { total: number; success: number }> = {};
+  reviewLogs.forEach(log => {
+    const dateKey = log.createdAt.toISOString().split('T')[0];
+    if (!dailyRetention[dateKey]) dailyRetention[dateKey] = { total: 0, success: 0 };
+    dailyRetention[dateKey].total++;
+    if (log.rating > 1) dailyRetention[dateKey].success++;
+  });
+
+  const retentionData = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    const key = d.toISOString().split('T')[0];
+    const stats = dailyRetention[key] || { total: 0, success: 0 };
+    return {
+      date: key.slice(5),
+      retention: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 100
+    };
+  });
+
+  const overdueBins = { "Today": 0, "1-3d": 0, "4-7d": 0, "1w+": 0 };
+  allReviewItems.forEach(item => {
+    const dueDate = new Date(item.due);
+    if (dueDate >= todayStart) return;
+    const diffDays = Math.floor((todayStart.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) overdueBins["Today"]++;
+    else if (diffDays <= 3) overdueBins["1-3d"]++;
+    else if (diffDays <= 7) overdueBins["4-7d"]++;
+    else overdueBins["1w+"]++;
+  });
+  const overdueData = Object.entries(overdueBins).map(([name, value]) => ({ name, value }));
+
+  const heatmapData: Record<string, number> = {};
+  studySessions.forEach(s => {
+    const key = s.date.toISOString().split('T')[0];
+    heatmapData[key] = (heatmapData[key] || 0) + s.duration;
+  });
+
+  const masteryByType: Record<string, { stability: number; count: number }> = {};
+  allReviewItems.forEach(item => {
+    const type = item.sentence.track.trackType || "Other";
+    if (!masteryByType[type]) masteryByType[type] = { stability: 0, count: 0 };
+    masteryByType[type].stability += item.stability;
+    masteryByType[type].count++;
+  });
+  const radarData = Object.entries(masteryByType).map(([type, stats]) => ({
+    subject: type,
+    A: Math.min(Math.round((stats.stability / stats.count / 30) * 100), 100),
+    fullMark: 100
+  }));
 
   const pastReviewsByDateSet: Record<string, Set<string>> = {};
   reviewLogs.forEach(log => {
     const dateKey = log.createdAt.toISOString().split('T')[0];
-    if (!pastReviewsByDateSet[dateKey]) {
-      pastReviewsByDateSet[dateKey] = new Set();
-    }
+    if (!pastReviewsByDateSet[dateKey]) pastReviewsByDateSet[dateKey] = new Set();
     pastReviewsByDateSet[dateKey].add(log.reviewItemId);
   });
-
   const pastReviewsByDate: Record<string, number> = {};
-  for (const [date, itemSet] of Object.entries(pastReviewsByDateSet)) {
-    pastReviewsByDate[date] = itemSet.size;
-  }
+  for (const [date, itemSet] of Object.entries(pastReviewsByDateSet)) pastReviewsByDate[date] = itemSet.size;
 
-  const past14Days = Array.from({ length: 14 }, (_, i) => {
+  const past7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
-    date.setUTCDate(date.getUTCDate() - (13 - i));
+    date.setUTCDate(date.getUTCDate() - (7 - i));
     date.setUTCHours(0, 0, 0, 0);
     return date.toISOString().split('T')[0];
   });
-
-  const pastData = past14Days.map(date => ({
-    date,
-    count: pastReviewsByDate[date] || 0,
-  }));
+  const pastData = past7Days.map(date => ({ date, count: pastReviewsByDate[date] || 0 }));
 
   const futureReviewsByDate: Record<string, number> = {};
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const todayKey = today.toISOString().split('T')[0];
-
-  const future30Days = Array.from({ length: 30 }, (_, i) => {
+  const future7Days = Array.from({ length: 8 }, (_, i) => {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() + i);
     date.setUTCHours(0, 0, 0, 0);
     return date.toISOString().split('T')[0];
   });
-
+  const todayKey = todayStart.toISOString().split('T')[0];
   allReviewItems.forEach(item => {
     const dueDate = new Date(item.due);
     dueDate.setUTCHours(0, 0, 0, 0);
     const dateKey = dueDate.toISOString().split('T')[0];
-
-    if (dueDate < today) {
-      futureReviewsByDate[todayKey] = (futureReviewsByDate[todayKey] || 0) + 1;
-    } else if (future30Days.includes(dateKey)) {
-      futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
-    }
+    if (dueDate < todayStart) futureReviewsByDate[todayKey] = (futureReviewsByDate[todayKey] || 0) + 1;
+    else if (future7Days.includes(dateKey)) futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
   });
+  const futureData = future7Days.map(date => ({ date, count: futureReviewsByDate[date] || 0 }));
 
-  const futureData = future30Days.map(date => ({
-    date,
-    count: futureReviewsByDate[date] || 0,
-  }));
-
-  const totalDurationSeconds = await prisma.studySession.aggregate({
-    _sum: { duration: true }
-  }).then(res => res._sum.duration || 0);
-
+  const totalDurationSeconds = studySessions.reduce((acc, s) => acc + s.duration, 0);
   const totalHours = totalDurationSeconds / 3600;
   const c1Progress = Math.min((totalHours / 400) * 100, 100);
-
-  const sessionsByDate: Record<string, { total: number; types: Record<string, number> }> = {};
-  for (const s of studySessions) {
-    const dateKey = s.date.toISOString().split('T')[0];
-    if (!sessionsByDate[dateKey]) {
-      sessionsByDate[dateKey] = { total: 0, types: {} };
-    }
-    sessionsByDate[dateKey].total += s.duration;
-    sessionsByDate[dateKey].types[s.type] = (sessionsByDate[dateKey].types[s.type] || 0) + s.duration;
-  }
-
-  const dailyStats = Object.entries(sessionsByDate)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, 7); // Last 7 days
 
   const totalTracks = tracks.length;
   const learntCount = tracks.filter(t => t.status === "LEARNT").length;
   const progressPercent = Math.min(Math.round((learntCount / 100) * 100), 100);
-
   const statusCounts = groupByCount(tracks, t => STATUS_LABELS[t.status] || t.status);
   const statusData = countsToChartData(statusCounts);
-
   const typeCounts = groupByCount(tracks, t => t.trackType || "Uncategorized");
   const typeData = countsToChartData(typeCounts).sort((a, b) => b.value - a.value);
-
   const tagData = tags.map(t => ({ name: t.name, value: t._count.reviewItems }));
 
+  const sessionsByDate: Record<string, { total: number; types: Record<string, number> }> = {};
+  for (const s of studySessions) {
+    const dateKey = s.date.toISOString().split('T')[0];
+    if (!sessionsByDate[dateKey]) sessionsByDate[dateKey] = { total: 0, types: {} };
+    sessionsByDate[dateKey].total += s.duration;
+    sessionsByDate[dateKey].types[s.type] = (sessionsByDate[dateKey].types[s.type] || 0) + s.duration;
+  }
+  const dailyStats = Object.entries(sessionsByDate).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+
+  const dashboardData = {
+    countdownDays,
+    learntCount,
+    progressPercent,
+    totalHours,
+    c1Progress,
+    statusData,
+    typeData,
+    totalTracks,
+    totalSentences,
+    stabilityData,
+    retentionData,
+    leeches,
+    pastData,
+    futureData,
+    overdueData,
+    heatmapData,
+    radarData,
+    tagData
+  };
+
   return (
-    <div className="space-y-6 w-full">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-100 font-medium text-lg">
-              <CalendarClock className="h-5 w-5" /> TOEFL Countdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-bold">{countdownDays}</span>
-              <span className="text-xl text-indigo-100">days left</span>
-            </div>
-            <div className="text-sm text-indigo-200 mt-2">Target Date: May 10, 2026</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-indigo-100 shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-indigo-900">
-            <Trophy className="h-5 w-5 text-yellow-500" /> TOEFL 5.0 Progress
-          </CardTitle>
-          <CardDescription>Target: 100 Learnt Tracks</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between text-sm font-medium">
-            <span>{learntCount} / 100 Tracks</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <Progress value={progressPercent} className="h-3 bg-indigo-100" />
-          <div className="text-xs text-muted-foreground">
-            "已学习" (Learnt) counts towards this goal.
-          </div>
-        </CardContent>
-      </Card>
-
-        <Card className="border-indigo-100 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900">
-              <Clock className="h-5 w-5 text-blue-500" /> C1 Fluency Journey
-            </CardTitle>
-            <CardDescription>Target: 400 Hours</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm font-medium">
-              <span>{totalHours.toFixed(1)} / 400 Hours</span>
-              <span>{c1Progress.toFixed(1)}%</span>
-            </div>
-            <Progress value={c1Progress} className="h-3 bg-blue-100" />
-            <div className="text-xs text-muted-foreground">
-              Tracks Listening, Shadowing & Review time.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle className="text-base">Learning Status</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[250px] min-w-0">
-             {statusData.length > 0 ? (
-                <StatusRingChart data={statusData} />
-             ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">No data</div>
-             )}
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0">
-          <CardHeader>
-             <CardTitle className="text-base">Content Types</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[250px] min-w-0">
-             {typeData.length > 0 ? (
-                <TypeDistributionChart data={typeData} />
-             ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">No data</div>
-             )}
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle className="text-base">Error Attribution</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[250px] min-w-0">
-            {tagData.length > 0 ? (
-              <ErrorTagChart data={tagData} />
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                No error tags logged yet.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center justify-between">
-            <span>Review Statistics</span>
-            <div className="flex items-center gap-4 text-sm font-normal">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-indigo-500 rounded"></div>
-                <span className="text-gray-600">Completed (Last 14 days)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                <span className="text-gray-600">Scheduled (Next 30 days)</span>
-              </div>
-            </div>
-          </CardTitle>
-          <CardDescription>Track your review history and upcoming workload</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ReviewChart pastData={pastData} futureData={futureData} />
-        </CardContent>
-      </Card>
+    <div className="space-y-10 w-full pb-10">
+      <DashboardTabs data={dashboardData} />
 
       <div>
         <h2 className="text-xl font-bold mb-4">Daily Study Log</h2>
@@ -316,23 +270,6 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
             )}
         </div>
       </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-             <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>
-             <div className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Headphones className="w-5 h-5 text-indigo-500" />
-                {totalTracks}
-             </div>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-             <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Vault Sentences</div>
-             <div className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Mic2 className="w-5 h-5 text-purple-500" />
-                {totalSentences}
-             </div>
-          </div>
-      </div>
     </div>
   );
 }
@@ -340,13 +277,11 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
 function StatsSkeleton() {
   return (
     <div className="space-y-6 w-full">
-      {/* First Row: 3 Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-40 w-full rounded-xl" />
       </div>
-      {/* Second Row: 3 Chart Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Skeleton className="h-64 w-full rounded-xl" />
          <Skeleton className="h-64 w-full rounded-xl" />
