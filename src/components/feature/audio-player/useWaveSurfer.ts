@@ -4,6 +4,13 @@ import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js";
 import Minimap from "wavesurfer.js/dist/plugins/minimap.js";
 
+interface Region {
+  id: string;
+  start: number;
+  end: number;
+  color: string;
+}
+
 interface UseWaveSurferProps {
   containerRef: RefObject<HTMLDivElement | null>;
   timelineRef: RefObject<HTMLDivElement | null>;
@@ -12,7 +19,7 @@ interface UseWaveSurferProps {
   playbackRate: number;
   onTimeUpdate: (time: number) => void;
   onReady: () => void;
-  onRegionUpdateEnd: (region: any) => void;
+  onRegionUpdateEnd: (region: Region) => void;
   onInteraction: (time: number) => void;
 }
 
@@ -28,7 +35,7 @@ export function useWaveSurfer({
   onInteraction,
 }: UseWaveSurferProps) {
   const wavesurferRef = useRef<WaveSurfer | null>(null);
-  const regionsRef = useRef<any>(null);
+  const regionsRef = useRef<RegionsPlugin | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -63,7 +70,7 @@ export function useWaveSurfer({
       });
     });
 
-    regions.on("region-update-end" as any, onRegionUpdateEnd);
+    regions.on("region-update-end", onRegionUpdateEnd);
 
     // Playback Events
     ws.on("ready", () => {
@@ -89,7 +96,9 @@ export function useWaveSurfer({
       setTimeout(() => {
         try {
           ws.destroy();
-        } catch (e) {}
+        } catch {
+          // Ignore errors during cleanup - WaveSurfer may already be destroyed
+        }
       }, 0);
     };
   }, [audioUrl]); // Re-init on URL change only

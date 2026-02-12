@@ -4,18 +4,44 @@ import { useState, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Flame, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock } from "lucide-react";
+import { Play, ExternalLink, Calendar, Trash2, Edit3, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import { useRouter } from "next/navigation";
 import { getIntervalDescription, getDifficultyLabel } from "@/lib/fsrs";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 type SortOption = "createdAt" | "due" | "stability" | "dr";
 
-export default function VaultListClient({ initialItems, totalCount }: { initialItems: any[], totalCount?: number }) {
+interface VaultItem {
+  id: string;
+  userNote?: string | null;
+  difficulty?: string;
+  isArchived: boolean;
+  due?: Date;
+  nextReview?: Date;
+  stability?: number;
+  dr?: number;
+  retrieval?: number;
+  lapse?: number;
+  createdAt: Date;
+  tags: { id: string; name: string }[];
+  sentence: {
+    text: string;
+    startTime: number;
+    endTime: number;
+    track: {
+      id: string;
+      title: string;
+      audioUrl: string;
+    };
+  };
+}
+
+export default function VaultListClient({ initialItems, totalCount }: { initialItems: VaultItem[], totalCount?: number }) {
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editingItem, setEditingItem] = useState<VaultItem | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
@@ -28,7 +54,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     initialItems.forEach(item => {
-      item.tags?.forEach((tag: any) => tagSet.add(tag.name));
+      item.tags?.forEach((tag) => tagSet.add(tag.name));
     });
     return Array.from(tagSet).sort();
   }, [initialItems]);
@@ -83,7 +109,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       }
 
       if (selectedTags.length > 0) {
-        const itemTags = item.tags?.map((t: any) => t.name) || [];
+        const itemTags = item.tags?.map((t) => t.name) || [];
         const hasAllTags = selectedTags.every(tag => itemTags.includes(tag));
         if (!hasAllTags) return false;
       }
@@ -118,20 +144,21 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     });
   }, [initialItems, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
 
-  const playAudio = (item: any) => {
+  const playAudio = (item: VaultItem) => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
     }
     const audio = audioRef.current;
+    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
 
     if (playingId === item.id) {
-      if ((audio as any).activeTimer) clearTimeout((audio as any).activeTimer);
+      if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
       audio.pause();
       setPlayingId(null);
       return;
     }
 
-    if ((audio as any).activeTimer) clearTimeout((audio as any).activeTimer);
+    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
     audio.pause();
 
     audio.src = item.sentence.track.audioUrl;
@@ -151,7 +178,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
       });
     }, duration);
 
-    (audio as any).activeTimer = timer;
+    audioWithTimer.activeTimer = timer;
   };
 
   const toggleFilter = (value: string, current: string[], setter: (vals: string[]) => void) => {
@@ -402,7 +429,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
                     </div>
 
                     <div className="flex gap-1">
-                      {item.tags.map((tag: any) => (
+                      {item.tags.map((tag) => (
                         <Badge key={tag.id} variant="secondary" className="text-[10px] uppercase tracking-wider">
                           {tag.name}
                         </Badge>
@@ -429,7 +456,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
                   {item.userNote && (
                     <div className="mt-3 text-sm text-gray-700 bg-white/50 p-3 rounded border-l-2 border-indigo-200 prose prose-sm max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: item.userNote }} />
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.userNote) }} />
                     </div>
                   )}
                 </div>

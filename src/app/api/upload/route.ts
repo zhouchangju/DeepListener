@@ -50,9 +50,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(track);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -111,11 +112,12 @@ export async function PUT(req: NextRequest) {
           title: track.title,
           audioUrl: track.audioUrl,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`[${i + 1}/${files.length}] Failed to process ${file.name}:`, error);
+        const message = error instanceof Error ? error.message : "Unknown error";
         results.failed.push({
           fileName: file.name,
-          error: error.message || "Unknown error",
+          error: message,
         });
       }
     }
@@ -123,8 +125,9 @@ export async function PUT(req: NextRequest) {
     console.log(`Batch upload complete: ${results.success.length} succeeded, ${results.failed.length} failed`);
 
     return NextResponse.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Batch upload error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

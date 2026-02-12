@@ -9,10 +9,10 @@ interface DifficultySelectorProps {
 }
 
 const DIFFICULTIES = [
-  { value: "NORMAL", label: "Normal", color: "text-slate-500", iconColor: "text-slate-400" },
-  { value: "HARD", label: "Hard", color: "text-orange-500", iconColor: "text-orange-500" },
-  { value: "VERY_HARD", label: "Very Hard", color: "text-red-600", iconColor: "text-red-600" },
-];
+  { value: "NORMAL", label: "Normal", color: "text-slate-500", iconColor: "text-slate-400", borderColor: "border-slate-400", ringColor: "ring-slate-200" },
+  { value: "HARD", label: "Hard", color: "text-orange-500", iconColor: "text-orange-500", borderColor: "border-orange-500", ringColor: "ring-orange-200" },
+  { value: "VERY_HARD", label: "Very Hard", color: "text-red-600", iconColor: "text-red-600", borderColor: "border-red-600", ringColor: "ring-red-200" },
+] as const;
 
 export default function DifficultySelector({ value, onChange }: DifficultySelectorProps) {
   return (
@@ -22,7 +22,7 @@ export default function DifficultySelector({ value, onChange }: DifficultySelect
           key={diff.value}
           variant="outline"
           size="sm"
-          className={`gap-1.5 ${value === diff.value ? `border-${diff.iconColor.split('-')[1]}-500 bg-slate-50 ring-1 ring-${diff.iconColor.split('-')[1]}-200` : ""}`}
+          className={`gap-1.5 ${value === diff.value ? `${diff.borderColor} bg-slate-50 ring-1 ${diff.ringColor}` : ""}`}
           onClick={() => onChange(diff.value)}
         >
           <Flame className={`h-3.5 w-3.5 ${diff.value === "NORMAL" ? "opacity-0" : diff.iconColor}`} />

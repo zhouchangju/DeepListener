@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface TrackWithNote {
   id: string;
@@ -38,7 +39,7 @@ export default function NotesList({ tracks }: { tracks: TrackWithNote[] }) {
           </CardHeader>
           <CardContent className="p-4 prose prose-sm max-w-none">
             <div 
-                dangerouslySetInnerHTML={{ __html: track.note! }} 
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(track.note!) }} 
                 className="break-words"
             />
           </CardContent>

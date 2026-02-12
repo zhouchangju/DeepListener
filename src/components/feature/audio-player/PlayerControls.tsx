@@ -47,7 +47,7 @@ export const PlayerControls = memo(function PlayerControls({
             <span ref={timeRef}>00:00</span>
             <span className="text-slate-300 text-lg">
               {" "}
-              / {new Date(duration * 1000).toISOString().substr(14, 5)}
+              / {new Date(duration * 1000).toISOString().substring(14, 19)}
             </span>
           </span>
         </div>

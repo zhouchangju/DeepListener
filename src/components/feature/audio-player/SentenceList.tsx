@@ -4,13 +4,19 @@ import { RefObject, memo } from "react";
 import { toast } from "sonner";
 import { InteractiveText } from "../notation/InteractiveText";
 
+interface ReviewItem {
+  tags?: { name: string }[];
+  userNote?: string;
+  difficulty?: string;
+}
+
 interface Sentence {
   id: string;
   text: string;
   startTime: number;
   endTime: number;
   formatting?: string | null;
-  reviewItem?: any;
+  reviewItem?: ReviewItem | null;
 }
 
 interface SentenceListProps {

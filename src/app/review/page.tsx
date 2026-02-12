@@ -23,8 +23,6 @@ async function ReviewContent() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  console.log('[Review] Fetching data for', startOfToday.toISOString(), 'to', endOfToday.toISOString());
-
   // Get today's review logs
   const todayLogs = await prisma.reviewLog.findMany({
     where: {
@@ -37,8 +35,6 @@ async function ReviewContent() {
       reviewItemId: true,
     },
   });
-
-  console.log('[Review] Found', todayLogs.length, 'review logs today');
 
   // Count unique items reviewed today
   const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
@@ -108,8 +104,6 @@ async function ReviewContent() {
     orderBy: { due: "asc" },
   });
 
-  console.log('[Review] Found', rawItems.length, 'items in queue (not reviewed today)');
-
   const items = rawItems.map(item => {
     const daysSinceCreation = Math.max(1, Math.floor((new Date().getTime() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
     const averageDailyListens = item._count.logs / daysSinceCreation;
@@ -124,15 +118,12 @@ async function ReviewContent() {
   });
 
   if (items.length === 0) {
-    console.log('[Review] No items in queue');
     return (
       <div className="text-center py-20 bg-white rounded-xl border border-dashed">
         <p className="text-gray-500">No sentences due for review. Great job!</p>
       </div>
     );
   }
-
-  console.log('[Review] Passing to client - reviewedCount:', todayReviewedCount, 'items.length:', items.length);
 
   return (
     <ReviewClient

@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const { tags } = await req.json();
 
     // Build query filter
-    const where: any = {
+    const where: { isArchived: boolean; tags?: { some: { name: { in: string[] } } } } = {
       isArchived: false,
     };
 
@@ -154,10 +154,11 @@ export async function POST(req: NextRequest) {
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Export error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: error.message || "Export failed" },
+      { error: message || "Export failed" },
       { status: 500 }
     );
   }

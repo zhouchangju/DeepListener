@@ -6,7 +6,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const { formatting, text } = await req.json();
 
-    const data: any = {};
+    const data: { formatting?: string | null; text?: string } = {};
     
     if (formatting !== undefined) {
         if (typeof formatting !== "string" && formatting !== null) {
@@ -28,8 +28,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     return NextResponse.json(sentence);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sentence update error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -93,20 +93,20 @@ export function useAudioInteractions({
       }
     };
 
+    const onContextMenu = (e: MouseEvent) => {
+      if (container.contains(e.target as Node)) e.preventDefault();
+    };
+
     window.addEventListener("mousedown", onMouseDown, true);
     window.addEventListener("mousemove", onMouseMove, true);
     window.addEventListener("mouseup", onMouseUp, true);
-    window.addEventListener("contextmenu", (e) => {
-      if (container.contains(e.target as Node)) e.preventDefault();
-    });
+    window.addEventListener("contextmenu", onContextMenu);
 
     return () => {
       window.removeEventListener("mousedown", onMouseDown, true);
       window.removeEventListener("mousemove", onMouseMove, true);
       window.removeEventListener("mouseup", onMouseUp, true);
-      window.removeEventListener("contextmenu", (e) => {
-        if (container.contains(e.target as Node)) e.preventDefault();
-      });
+      window.removeEventListener("contextmenu", onContextMenu);
     };
   }, [isReady]);
 }

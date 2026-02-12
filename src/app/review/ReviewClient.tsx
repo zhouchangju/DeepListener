@@ -10,6 +10,7 @@ import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 type ReviewQuality = "again" | "hard" | "good" | "easy";
 
@@ -69,13 +70,9 @@ export default function ReviewClient({
     currentItemRef.current = current;
   }, [current]);
 
-  // Debug: Log initial props
-  console.log('[ReviewClient] Initialized with reviewedCount:', reviewedCount, 'items.length:', initialItems.length);
-
   useEffect(() => {
     setReviewed(reviewedCount);
     setRemaining(initialItems.length);
-    console.log('[ReviewClient] State updated - reviewed:', reviewedCount, 'remaining:', initialItems.length);
   }, [reviewedCount, initialItems.length]);
 
   useEffect(() => {
@@ -415,7 +412,7 @@ export default function ReviewClient({
                   <div className="text-xs font-semibold text-gray-500 mb-1">NOTE:</div>
                   <div
                     className="prose prose-sm max-w-none whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: current.userNote }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(current.userNote) }}
                   />
                 </div>
               )}

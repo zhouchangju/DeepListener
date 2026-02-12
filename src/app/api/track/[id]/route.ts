@@ -14,7 +14,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (track.audioUrl.startsWith("/uploads/")) {
       const fileName = track.audioUrl.replace("/uploads/", "");
       const filePath = path.join(process.cwd(), "public/uploads", fileName);
-      try { await unlink(filePath); } catch {}
+      try {
+        await unlink(filePath);
+      } catch (e) {
+        console.warn("Failed to delete audio file:", e);
+      }
     }
 
     await prisma.track.delete({ where: { id } });

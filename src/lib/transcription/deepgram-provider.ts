@@ -31,9 +31,18 @@ export class DeepgramProvider implements TranscriptionProvider {
 
     const words = result.results?.channels[0]?.alternatives[0]?.words || [];
     const segments: TranscriptionSegment[] = [];
-    
+
+    // Handle empty words array
+    if (words.length === 0) {
+      return {
+        fullText: "",
+        segments: [],
+        rawJson: JSON.stringify(result),
+      };
+    }
+
     let currentSentenceWords: string[] = [];
-    let currentStartTime = words[0]?.start || 0;
+    let currentStartTime = words[0].start;
     
     // 自定义分句逻辑：基于标点符号
     for (let i = 0; i < words.length; i++) {

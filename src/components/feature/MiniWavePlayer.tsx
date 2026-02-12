@@ -102,6 +102,10 @@ export default function MiniWavePlayer({
 
     return () => {
       ws.destroy();
+      // Revoke object URL to prevent memory leak
+      if (typeof audioBlob !== 'string') {
+        URL.revokeObjectURL(url);
+      }
     };
   }, [audioBlob, height, waveColor, progressColor, enableRegions, autoPlay]); // Removed playbackRate from dependency to avoid recreation
 

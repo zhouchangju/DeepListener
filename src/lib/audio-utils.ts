@@ -1,10 +1,20 @@
+// Shared AudioContext instance for better performance and resource management
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext {
+  if (!sharedAudioContext) {
+    sharedAudioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  }
+  return sharedAudioContext;
+}
+
 /**
  * 1. 仅获取并解码音频 (耗时操作)
  */
 export async function fetchAndDecodeAudio(audioUrl: string): Promise<AudioBuffer> {
   const response = await fetch(audioUrl);
   const arrayBuffer = await response.arrayBuffer();
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const audioContext = getAudioContext();
   return await audioContext.decodeAudioData(arrayBuffer);
 }
 
@@ -23,7 +33,7 @@ export function sliceAudioBuffer(
 
   if (frameCount <= 0) throw new Error("Invalid time range");
 
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const audioContext = getAudioContext();
   const newBuffer = audioContext.createBuffer(
     audioBuffer.numberOfChannels,
     frameCount,
@@ -85,12 +95,12 @@ function bufferToWav(buffer: AudioBuffer): Blob {
 
   return new Blob([bufferArr], { type: "audio/wav" });
 
-  function setUint16(data: any) {
+  function setUint16(data: number) {
     view.setUint16(pos, data, true);
     pos += 2;
   }
 
-  function setUint32(data: any) {
+  function setUint32(data: number) {
     view.setUint32(pos, data, true);
     pos += 4;
   }

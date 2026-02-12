@@ -17,10 +17,21 @@ import { Copy, Check } from "lucide-react";
 
 const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "Grammar", "Accent"];
 
+interface VaultItem {
+  id: string;
+  userNote?: string | null;
+  difficulty?: string;
+  tags?: { id: string; name: string }[];
+  sentence?: {
+    text: string;
+    track?: { title: string };
+  };
+}
+
 interface EditVaultModalProps {
   isOpen: boolean;
   onClose: () => void;
-  item: any;
+  item: VaultItem | null;
   onSaved: (updatedItem?: { userNote?: string; tags?: string[]; difficulty?: string }) => void;
 }
 
@@ -35,7 +46,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
   useEffect(() => {
     if (item) {
       setNote(item.userNote || "");
-      setSelectedTags(item.tags?.map((t: any) => t.name) || []);
+      setSelectedTags(item.tags?.map((t) => t.name) || []);
       setDifficulty(item.difficulty || "NORMAL");
       // Force re-mount editor when item changes
       setEditorKey(prev => prev + 1);

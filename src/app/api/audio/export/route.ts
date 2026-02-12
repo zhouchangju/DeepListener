@@ -111,11 +111,28 @@ async function gatherSegments(
   const segments: AudioSegment[] = [];
   for (const items of trackMap.values()) {
     for (const item of items) {
+      // Validate audioUrl to prevent path traversal
+      const audioUrl = item.sentence.track.audioUrl;
+      
+      // Check for path traversal attempts
+      if (audioUrl.includes('..') || audioUrl.includes('\\') || audioUrl.startsWith('/')) {
+        console.warn(`Invalid audioUrl detected (potential path traversal): ${audioUrl}`);
+        continue;
+      }
+      
       const audioPath = path.join(
         process.cwd(),
         'public',
-        item.sentence.track.audioUrl
+        audioUrl
       );
+
+      // Ensure the resolved path is within the public directory
+      const publicDir = path.join(process.cwd(), 'public');
+      const resolvedPath = path.resolve(audioPath);
+      if (!resolvedPath.startsWith(publicDir)) {
+        console.warn(`Audio path escapes public directory: ${resolvedPath}`);
+        continue;
+      }
 
       if (!fs.existsSync(audioPath)) {
         console.warn(`Audio file not found: ${audioPath}`);

@@ -28,47 +28,30 @@ import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 // Define strict types matching Prisma output
 
 interface Sentence {
-
   id: string;
-
   text: string;
-
   startTime: number;
-
   endTime: number;
-
   formatting?: string | null;
-
-  reviewItem?: any;
-
+  reviewItem?: { tags?: { name: string }[]; userNote?: string; difficulty?: string } | null;
 }
 
 
 
 interface Track {
-
   id: string;
-
   title: string;
-
   audioUrl: string;
-
   note?: string | null;
-
   trackType?: string | null;
-
   trackTopic?: string | null;
-
   sentences: Sentence[];
-
 }
 
 
 
 interface PracticeClientProps {
-
   track: Track;
-
 }
 
 
@@ -98,84 +81,44 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   const [note, setNote] = useState<string | null>(track.note || null);
 
-
-
   // 预加载音频 Buffer，为了 Shadowing 模式下的极速切片
-
   useEffect(() => {
-
     fetchAndDecodeAudio(track.audioUrl)
-
       .then(buffer => setFullAudioBuffer(buffer))
-
       .catch(err => console.error("Audio preload failed", err));
-
   }, [track.audioUrl]);
 
 
 
   const handleCapture = (sentenceId: string) => {
-
     setCapturingSentenceId(sentenceId);
-
   };
 
+  const currentSentence = track.sentences.find((s) => s.id === capturingSentenceId);
 
-
-      const currentSentence = track.sentences.find((s) => s.id === capturingSentenceId);
-
-
-
-    
-
-
-
-      const saveToVault = async (tags: string[], note: string, difficulty: string) => {
-
+  const saveToVault = async (tags: string[], note: string, difficulty: string) => {
     if (!capturingSentenceId) return;
 
-
-
     try {
-
       const res = await fetch("/api/vault", {
-
         method: "POST",
-
         headers: { "Content-Type": "application/json" },
-
         body: JSON.stringify({
-
           sentenceId: capturingSentenceId,
-
           tags,
-
           note,
-          
           difficulty,
-
         }),
-
       });
-
-
 
       if (!res.ok) throw new Error("Failed to save");
 
-
-
       toast.success("Added to your Vault!");
-
       setCapturingSentenceId(null);
-      
       router.refresh();
-
     } catch {
-
       toast.error("Failed to save to vault");
-
     }
-
   };
 
   const exportAudio = async () => {
@@ -281,7 +224,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         onClose={() => setCapturingSentenceId(null)}
         sentenceText={currentSentence?.text || ""}
         onSave={saveToVault}
-        initialTags={currentSentence?.reviewItem?.tags?.map((t: any) => t.name) || []}
+        initialTags={currentSentence?.reviewItem?.tags?.map((t) => t.name) || []}
         initialNote={currentSentence?.reviewItem?.userNote || ""}
         initialDifficulty={currentSentence?.reviewItem?.difficulty || "NORMAL"}
       />

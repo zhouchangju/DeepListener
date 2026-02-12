@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import { createReadStream } from "fs";
-import { ProxyAgent, setGlobalDispatcher } from "undici";
 import { TranscriptionProvider, TranscriptionResponse } from "./types";
 
 export class OpenAIProvider implements TranscriptionProvider {

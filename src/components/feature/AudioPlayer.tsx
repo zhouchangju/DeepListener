@@ -8,13 +8,19 @@ import { SentenceList } from "./audio-player/SentenceList";
 import { PlayerControls } from "./audio-player/PlayerControls";
 import { WaveformArea } from "./audio-player/WaveformArea";
 
+interface ReviewItem {
+  tags?: { name: string }[];
+  userNote?: string;
+  difficulty?: string;
+}
+
 interface Sentence {
   id: string;
   text: string;
   startTime: number;
   endTime: number;
   formatting?: string | null;
-  reviewItem?: any;
+  reviewItem?: ReviewItem | null;
 }
 
 interface AudioPlayerProps {
@@ -98,7 +104,7 @@ export default function AudioPlayer({
     onTimeUpdate: (time) => {
       // Direct DOM update (High performance)
       if (timeRef.current) {
-        timeRef.current.innerText = new Date(time * 1000).toISOString().substr(14, 5);
+        timeRef.current.innerText = new Date(time * 1000).toISOString().substring(14, 19);
       }
       syncListToTime(time, false);
     },
@@ -106,13 +112,13 @@ export default function AudioPlayer({
     onRegionUpdateEnd: (region) => {
       setTimeout(() => {
         wavesurferRef.current?.setTime(region.start);
-        if (timeRef.current) timeRef.current.innerText = new Date(region.start * 1000).toISOString().substr(14, 5);
+        if (timeRef.current) timeRef.current.innerText = new Date(region.start * 1000).toISOString().substring(14, 19);
         syncListToTime(region.start, true);
         wavesurferRef.current?.play();
       }, 10);
     },
     onInteraction: (time) => {
-      if (timeRef.current) timeRef.current.innerText = new Date(time * 1000).toISOString().substr(14, 5);
+      if (timeRef.current) timeRef.current.innerText = new Date(time * 1000).toISOString().substring(14, 19);
       syncListToTime(time, true);
     },
   });
