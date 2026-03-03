@@ -16,10 +16,15 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
+  const isContentLoadedRef = useRef(false);
 
-  // Load content - just like the original working version
+  // Load content only once on mount or when reviewItemId changes
   useEffect(() => {
+    // Skip if already loaded for this item
+    if (isContentLoadedRef.current) return;
+
     lastSavedContentRef.current = initialNote || "";
+    isContentLoadedRef.current = true;
 
     const timer = setTimeout(() => {
       if (editorRef.current) {
@@ -29,6 +34,11 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
 
     return () => clearTimeout(timer);
   }, [reviewItemId, initialNote]);
+
+  // Reset load flag when reviewItemId changes (to allow loading new content)
+  useEffect(() => {
+    isContentLoadedRef.current = false;
+  }, [reviewItemId]);
 
   const handleInput = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);

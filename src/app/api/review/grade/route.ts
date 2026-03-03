@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
       {
         stability: currentItem.stability,
         difficulty: currentItem.dr,
+        state: currentItem.state,
+        reps: currentItem.reps,
+        lapses: currentItem.lapses,
+        lastReview: currentItem.lastReview,
         due: currentItem.due,
       },
       quality
@@ -52,6 +56,10 @@ export async function POST(req: NextRequest) {
       data: {
         stability: next.stability,
         dr: next.difficulty,
+        state: next.state,
+        reps: next.reps,
+        lapses: next.lapses,
+        lastReview: next.lastReview,
         due: actualDue,
         retrieval: isAgain ? currentItem.retrieval : (currentItem.retrieval ?? 0) + 1,
         lapse: isAgain ? (currentItem.lapse ?? 0) + 1 : currentItem.lapse,

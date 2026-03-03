@@ -66,10 +66,23 @@ async function LibraryContent({ showArchived }: { showArchived: boolean }) {
   const tracks = await prisma.track.findMany({
     where: { isArchived: showArchived },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { sentences: true } } },
+    select: {
+      id: true,
+      title: true,
+      audioUrl: true,
+      note: true,
+      trackType: true,
+      trackTopic: true,
+      isArchived: true,
+      status: true,
+      createdAt: true,
+      _count: {
+        select: { sentences: true }
+      }
+    }
   });
 
-  return <LibraryManager tracks={tracks} />;
+  return <LibraryManager tracks={tracks as any} />;
 }
 
 function LibrarySkeleton() {

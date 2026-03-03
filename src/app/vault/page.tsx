@@ -34,32 +34,56 @@ async function VaultContent() {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
-  const items = await prisma.reviewItem.findMany({
-    take: 100, // Limit to 100 recent items for performance. TODO: Add pagination.
-    include: {
-      sentence: {
-        include: { track: true },
+  const [items, dueCount, totalCount] = await Promise.all([
+    prisma.reviewItem.findMany({
+      take: 100,
+      select: {
+        id: true,
+        userNote: true,
+        difficulty: true,
+        isArchived: true,
+        due: true,
+        nextReview: true,
+        stability: true,
+        dr: true,
+        retrieval: true,
+        lapse: true,
+        createdAt: true,
+        tags: {
+          select: { id: true, name: true }
+        },
+        sentence: {
+          select: {
+            id: true,
+            text: true,
+            startTime: true,
+            endTime: true,
+            formatting: true,
+            track: {
+              select: {
+                id: true,
+                title: true,
+                audioUrl: true
+              }
+            }
+          }
+        }
       },
-      tags: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const dueCount = await prisma.reviewItem.count({
-    where: {
-      due: {
-        lte: endOfToday,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.reviewItem.count({
+      where: {
+        due: { lte: endOfToday },
+        isArchived: false,
       },
-      isArchived: false,
-    },
-  });
-
-  const totalCount = await prisma.reviewItem.count();
+    }),
+    prisma.reviewItem.count()
+  ]);
 
   return (
     <>
       <ExportButtons itemCount={items.length} dueCount={dueCount} />
-      <VaultListClient initialItems={items} totalCount={totalCount} />
+      <VaultListClient initialItems={items as any} totalCount={totalCount} />
     </>
   );
 }

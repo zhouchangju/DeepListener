@@ -16,10 +16,15 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   const editorRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(initialNote || "");
+  const isContentLoadedRef = useRef(false);
 
-  // Load content - just like the original working version
+  // Load content only once on mount or when trackId changes
   useEffect(() => {
+    // Skip if already loaded for this track
+    if (isContentLoadedRef.current) return;
+
     lastSavedContentRef.current = initialNote || "";
+    isContentLoadedRef.current = true;
 
     const timer = setTimeout(() => {
       if (editorRef.current) {
@@ -29,6 +34,11 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
 
     return () => clearTimeout(timer);
   }, [trackId, initialNote]);
+
+  // Reset load flag when trackId changes (to allow loading new content)
+  useEffect(() => {
+    isContentLoadedRef.current = false;
+  }, [trackId]);
 
   const handleInput = () => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);

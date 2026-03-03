@@ -31,6 +31,10 @@ export function calculateNextReview(
   currentState: {
     stability?: number | null;
     difficulty?: number | null;
+    state?: number | null;
+    reps?: number | null;
+    lapses?: number | null;
+    lastReview?: Date | null;
     due?: Date;
   },
   rating: ReviewRating
@@ -48,6 +52,18 @@ export function calculateNextReview(
   if (currentState.due) {
     card.due = currentState.due;
   }
+  if (currentState.state !== null && currentState.state !== undefined) {
+    card.state = currentState.state;
+  }
+  if (currentState.reps !== null && currentState.reps !== undefined) {
+    card.reps = currentState.reps;
+  }
+  if (currentState.lapses !== null && currentState.lapses !== undefined) {
+    card.lapses = currentState.lapses;
+  }
+  if (currentState.lastReview) {
+    card.last_review = currentState.lastReview;
+  }
 
   // Map rating to FSRS Rating enum
   const fsrsRating = mapRating(rating);
@@ -60,6 +76,10 @@ export function calculateNextReview(
     nextReview: recordLog.card.due,
     stability: recordLog.card.stability,
     difficulty: recordLog.card.difficulty,
+    state: recordLog.card.state,
+    reps: recordLog.card.reps,
+    lapses: recordLog.card.lapses,
+    lastReview: recordLog.card.last_review,
   };
 }
 

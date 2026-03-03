@@ -60,6 +60,10 @@ model ReviewItem {
   difficulty String      @default("NORMAL")
   stability  Float       @default(0)
   dr         Float       @default(0)
+  state      Int         @default(0)
+  reps       Int         @default(0)
+  lapses     Int         @default(0)
+  lastReview DateTime?
   due        DateTime    @default(now())
   retrieval  Int         @default(0)
   lapse      Int         @default(0)
