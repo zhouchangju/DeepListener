@@ -101,6 +101,7 @@ export default function DiagnosisModal({
             initialNote={note}
             onChange={setNote}
             placeholder="Add a note (e.g., 'of' sounded like 'a')"
+            reloadKey={isOpen}
           />
         </div>
 

@@ -9,6 +9,8 @@ interface RichTextNoteEditorProps {
   onChange?: (note: string) => void;
   placeholder?: string;
   className?: string;
+  /** When this key changes, the editor content is reloaded */
+  reloadKey?: unknown;
 }
 
 /**
@@ -21,13 +23,24 @@ export default function RichTextNoteEditor({
   onChange,
   placeholder = "Add a note...",
   className = "",
+  reloadKey,
 }: RichTextNoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState(initialNote || "");
+  const isContentLoadedRef = useRef(false);
 
-  // Load content - just like the original working version
+  // Reset load flag when reloadKey changes (e.g., modal reopens)
   useEffect(() => {
+    isContentLoadedRef.current = false;
+  }, [reloadKey]);
+
+  // Load content only once (or when reloadKey changes)
+  useEffect(() => {
+    // Skip if already loaded
+    if (isContentLoadedRef.current) return;
+
     setContent(initialNote || "");
+    isContentLoadedRef.current = true;
 
     const timer = setTimeout(() => {
       if (editorRef.current) {
