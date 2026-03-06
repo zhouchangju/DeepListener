@@ -20,8 +20,10 @@ function generateFilename(): string {
 }
 
 async function gatherSegments(
-  type: 'all' | 'due' | 'track',
-  trackId?: string
+  type: 'all' | 'due' | 'track' | 'filtered',
+  trackId?: string,
+  difficulties?: string[],
+  trackIds?: string[]
 ): Promise<AudioSegment[]> {
   let reviewItems;
 
@@ -80,6 +82,22 @@ async function gatherSegments(
         orderBy: {
           createdAt: 'asc',
         },
+      });
+      break;
+
+    case 'filtered':
+      reviewItems = await prisma.reviewItem.findMany({
+        where: {
+          isArchived: false,
+          ...(difficulties && difficulties.length > 0 && { difficulty: { in: difficulties } }),
+          ...(trackIds && trackIds.length > 0 && { sentence: { trackId: { in: trackIds } } }),
+        },
+        include: {
+          sentence: {
+            include: { track: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
       });
       break;
 
@@ -155,10 +173,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { type, trackId }: { type: 'all' | 'due' | 'track'; trackId?: string } = body;
+    const { type, trackId, difficulties, trackIds }: {
+      type: 'all' | 'due' | 'track' | 'filtered';
+      trackId?: string;
+      difficulties?: string[];
+      trackIds?: string[];
+    } = body;
 
     // Validate input
-    if (type !== 'all' && type !== 'due' && type !== 'track') {
+    if (type !== 'all' && type !== 'due' && type !== 'track' && type !== 'filtered') {
       return new Response(
         JSON.stringify({ error: 'Invalid export type' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -173,7 +196,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Gather segments
-    const segments = await gatherSegments(type, trackId);
+    const segments = await gatherSegments(type, trackId, difficulties, trackIds);
 
     if (segments.length === 0) {
       return new Response(
@@ -300,10 +323,14 @@ export async function POST(req: NextRequest) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
 
+    const filename = type === 'filtered'
+      ? `DeepListener_Filtered_${new Date().toISOString().split('T')[0]}.mp3`
+      : generateFilename();
+
     return new Response(finalBuffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Disposition': `attachment; filename="${generateFilename()}"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {
