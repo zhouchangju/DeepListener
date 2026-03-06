@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock } from "lucide-react";
+import { Play, ExternalLink, Calendar, Trash2, Edit3, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock, Pause, SkipForward } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
@@ -50,6 +50,10 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const [sortBy, setSortBy] = useState<SortOption>("createdAt");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
+  const [playAllActive, setPlayAllActive] = useState(false);
+  const [playAllIndex, setPlayAllIndex] = useState(0);
+  const [playAllPaused, setPlayAllPaused] = useState(false);
+  const playAllIndexRef = useRef(0);
   const searchParams = useSearchParams();
   const initialTrackId = searchParams.get('trackId');
 
@@ -76,6 +80,8 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   };
 
   const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
+
+  playAllIndexRef.current = playAllIndex;
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sentence from your vault?")) return;
@@ -153,7 +159,23 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     });
   }, [initialItems, initialTrackId, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
 
+  const stopPlayAll = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
+      if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
+      audio.pause();
+    }
+    setPlayAllActive(false);
+    setPlayAllPaused(false);
+    setPlayAllIndex(0);
+    setPlayingId(null);
+  }, []);
+
   const playAudio = (item: VaultItem) => {
+    if (playAllActive) {
+      stopPlayAll();
+    }
     if (!audioRef.current) {
       audioRef.current = new Audio();
     }
@@ -190,6 +212,60 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     audioWithTimer.activeTimer = timer;
   };
 
+  const playItemAtIndex = useCallback((index: number, items: typeof filteredItems) => {
+    if (index >= items.length) {
+      stopPlayAll();
+      toast.success(`Finished playing ${items.length} sentences`);
+      return;
+    }
+
+    const item = items[index];
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    const audio = audioRef.current;
+    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
+
+    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
+
+    audio.src = item.sentence.track.audioUrl;
+    audio.currentTime = item.sentence.startTime;
+    audio.play();
+    setPlayingId(item.id);
+    setPlayAllIndex(index);
+    playAllIndexRef.current = index;
+
+    const duration = (item.sentence.endTime - item.sentence.startTime) * 1000;
+    audioWithTimer.activeTimer = setTimeout(() => {
+      playItemAtIndex(playAllIndexRef.current + 1, items);
+    }, duration);
+  }, [stopPlayAll]);
+
+  const startPlayAll = useCallback(() => {
+    if (filteredItems.length === 0) return;
+    setPlayAllActive(true);
+    setPlayAllPaused(false);
+    playItemAtIndex(0, filteredItems);
+  }, [filteredItems, playItemAtIndex]);
+
+  const pausePlayAll = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
+    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
+    audio.pause();
+    setPlayAllPaused(true);
+  }, []);
+
+  const resumePlayAll = useCallback(() => {
+    setPlayAllPaused(false);
+    playItemAtIndex(playAllIndexRef.current, filteredItems);
+  }, [filteredItems, playItemAtIndex]);
+
+  const nextInPlayAll = useCallback(() => {
+    playItemAtIndex(playAllIndexRef.current + 1, filteredItems);
+  }, [filteredItems, playItemAtIndex]);
+
   const toggleFilter = (value: string, current: string[], setter: (vals: string[]) => void) => {
     setter(current.includes(value) ? current.filter(v => v !== value) : [...current, value]);
   };
@@ -206,7 +282,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${playAllActive ? 'pb-20' : ''}`}>
       {/* Archive Toggle Filter */}
       <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg border">
         <div className="flex items-center gap-2">
@@ -219,13 +295,25 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
             {showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
           </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowArchived(!showArchived)}
-        >
-          {showArchived ? 'Show Active' : 'Show Archived'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={playAllActive ? "default" : "outline"}
+            size="sm"
+            onClick={playAllActive ? stopPlayAll : startPlayAll}
+            disabled={filteredItems.length === 0}
+            className="flex items-center gap-1.5"
+          >
+            <Play className="w-4 h-4" />
+            {playAllActive ? 'Stop' : `Play All (${filteredItems.length})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+          >
+            {showArchived ? 'Show Active' : 'Show Archived'}
+          </Button>
+        </div>
       </div>
 
       {activeTrackName && (
@@ -504,6 +592,57 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
             : initialTrackId
             ? 'No saved notes for this track yet. Capture difficult sentences from the practice page!'
             : 'Your vault is empty. Capture some difficult sentences from the Workbench first!'}
+        </div>
+      )}
+
+      {/* Sticky Play All bar */}
+      {playAllActive && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg px-4 py-3">
+          <div className="container mx-auto flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-500 flex-shrink-0">
+              {playAllIndex + 1} / {filteredItems.length}
+            </span>
+            <div className="flex-grow min-w-0">
+              {filteredItems[playAllIndex] && (
+                <>
+                  <p className="text-xs text-gray-400 truncate">
+                    {filteredItems[playAllIndex].sentence.track.title}
+                  </p>
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {filteredItems[playAllIndex].sentence.text}
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {playAllPaused ? (
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={resumePlayAll}>
+                  <Play className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={pausePlayAll}>
+                  <Pause className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8"
+                onClick={nextInPlayAll}
+                disabled={playAllIndex >= filteredItems.length - 1}
+              >
+                <SkipForward className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-gray-400 hover:text-red-500"
+                onClick={stopPlayAll}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
