@@ -8,7 +8,7 @@ import { Play, ExternalLink, Calendar, Trash2, Edit3, Archive, ArchiveRestore, X
 import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getIntervalDescription, getDifficultyLabel } from "@/lib/fsrs";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 
@@ -50,6 +50,14 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const [sortBy, setSortBy] = useState<SortOption>("createdAt");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTrackId = searchParams.get('trackId');
+
+  const activeTrackName = useMemo(() => {
+    if (!initialTrackId) return null;
+    const item = initialItems.find(i => i.sentence.track.id === initialTrackId);
+    return item?.sentence.track.title ?? null;
+  }, [initialTrackId, initialItems]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -100,6 +108,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
   const filteredItems = useMemo(() => {
     const filtered = initialItems.filter((item) => {
+      if (initialTrackId && item.sentence.track.id !== initialTrackId) return false;
       if (!showArchived && item.isArchived) return false;
       if (showArchived && !item.isArchived) return false;
 
@@ -142,7 +151,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
-  }, [initialItems, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
+  }, [initialItems, initialTrackId, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
 
   const playAudio = (item: VaultItem) => {
     if (!audioRef.current) {
@@ -218,6 +227,21 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
           {showArchived ? 'Show Active' : 'Show Archived'}
         </Button>
       </div>
+
+      {activeTrackName && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
+          <span className="text-sm text-indigo-700">
+            Filtered by track: <strong>{activeTrackName}</strong>
+          </span>
+          <button
+            onClick={() => router.push('/vault')}
+            className="ml-auto text-indigo-400 hover:text-indigo-700 transition-colors"
+            title="Clear track filter"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Advanced Filters */}
       <div className="bg-white rounded-lg border">
