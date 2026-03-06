@@ -160,6 +160,15 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
                              Set to {config.label}
                           </DropdownMenuItem>
                         ))}
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/vault?trackId=${track.id}`);
+                          }}
+                        >
+                          <BookOpen className="mr-2 h-4 w-4" /> View Notes
+                        </DropdownMenuItem>
                         <div className="h-px bg-border my-1" />
                         <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
                           <Edit3 className="mr-2 h-4 w-4" /> Edit
