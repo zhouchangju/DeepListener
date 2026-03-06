@@ -36,7 +36,6 @@ async function VaultContent() {
 
   const [items, dueCount, totalCount] = await Promise.all([
     prisma.reviewItem.findMany({
-      take: 100,
       select: {
         id: true,
         userNote: true,
@@ -84,10 +83,15 @@ async function VaultContent() {
     items.map(i => [i.sentence.track.id, i.sentence.track])
   ).values()];
 
+  const exportItems = items.map(i => ({
+    difficulty: i.difficulty,
+    sentence: { track: { id: i.sentence.track.id } },
+  }));
+
   return (
     <>
       <ExportButtons
-        items={items as any}
+        items={exportItems}
         availableTracks={uniqueTracks}
         dueCount={dueCount}
       />
