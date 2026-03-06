@@ -131,17 +131,20 @@ async function gatherSegments(
     for (const item of items) {
       // Validate audioUrl to prevent path traversal
       const audioUrl = item.sentence.track.audioUrl;
-      
+
+      // Normalize: strip leading slash (stored as /uploads/... in DB)
+      const normalizedUrl = audioUrl.startsWith('/') ? audioUrl.slice(1) : audioUrl;
+
       // Check for path traversal attempts
-      if (audioUrl.includes('..') || audioUrl.includes('\\') || audioUrl.startsWith('/')) {
+      if (normalizedUrl.includes('..') || normalizedUrl.includes('\\')) {
         console.warn(`Invalid audioUrl detected (potential path traversal): ${audioUrl}`);
         continue;
       }
-      
+
       const audioPath = path.join(
         process.cwd(),
         'public',
-        audioUrl
+        normalizedUrl
       );
 
       // Ensure the resolved path is within the public directory
