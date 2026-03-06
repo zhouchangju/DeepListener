@@ -80,13 +80,17 @@ async function VaultContent() {
   ]);
 
   const uniqueTracks = [...new Map(
-    items.map(i => [i.sentence.track.id, i.sentence.track])
+    items
+      .filter(i => !i.isArchived)
+      .map(i => [i.sentence.track.id, i.sentence.track])
   ).values()];
 
-  const exportItems = items.map(i => ({
-    difficulty: i.difficulty,
-    sentence: { track: { id: i.sentence.track.id } },
-  }));
+  const exportItems = items
+    .filter(i => !i.isArchived)
+    .map(i => ({
+      difficulty: i.difficulty,
+      sentence: { track: { id: i.sentence.track.id } },
+    }));
 
   return (
     <>
