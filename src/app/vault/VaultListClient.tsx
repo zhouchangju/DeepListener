@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,17 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
   const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
 
   playAllIndexRef.current = playAllIndex;
+
+  useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        const a = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
+        if (a.activeTimer) clearTimeout(a.activeTimer);
+        audio.pause();
+      }
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sentence from your vault?")) return;
@@ -230,7 +241,9 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
     audio.src = item.sentence.track.audioUrl;
     audio.currentTime = item.sentence.startTime;
-    audio.play();
+    audio.play().catch(() => {
+      stopPlayAll();
+    });
     setPlayingId(item.id);
     setPlayAllIndex(index);
     playAllIndexRef.current = index;
