@@ -195,6 +195,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const VALID_DIFFICULTIES = ['NORMAL', 'HARD', 'VERY_HARD'];
+
+    if (difficulties !== undefined) {
+      if (!Array.isArray(difficulties) || difficulties.some((d: unknown) => !VALID_DIFFICULTIES.includes(d as string))) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid difficulties value' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (trackIds !== undefined) {
+      if (!Array.isArray(trackIds) || trackIds.some((id: unknown) => typeof id !== 'string' || (id as string).trim() === '')) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid trackIds value' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Gather segments
     const segments = await gatherSegments(type, trackId, difficulties, trackIds);
 
