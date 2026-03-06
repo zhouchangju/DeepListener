@@ -501,6 +501,8 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
         <div className="text-center py-20 bg-white rounded-xl border border-dashed text-gray-400">
           {showArchived
             ? 'No archived notes. Archive some notes to see them here!'
+            : initialTrackId
+            ? 'No saved notes for this track yet. Capture difficult sentences from the practice page!'
             : 'Your vault is empty. Capture some difficult sentences from the Workbench first!'}
         </div>
       )}
