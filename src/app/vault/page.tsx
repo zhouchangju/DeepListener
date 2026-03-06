@@ -80,9 +80,17 @@ async function VaultContent() {
     prisma.reviewItem.count()
   ]);
 
+  const uniqueTracks = [...new Map(
+    items.map(i => [i.sentence.track.id, i.sentence.track])
+  ).values()];
+
   return (
     <>
-      <ExportButtons itemCount={items.length} dueCount={dueCount} />
+      <ExportButtons
+        items={items as any}
+        availableTracks={uniqueTracks}
+        dueCount={dueCount}
+      />
       <VaultListClient initialItems={items as any} totalCount={totalCount} />
     </>
   );
