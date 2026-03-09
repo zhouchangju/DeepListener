@@ -16,6 +16,7 @@ interface MiniWavePlayerProps {
   RightAction?: React.ReactNode;
   enableRegions?: boolean;
   autoPlay?: boolean;
+  loop?: boolean;
 }
 
 export default function MiniWavePlayer({
@@ -28,12 +29,19 @@ export default function MiniWavePlayer({
   RightAction,
   enableRegions = false,
   autoPlay = false,
+  loop = false,
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<RegionsPlugin | null>(null);
+  const loopRef = useRef(loop);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasRegion, setHasRegion] = useState(false);
+
+  // Keep loopRef in sync with loop prop
+  useEffect(() => {
+    loopRef.current = loop;
+  }, [loop]);
 
   useEffect(() => {
     if (wavesurferRef.current) {
@@ -92,7 +100,13 @@ export default function MiniWavePlayer({
 
     ws.on("play", () => setIsPlaying(true));
     ws.on("pause", () => setIsPlaying(false));
-    ws.on("finish", () => setIsPlaying(false));
+    ws.on("finish", () => {
+      setIsPlaying(false);
+      // Loop the entire audio if loop is enabled and no region is active
+      if (loopRef.current && !hasRegion) {
+        ws.play();
+      }
+    });
 
     if (autoPlay) {
       ws.on('ready', () => {

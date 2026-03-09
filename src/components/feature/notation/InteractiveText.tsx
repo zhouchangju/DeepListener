@@ -106,7 +106,7 @@ export const InteractiveText = React.memo(({
                   ●
                 </span>
               )}
-              {token.text}
+              {token.text}{" "}
             </span>
 
             {/* Gap / Linking Area */}

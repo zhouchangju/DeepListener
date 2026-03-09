@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy } from "lucide-react";
+import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy, Eye, EyeOff } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import SpeedSelector from "./SpeedSelector";
@@ -41,7 +41,9 @@ export default function ShadowingConsole({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [activeTool, setActiveTool] = useState<NotationType | null>(null);
   const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
-  
+  const [blindMode, setBlindMode] = useState(false);
+  const [isTextRevealed, setIsTextRevealed] = useState(false);
+
   // Text Editing State
   const [isEditingText, setIsEditingText] = useState(false);
   const [tempText, setTempText] = useState(sentence.text);
@@ -74,6 +76,7 @@ export default function ShadowingConsole({
     }
     setTempText(sentence.text); // Sync temp text
     setIsEditingText(false); // Reset edit mode
+    setIsTextRevealed(false); // Reset text reveal
   }, [sentence.id, sentence.formatting, sentence.text]);
 
   // Auto-play original audio after 0.5s when switching to next sentence
@@ -198,6 +201,18 @@ export default function ShadowingConsole({
             <Button
               variant="ghost"
               size="icon"
+              className={blindMode ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-600"}
+              onClick={() => {
+                setBlindMode(!blindMode);
+                setIsTextRevealed(false);
+              }}
+              title={blindMode ? "Show text" : "Hide text"}
+            >
+              {blindMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className={sentence.reviewItem ? "text-amber-500 hover:text-amber-600" : "text-slate-400 hover:text-indigo-600"}
               onClick={() => onCapture(sentence.id)}
             >
@@ -225,6 +240,20 @@ export default function ShadowingConsole({
                         <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
                             <Check className="w-4 h-4 mr-2" /> Save Text
                         </Button>
+                    </div>
+                </div>
+            ) : blindMode && !isTextRevealed ? (
+                <div
+                    className="relative group cursor-pointer"
+                    onClick={() => setIsTextRevealed(true)}
+                >
+                    <div className="text-2xl font-medium text-slate-300 leading-loose text-center max-w-xl blur-sm select-none">
+                        {sentence.text}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-slate-100/90 px-4 py-2 rounded-lg text-slate-500 text-sm font-medium">
+                            <Eye className="h-4 w-4 inline mr-1" /> Click to reveal text
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -267,8 +296,8 @@ export default function ShadowingConsole({
                     </div>
                 </div>
             )}
-            
-            {!isEditingText && <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />}
+
+            {!isEditingText && !blindMode && <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />}
           </div>
 
           {/* Visualization Area */}
@@ -290,6 +319,7 @@ export default function ShadowingConsole({
                     progressColor="#475569"
                     playbackRate={playbackRate}
                     enableRegions={true}
+                    loop={isLooping}
                     RightAction={
                        <Button 
                         size="icon" 
@@ -330,6 +360,7 @@ export default function ShadowingConsole({
                   waveColor="#94a3b8"
                   progressColor="#475569"
                   playbackRate={playbackRate}
+                  loop={isLooping}
                   RightAction={
                        <Button 
                         size="icon" 
