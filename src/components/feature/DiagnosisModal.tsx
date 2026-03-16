@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,14 @@ const ERROR_TAGS = [
   { id: "Accent", label: "Accent (口音)" },
 ];
 
+export function getInitialDiagnosisTags(initialTags: string[], shouldDefaultVocab: boolean) {
+  if (initialTags.length > 0) {
+    return initialTags;
+  }
+
+  return shouldDefaultVocab ? ["Vocab"] : [];
+}
+
 interface DiagnosisModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,6 +39,7 @@ interface DiagnosisModalProps {
   initialTags?: string[];
   initialNote?: string;
   initialDifficulty?: string;
+  shouldDefaultVocab?: boolean;
 }
 
 export default function DiagnosisModal({
@@ -41,18 +50,13 @@ export default function DiagnosisModal({
   initialTags = [],
   initialNote = "",
   initialDifficulty = "NORMAL",
+  shouldDefaultVocab = false,
 }: DiagnosisModalProps) {
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [note, setNote] = useState("");
-  const [difficulty, setDifficulty] = useState("NORMAL");
-
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedTags(initialTags);
-      setNote(initialNote);
-      setDifficulty(initialDifficulty);
-    }
-  }, [isOpen, initialTags, initialNote, initialDifficulty]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(
+    () => getInitialDiagnosisTags(initialTags, shouldDefaultVocab)
+  );
+  const [note, setNote] = useState(() => initialNote);
+  const [difficulty, setDifficulty] = useState(() => initialDifficulty);
 
   const toggleTag = (id: string) => {
     setSelectedTags((prev) =>
@@ -71,12 +75,12 @@ export default function DiagnosisModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]" zIndex="z-[60]">
         <DialogHeader>
-          <DialogTitle>Why couldn't you catch this?</DialogTitle>
+          <DialogTitle>Why couldn&apos;t you catch this?</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
           <div className="p-3 bg-gray-50 rounded-md text-sm italic text-gray-600 border">
-            "{sentenceText}"
+            &ldquo;{sentenceText}&rdquo;
           </div>
           
           <div className="flex flex-wrap gap-2">

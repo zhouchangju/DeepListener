@@ -220,6 +220,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
       />
 
       <DiagnosisModal
+        key={capturingSentenceId ?? "closed"}
         isOpen={!!capturingSentenceId}
         onClose={() => setCapturingSentenceId(null)}
         sentenceText={currentSentence?.text || ""}
@@ -227,6 +228,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         initialTags={currentSentence?.reviewItem?.tags?.map((t) => t.name) || []}
         initialNote={currentSentence?.reviewItem?.userNote || ""}
         initialDifficulty={currentSentence?.reviewItem?.difficulty || "NORMAL"}
+        shouldDefaultVocab={!currentSentence?.reviewItem}
       />
       
       <RenameTrackModal 
