@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Bold, Copy } from "lucide-react";
 import { toast } from "sonner";
 
+// Color options - red is first for F8 shortcut
+const COLORS = [
+    { c: "#EF4444", label: "Red" },
+    { c: "#000000", label: "Black" },
+    { c: "#3B82F6", label: "Blue" },
+    { c: "#10B981", label: "Green" },
+    { c: "#F59E0B", label: "Amber" },
+    { c: "#8B5CF6", label: "Purple" }
+];
+
 interface NoteEditorProps {
   initialNote?: string | null;
   trackId: string;
@@ -79,6 +89,23 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
     handleInput();
   };
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F8 applies the first color (red)
+      if (e.key === "F8") {
+        e.preventDefault();
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim() !== "") {
+          exec("foreColor", COLORS[0].c);
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleCopy = async () => {
     if (!editorRef.current) return;
 
@@ -132,14 +159,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
         <div className="h-4 w-px bg-slate-300 mx-1" />
 
         <div className="flex gap-1 items-center">
-            {[
-                { c: "#000000", label: "Black" },
-                { c: "#EF4444", label: "Red" },
-                { c: "#3B82F6", label: "Blue" },
-                { c: "#10B981", label: "Green" },
-                { c: "#F59E0B", label: "Amber" },
-                { c: "#8B5CF6", label: "Purple" }
-            ].map(({c, label}) => (
+            {COLORS.map(({c, label}) => (
                 <button
                     key={c}
                     className="w-5 h-5 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm"

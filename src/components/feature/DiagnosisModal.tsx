@@ -73,7 +73,7 @@ export default function DiagnosisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]" zIndex="z-[60]">
+      <DialogContent className="sm:max-w-[638px]" zIndex="z-[60]">
         <DialogHeader>
           <DialogTitle>Why couldn&apos;t you catch this?</DialogTitle>
         </DialogHeader>
