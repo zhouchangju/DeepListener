@@ -14,8 +14,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
+export function getShadowingActionButtonsClassName() {
+  return "absolute -right-16 top-0 flex flex-col gap-1";
+}
+
 interface ShadowingConsoleProps {
-  sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null; reviewItem?: any };
+  sentence: { id: string; text: string; startTime: number; endTime: number; formatting?: string | null; reviewItem?: object | null };
   fullAudioBuffer: AudioBuffer;
   currentIndex: number;
   totalCount: number;
@@ -112,7 +116,7 @@ export default function ShadowingConsole({
       setIsEditingText(false);
       router.refresh();
       toast.success("Text updated");
-    } catch (e) {
+    } catch {
       toast.error("Failed to save text");
     }
   };
@@ -158,9 +162,9 @@ export default function ShadowingConsole({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isEditingText) {
         e.stopPropagation(); // Allow typing in textarea
-        return; 
+        return;
     }
-    
+
     e.stopPropagation(); // Stop event from bubbling to background player
 
     if (e.key === "Escape") {
@@ -179,6 +183,29 @@ export default function ShadowingConsole({
       } else {
         stopAll();
       }
+    } else if (e.key === "r" || e.key === "R") {
+      // R - Replay original audio
+      e.preventDefault();
+      playOriginal();
+    } else if (e.key === "t" || e.key === "T") {
+      // T - Toggle stress notation tool
+      e.preventDefault();
+      setActiveTool(activeTool === "stress" ? null : "stress");
+    } else if (e.key === "c" || e.key === "C") {
+      // C - Copy text to clipboard
+      e.preventDefault();
+      (async () => {
+        try {
+          await navigator.clipboard.writeText(sentence.text);
+          toast.success("Copied to clipboard");
+        } catch {
+          toast.error("Failed to copy");
+        }
+      })();
+    } else if (e.key === "n" || e.key === "N") {
+      // N - Open note capture modal
+      e.preventDefault();
+      onCapture(sentence.id);
     }
   };
 
@@ -267,20 +294,20 @@ export default function ShadowingConsole({
                     className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
                     />
                     {/* Action Buttons */}
-                    <div className="absolute -right-16 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={getShadowingActionButtonsClassName()}>
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            className="h-12 w-12"
                             onClick={() => setIsEditingText(true)}
                             title="Edit Text"
                         >
-                            <Edit3 className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
+                            <Edit3 className="w-6 h-6 text-slate-400 hover:text-indigo-600" />
                         </Button>
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            className="h-12 w-12"
                             onClick={async () => {
                                 try {
                                     await navigator.clipboard.writeText(sentence.text);
@@ -291,7 +318,7 @@ export default function ShadowingConsole({
                             }}
                             title="Copy text"
                         >
-                            <Copy className="w-4 h-4 text-slate-400 hover:text-indigo-600" />
+                            <Copy className="w-6 h-6 text-slate-400 hover:text-indigo-600" />
                         </Button>
                     </div>
                 </div>

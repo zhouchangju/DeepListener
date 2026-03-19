@@ -92,12 +92,12 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // F8 applies the first color (red)
-      if (e.key === "F8") {
+      // F1, F2, F3, F4 all apply red color (for easy access)
+      if (e.key === "F1" || e.key === "F2" || e.key === "F3" || e.key === "F4") {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.toString().trim() !== "") {
-          exec("foreColor", COLORS[0].c);
+          exec("foreColor", COLORS[0].c); // Red
         }
       }
     };
