@@ -12,9 +12,7 @@ interface Track {
 
 interface VaultItemForExport {
   difficulty?: string | null;
-  sentence: {
-    track: { id: string };
-  };
+  sentence: { track: { id: string } };
   createdAt?: string | Date;
 }
 
@@ -22,14 +20,31 @@ interface ExportButtonsProps {
   items: VaultItemForExport[];
   availableTracks: Track[];
   dueCount: number;
+  // Filter state props
+  selectedDifficulties: string[];
+  setSelectedDifficulties: (vals: string[]) => void;
+  selectedTrackIds: string[];
+  setSelectedTrackIds: (vals: string[]) => void;
+  dateFrom: string;
+  setDateFrom: (val: string) => void;
+  dateTo: string;
+  setDateTo: (val: string) => void;
 }
 
-export default function ExportButtons({ items, availableTracks, dueCount }: ExportButtonsProps) {
+export default function ExportButtons({
+  items,
+  availableTracks,
+  dueCount,
+  selectedDifficulties,
+  setSelectedDifficulties,
+  selectedTrackIds,
+  setSelectedTrackIds,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+}: ExportButtonsProps) {
   const [isExporting, setIsExporting] = useState<string | null>(null);
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
 
   const exportCount = useMemo(() => {
     return items.filter(item => {
@@ -56,14 +71,18 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
   }, [items, selectedDifficulties, selectedTrackIds, dateFrom, dateTo]);
 
   const toggleDifficulty = (value: string) => {
-    setSelectedDifficulties(prev =>
-      prev.includes(value) ? prev.filter(d => d !== value) : [...prev, value]
+    setSelectedDifficulties(
+      selectedDifficulties.includes(value)
+        ? selectedDifficulties.filter((d) => d !== value)
+        : [...selectedDifficulties, value]
     );
   };
 
   const toggleTrack = (id: string) => {
-    setSelectedTrackIds(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    setSelectedTrackIds(
+      selectedTrackIds.includes(id)
+        ? selectedTrackIds.filter((t) => t !== id)
+        : [...selectedTrackIds, id]
     );
   };
 
@@ -118,10 +137,46 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
   const exportNotes = async () => {
     setIsExporting('notes');
     try {
+      // Get filtered item IDs for notes export
+      const filteredItemIds = items
+        .filter(item => {
+          if (selectedDifficulties.length > 0) {
+            const d = item.difficulty || 'NORMAL';
+            if (!selectedDifficulties.includes(d)) return false;
+          }
+          if (selectedTrackIds.length > 0) {
+            if (!selectedTrackIds.includes(item.sentence.track.id)) return false;
+          }
+          if (dateFrom) {
+            const itemDate = new Date(item.createdAt || '');
+            const fromDate = new Date(dateFrom);
+            if (itemDate < fromDate) return false;
+          }
+          if (dateTo) {
+            const itemDate = new Date(item.createdAt || '');
+            const toDate = new Date(dateTo);
+            toDate.setHours(23, 59, 59, 999);
+            if (itemDate > toDate) return false;
+          }
+          return true;
+        })
+        .map(item => {
+          // Extract ID from the item - we need to pass the full items with IDs
+          // For now, we'll use the backend to handle filtering
+          return null;
+        })
+        .filter(Boolean);
+
       const response = await fetch('/api/vault/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: [] }),
+        body: JSON.stringify({
+          tags: [],
+          difficulties: selectedDifficulties.length > 0 ? selectedDifficulties : undefined,
+          trackIds: selectedTrackIds.length > 0 ? selectedTrackIds : undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -148,14 +203,21 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
     }
   };
 
-  const formatDateForDisplay = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const hasActiveFilters =
+    selectedDifficulties.length > 0 ||
+    selectedTrackIds.length > 0 ||
+    dateFrom ||
+    dateTo;
+
+  const clearAllFilters = () => {
+    setSelectedDifficulties([]);
+    setSelectedTrackIds([]);
+    setDateFrom('');
+    setDateTo('');
   };
 
   return (
-    <div className="mb-6 -mt-6 space-y-3">
+    <div className="mb-6 space-y-3">
       {/* Filter row */}
       <div className="flex flex-wrap gap-4 p-3 bg-slate-50 border rounded-lg">
         {/* Difficulty filter */}
@@ -233,6 +295,18 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
             )}
           </div>
         </div>
+
+        {/* Clear all button */}
+        {hasActiveFilters && (
+          <div className="flex items-end">
+            <button
+              onClick={clearAllFilters}
+              className="px-3 py-1 text-xs text-gray-600 hover:text-red-600 border border-gray-200 rounded-md hover:border-red-200 transition-all"
+            >
+              Clear All
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Export buttons */}
@@ -257,11 +331,11 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
         <Button
           onClick={exportNotes}
           variant="outline"
-          disabled={isExporting !== null || items.length === 0}
+          disabled={isExporting !== null || exportCount === 0}
           className="flex items-center gap-2"
         >
           <FileText className="w-4 h-4" />
-          {isExporting === 'notes' ? 'Exporting...' : `Export Notes (${items.length})`}
+          {isExporting === 'notes' ? 'Exporting...' : `Export Notes (${exportCount})`}
         </Button>
       </div>
     </div>

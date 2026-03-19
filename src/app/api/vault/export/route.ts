@@ -4,14 +4,20 @@ import { prisma } from "@/lib/prisma";
 /**
  * Export vault notes as text file grouped by tags/categories
  * POST /api/vault/export
- * Body: { tags?: string[] } - Optional: specific tags to filter by
+ * Body: { tags?: string[], difficulties?: string[], trackIds?: string[], dateFrom?: string, dateTo?: string }
  */
 export async function POST(req: NextRequest) {
   try {
-    const { tags } = await req.json();
+    const { tags, difficulties, trackIds, dateFrom, dateTo } = await req.json();
 
     // Build query filter
-    const where: { isArchived: boolean; tags?: { some: { name: { in: string[] } } } } = {
+    const where: {
+      isArchived: boolean;
+      tags?: { some: { name: { in: string[] } } };
+      difficulty?: { in: string[] };
+      sentence?: { trackId?: { in: string[] } };
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {
       isArchived: false,
     };
 
@@ -24,6 +30,28 @@ export async function POST(req: NextRequest) {
           },
         },
       };
+    }
+
+    // Filter by difficulty
+    if (difficulties && difficulties.length > 0) {
+      where.difficulty = { in: difficulties };
+    }
+
+    // Filter by track IDs
+    if (trackIds && trackIds.length > 0) {
+      where.sentence = {
+        trackId: { in: trackIds },
+      };
+    }
+
+    // Filter by date range
+    if (dateFrom) {
+      where.createdAt = { ...where.createdAt, gte: new Date(dateFrom) };
+    }
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      where.createdAt = { ...where.createdAt, lte: toDate };
     }
 
     // Fetch review items with their tags and sentence data
@@ -86,6 +114,23 @@ export async function POST(req: NextRequest) {
     let textContent = `DeepListener Vault Notes Export\n`;
     textContent += `Generated: ${timestamp}\n`;
     textContent += `Total Notes: ${items.length}\n`;
+
+    // Add filter info if filters were applied
+    const filters: string[] = [];
+    if (difficulties && difficulties.length > 0) {
+      filters.push(`Difficulties: ${difficulties.join(", ")}`);
+    }
+    if (trackIds && trackIds.length > 0) {
+      filters.push(`Tracks: ${trackIds.length} selected`);
+    }
+    if (dateFrom || dateTo) {
+      const dateRange = `${dateFrom || 'beginning'} - ${dateTo || 'now'}`;
+      filters.push(`Date Range: ${dateRange}`);
+    }
+    if (filters.length > 0) {
+      textContent += `Filters: ${filters.join(" | ")}\n`;
+    }
+
     textContent += `${"=".repeat(50)}\n\n`;
 
     // Sort categories alphabetically

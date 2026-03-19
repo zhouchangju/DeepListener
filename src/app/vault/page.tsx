@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import VaultListClient from "./VaultListClient";
+import VaultPageClient from "./VaultPageClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import ExportButtons from "./ExportButtons";
 
 export default function VaultPage() {
   return (
@@ -85,23 +85,13 @@ async function VaultContent() {
       .map(i => [i.sentence.track.id, i.sentence.track])
   ).values()];
 
-  const exportItems = items
-    .filter(i => !i.isArchived)
-    .map(i => ({
-      difficulty: i.difficulty,
-      sentence: { track: { id: i.sentence.track.id } },
-      createdAt: i.createdAt,
-    }));
-
   return (
-    <>
-      <ExportButtons
-        items={exportItems}
-        availableTracks={uniqueTracks}
-        dueCount={dueCount}
-      />
-      <VaultListClient initialItems={items as any} totalCount={totalCount} />
-    </>
+    <VaultPageClient
+      items={items as any}
+      availableTracks={uniqueTracks}
+      dueCount={dueCount}
+      totalCount={totalCount}
+    />
   );
 }
 
