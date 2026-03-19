@@ -23,7 +23,9 @@ async function gatherSegments(
   type: 'all' | 'due' | 'track' | 'filtered',
   trackId?: string,
   difficulties?: string[],
-  trackIds?: string[]
+  trackIds?: string[],
+  dateFrom?: string,
+  dateTo?: string
 ): Promise<AudioSegment[]> {
   let reviewItems;
 
@@ -91,6 +93,8 @@ async function gatherSegments(
           isArchived: false,
           ...(difficulties && difficulties.length > 0 && { difficulty: { in: difficulties } }),
           ...(trackIds && trackIds.length > 0 && { sentence: { trackId: { in: trackIds } } }),
+          ...(dateFrom && { createdAt: { gte: new Date(dateFrom) } }),
+          ...(dateTo && { createdAt: { lte: new Date(dateTo) } }),
         },
         include: {
           sentence: {
@@ -176,11 +180,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { type, trackId, difficulties, trackIds }: {
+    const { type, trackId, difficulties, trackIds, dateFrom, dateTo }: {
       type: 'all' | 'due' | 'track' | 'filtered';
       trackId?: string;
       difficulties?: string[];
       trackIds?: string[];
+      dateFrom?: string;
+      dateTo?: string;
     } = body;
 
     // Validate input
@@ -218,8 +224,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validate date range
+    if (dateFrom !== undefined && dateTo !== undefined) {
+      const fromDate = new Date(dateFrom);
+      const toDate = new Date(dateTo);
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid date format. Use ISO format (YYYY-MM-DD)' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      if (fromDate > toDate) {
+        return new Response(
+          JSON.stringify({ error: 'dateFrom must be before or equal to dateTo' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Gather segments
-    const segments = await gatherSegments(type, trackId, difficulties, trackIds);
+    const segments = await gatherSegments(type, trackId, difficulties, trackIds, dateFrom, dateTo);
 
     if (segments.length === 0) {
       return new Response(

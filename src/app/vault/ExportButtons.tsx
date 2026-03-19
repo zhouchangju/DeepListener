@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, Clock, FileText } from "lucide-react";
+import { Download, Clock, FileText, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
 
@@ -15,6 +15,7 @@ interface VaultItemForExport {
   sentence: {
     track: { id: string };
   };
+  createdAt?: string | Date;
 }
 
 interface ExportButtonsProps {
@@ -27,6 +28,8 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
   const [isExporting, setIsExporting] = useState<string | null>(null);
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const exportCount = useMemo(() => {
     return items.filter(item => {
@@ -37,9 +40,20 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
       if (selectedTrackIds.length > 0) {
         if (!selectedTrackIds.includes(item.sentence.track.id)) return false;
       }
+      if (dateFrom) {
+        const itemDate = new Date(item.createdAt || '');
+        const fromDate = new Date(dateFrom);
+        if (itemDate < fromDate) return false;
+      }
+      if (dateTo) {
+        const itemDate = new Date(item.createdAt || '');
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (itemDate > toDate) return false;
+      }
       return true;
     }).length;
-  }, [items, selectedDifficulties, selectedTrackIds]);
+  }, [items, selectedDifficulties, selectedTrackIds, dateFrom, dateTo]);
 
   const toggleDifficulty = (value: string) => {
     setSelectedDifficulties(prev =>
@@ -51,6 +65,11 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
     setSelectedTrackIds(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     );
+  };
+
+  const clearDateFilter = () => {
+    setDateFrom('');
+    setDateTo('');
   };
 
   const downloadBlob = async (response: Response, fallbackName: string) => {
@@ -75,6 +94,8 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
       if (type === 'filtered') {
         if (selectedDifficulties.length > 0) body.difficulties = selectedDifficulties;
         if (selectedTrackIds.length > 0) body.trackIds = selectedTrackIds;
+        if (dateFrom) body.dateFrom = dateFrom;
+        if (dateTo) body.dateTo = dateTo;
       }
       const response = await fetch('/api/audio/export', {
         method: 'POST',
@@ -127,6 +148,12 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
     }
   };
 
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
   return (
     <div className="mb-6 -mt-6 space-y-3">
       {/* Filter row */}
@@ -177,6 +204,35 @@ export default function ExportButtons({ items, availableTracks, dueCount }: Expo
             </div>
           </div>
         )}
+
+        {/* Date range filter */}
+        <div>
+          <p className="text-xs text-gray-500 mb-1.5 font-medium">Date Range</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <span className="text-gray-400">~</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={clearDateFilter}
+                className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                title="Clear date filter"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Export buttons */}

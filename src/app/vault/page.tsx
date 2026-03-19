@@ -90,6 +90,7 @@ async function VaultContent() {
     .map(i => ({
       difficulty: i.difficulty,
       sentence: { track: { id: i.sentence.track.id } },
+      createdAt: i.createdAt,
     }));
 
   return (
