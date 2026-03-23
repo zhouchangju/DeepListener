@@ -94,7 +94,13 @@ src/app/
 ├── page.tsx                          # Landing/home page
 ├── layout.tsx                        # Root layout with theme provider
 ├── dashboard/page.tsx                # Analytics dashboard (charts, stats)
-├── library/page.tsx                  # Track management (upload, list, filter)
+├── library/
+│   ├── page.tsx                      # Track management (upload, list, filter)
+│   ├── LibraryManager.tsx            # Library client component with selection & batch playback
+│   ├── TrackList.tsx                 # Track cards grid with multi-select
+│   ├── BatchAudioPlayer.tsx          # Floating player for multi-track loop playback
+│   ├── useBatchPlayback.ts           # Hook for batch playback state management
+│   └── NotesList.tsx                 # Track notes view
 ├── practice/[id]/page.tsx            # Main practice interface (RSC + client component)
 ├── review/page.tsx                   # Spaced repetition review queue
 ├── vault/page.tsx                    # Saved sentence collection
@@ -109,6 +115,41 @@ src/app/
     ├── vault/                        # Vault item management
     └── study-time/                   # Study session logging
 ```
+
+### Library Multi-Track Loop Playback
+
+**Located in `src/app/library/`:**
+
+The Library page supports selecting multiple tracks for continuous loop playback with 3-second gaps.
+
+**Components:**
+- **LibraryManager.tsx**: Manages selection state (`selectedTrackIds: Set<string>`), selection mode toggle, and batch playback coordination
+- **TrackList.tsx**: Renders track cards with checkbox overlay in selection mode; selected tracks show blue ring highlight
+- **useBatchPlayback.ts**: Custom hook managing sequential playback state machine with gap timing
+- **BatchAudioPlayer.tsx**: Floating player with play/pause/skip controls and gap indicator
+
+**State Machine (useBatchPlayback):**
+```typescript
+interface BatchPlaybackState {
+  isActive: boolean;      // Playback session active
+  isPaused: boolean;      // Currently paused
+  currentIndex: number;   // Current track index
+  currentTrackId: string | null;  // null during 3s gap
+}
+```
+
+**Playback Flow:**
+1. Track ends → `onended` callback
+2. Calculate next index (modulo for loop)
+3. `setTimeout(3000)` for 3-second gap
+4. Create new `Audio()` for next track
+5. Update state (shows "3秒间隔中..." during gap)
+
+**UI Pattern:**
+- Selection toggle: "多选" button (outline → filled when active)
+- Selection controls: Select All / Clear / "循环播放 (N)"
+- Visual feedback: Selected cards have `ring-2 ring-indigo-500`
+- Checkbox position: Absolute top-left, styled div (not shadcn/ui Checkbox)
 
 ### Review System Statistics
 
@@ -144,6 +185,7 @@ src/app/
 
 - **WaveSurfer.js:** Primary waveform visualization library
 - **Web Audio API:** Used for zero-delay audio slicing in Shadowing (pre-decoded AudioBuffer in memory)
+- **Native HTML5 Audio:** Used for simple sequential playback (Vault "Play All", Library batch loop) - no waveform, gap-based auto-advancement
 - **Important:** WaveSurfer instances initialized with `shadowDOM: false` to allow global event capture (right-click drag to pan)
 
 ## Code Quality Standards (from GEMINI.md)

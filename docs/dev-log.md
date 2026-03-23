@@ -1,5 +1,22 @@
 # 开发日志 (Dev Log)
 
+## 2026-03-23
+
+### ✅ 今日成就 (Completed)
+
+1.  **Library 多选循环播放 (Multi-Track Loop Playback)**：
+    - **多选功能**：Library 页面新增选择模式，可勾选多个音频进行批量操作。
+    - **循环播放**：选中音频可一键循环播放，每个音频之间自动间隔 3 秒。
+    - **浮动播放器**：新增 `BatchAudioPlayer` 组件，显示当前播放进度、曲目信息，支持播放/暂停/上下曲/停止操作。
+    - **状态管理**：`useBatchPlayback` Hook 管理播放状态机，支持间隙状态显示。
+    - **视觉反馈**：选中的卡片显示蓝色边框高亮，复选框位于左上角。
+
+2.  **组件结构**：
+    - `LibraryManager.tsx`: 管理选择状态和批量播放协调
+    - `TrackList.tsx`: 卡片网格，支持多选模式
+    - `useBatchPlayback.ts`: 播放状态机 Hook
+    - `BatchAudioPlayer.tsx`: 浮动播放器组件
+
 ## 2026-03-19
 
 ### ✅ 今日成就 (Completed)
