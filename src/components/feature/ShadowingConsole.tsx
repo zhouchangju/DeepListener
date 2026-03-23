@@ -284,17 +284,19 @@ export default function ShadowingConsole({
                     </div>
                 </div>
             ) : (
-                <div className="relative group">
-                    <InteractiveText
-                    text={sentence.text}
-                    formatting={localFormatting}
-                    mode="edit"
-                    activeTool={activeTool}
-                    onChange={setLocalFormatting}
-                    className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
-                    />
-                    {/* Action Buttons */}
-                    <div className={getShadowingActionButtonsClassName()}>
+                <div className="relative w-full group">
+                    <div className="flex justify-center">
+                        <InteractiveText
+                        text={sentence.text}
+                        formatting={localFormatting}
+                        mode="edit"
+                        activeTool={activeTool}
+                        onChange={setLocalFormatting}
+                        className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
+                        />
+                    </div>
+                    {/* Action Buttons - fixed to container's right edge */}
+                    <div className="absolute right-0 top-0 flex flex-col gap-1">
                         <Button
                             size="icon"
                             variant="ghost"
