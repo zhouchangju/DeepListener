@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, Check, BookOpen } from "lucide-react";
+import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, Check, BookOpen, Check as CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -36,7 +36,19 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   LEARNT: { label: "已学习", color: "text-green-700", bg: "bg-green-50" },
 };
 
-export default function TrackList({ tracks }: { tracks: Track[] }) {
+interface TrackListProps {
+  tracks: Track[];
+  selectionMode?: boolean;
+  selectedTrackIds?: Set<string>;
+  onToggleSelection?: (trackId: string) => void;
+}
+
+export default function TrackList({
+  tracks,
+  selectionMode = false,
+  selectedTrackIds = new Set(),
+  onToggleSelection,
+}: TrackListProps) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [renamingTrack, setRenamingTrack] = useState<Track | null>(null);
@@ -115,12 +127,35 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tracks.map((track) => {
           const statusConfig = STATUS_CONFIG[track.status] || STATUS_CONFIG["INTENSIVE"];
-          return (
-            <Link key={track.id} href={`/practice/${track.id}`}>
-              <Card className={`hover:shadow-md transition-shadow cursor-pointer relative group ${
-                track.status === "LEARNT" ? "bg-green-50/30" : "hover:bg-slate-50"
-              }`}>
-                <CardHeader className="pr-12">
+          const isSelected = selectedTrackIds.has(track.id);
+
+          const cardContent = (
+            <Card className={`hover:shadow-md transition-shadow relative group ${
+              track.status === "LEARNT" ? "bg-green-50/30" : "hover:bg-slate-50"
+            } ${selectionMode ? "cursor-default" : "cursor-pointer"} ${
+              isSelected ? "ring-2 ring-indigo-500" : ""
+            }`}>
+              {/* Selection Checkbox */}
+              {selectionMode && (
+                <div
+                  className="absolute top-3 left-3 z-10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleSelection?.(track.id);
+                  }}
+                >
+                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? "bg-indigo-500 border-indigo-500"
+                      : "bg-white border-gray-300 hover:border-indigo-400"
+                  }`}>
+                    {isSelected && <CheckIcon className="w-4 h-4 text-white" />}
+                  </div>
+                </div>
+              )}
+
+              <CardHeader className={`pr-12 ${selectionMode ? "pl-12" : ""}`}>
                   <div className="flex flex-wrap gap-2 mb-2">
                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium border ${statusConfig.bg} ${statusConfig.color} border-transparent`}>
                         {statusConfig.label}
@@ -197,6 +232,13 @@ export default function TrackList({ tracks }: { tracks: Track[] }) {
                   </CardDescription>
                 </CardHeader>
               </Card>
+            );
+
+          return selectionMode ? (
+            <div key={track.id}>{cardContent}</div>
+          ) : (
+            <Link key={track.id} href={`/practice/${track.id}`}>
+              {cardContent}
             </Link>
           );
         })}
