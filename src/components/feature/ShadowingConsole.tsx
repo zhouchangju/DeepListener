@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy, Eye, EyeOff } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
+import { getShadowingOverlayClassName, shouldRenderOriginalWavePlayer } from "./shadowing/presentation";
 import SpeedSelector from "./SpeedSelector";
 import { useState, useEffect, useRef } from "react";
 import { InteractiveText } from "./notation/InteractiveText";
@@ -211,7 +212,7 @@ export default function ShadowingConsole({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 outline-none"
+      className={getShadowingOverlayClassName()}
       tabIndex={-1}
       ref={containerRef}
       onKeyDown={handleKeyDown}
@@ -337,32 +338,31 @@ export default function ShadowingConsole({
               </div>
             )}
 
-            {(mode === "idle" || mode === "playing_original" || mode === "recording") &&
-              originalBlob && (
-                <div className="opacity-80">
-                  <MiniWavePlayer
-                    key={sentence.id + "-original"} // Force reset on change
-                    audioBlob={originalBlob}
-                    label="Original"
-                    waveColor="#94a3b8"
-                    progressColor="#475569"
-                    playbackRate={playbackRate}
-                    enableRegions={true}
-                    loop={isLooping}
-                    RightAction={
-                       <Button 
-                        size="icon" 
-                        variant={isLooping ? "default" : "secondary"}
-                        className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
-                        onClick={toggleLoop}
-                        title="Loop Playback"
-                       >
-                          {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
-                       </Button>
-                    }
-                  />
-                </div>
-              )}
+            {shouldRenderOriginalWavePlayer(mode, !!originalBlob) && originalBlob && (
+              <div className={mode === "reviewing" ? "" : "opacity-80"}>
+                <MiniWavePlayer
+                  key={sentence.id + "-original"}
+                  audioBlob={originalBlob}
+                  label="Original"
+                  waveColor="#94a3b8"
+                  progressColor="#475569"
+                  playbackRate={playbackRate}
+                  enableRegions={true}
+                  loop={isLooping}
+                  RightAction={
+                     <Button 
+                      size="icon" 
+                      variant={isLooping ? "default" : "secondary"}
+                      className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
+                      onClick={toggleLoop}
+                      title="Loop Playback"
+                     >
+                        {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
+                     </Button>
+                  }
+                />
+              </div>
+            )}
 
             {mode === "recording" && (
               <div className="h-20 flex items-center justify-center gap-4">
@@ -380,27 +380,8 @@ export default function ShadowingConsole({
               </div>
             )}
 
-            {mode === "reviewing" && originalBlob && userBlob && (
+            {mode === "reviewing" && userBlob && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                <MiniWavePlayer
-                  key={sentence.id + "-original-review"}
-                  audioBlob={originalBlob}
-                  label="Original"
-                  waveColor="#94a3b8"
-                  progressColor="#475569"
-                  playbackRate={playbackRate}
-                  loop={isLooping}
-                  RightAction={
-                       <Button 
-                        size="icon" 
-                        variant={isLooping ? "default" : "secondary"}
-                        className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
-                        onClick={toggleLoop}
-                       >
-                          {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
-                       </Button>
-                  }
-                />
                 <MiniWavePlayer
                   key={sentence.id + "-user"}
                   audioBlob={userBlob}

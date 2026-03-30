@@ -7,6 +7,7 @@ import AudioPlayer from "@/components/feature/AudioPlayer";
 import DiagnosisModal from "@/components/feature/DiagnosisModal";
 
 import ShadowingConsole from "@/components/feature/ShadowingConsole";
+import { shouldRenderBackgroundAudioPlayer, shouldRenderTrackNotes } from "@/components/feature/shadowing/presentation";
 
 import { Button } from "@/components/ui/button";
 
@@ -202,22 +203,28 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         </div>
       </div>
 
-      <AudioPlayer 
-        audioUrl={track.audioUrl} 
-        sentences={track.sentences} 
-        onCapture={handleCapture}
-        blindMode={blindMode}
-        onShadowing={(index) => {
-          setShadowIndex(index);
-          setShadowingMode(true);
-        }}
-      />
-      
-      <NoteEditor
-        trackId={track.id}
-        initialNote={note}
-        onSaved={(content) => setNote(content)}
-      />
+      {shouldRenderBackgroundAudioPlayer(shadowingMode) && (
+        <AudioPlayer 
+          audioUrl={track.audioUrl} 
+          sentences={track.sentences} 
+          onCapture={handleCapture}
+          blindMode={blindMode}
+          onShadowing={(index) => {
+            setShadowIndex(index);
+            setShadowingMode(true);
+          }}
+        />
+      )}
+
+      {shouldRenderTrackNotes(shadowingMode) && (
+        <>
+          <NoteEditor
+            trackId={track.id}
+            initialNote={note}
+            onSaved={(content) => setNote(content)}
+          />
+        </>
+      )}
 
       <DiagnosisModal
         key={capturingSentenceId ?? "closed"}

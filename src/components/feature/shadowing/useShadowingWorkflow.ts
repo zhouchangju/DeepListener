@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { sliceAudioBuffer } from "@/lib/audio-utils";
 import { toast } from "sonner";
 import { useAudioRecorder } from "./useAudioRecorder";
+import { getShadowingAudioSliceKey } from "./presentation";
 
 type Mode = "idle" | "playing_original" | "recording" | "reviewing";
 
@@ -18,10 +19,12 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   const [isLooping, setIsLooping] = useState(false);
   
   const originalAudioRef = useRef<HTMLAudioElement | null>(null);
+  const originalAudioUrlRef = useRef<string | null>(null);
   const abortedRef = useRef(false);
   const activeSentenceIdRef = useRef<string | undefined>(undefined);
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { startRecording, stopRecording, isRecording } = useAudioRecorder();
+  const { startRecording, stopRecording } = useAudioRecorder();
+  const sliceKey = getShadowingAudioSliceKey(sentence);
 
   // Stop everything cleanup
   const stopAll = useCallback(() => {
@@ -36,6 +39,11 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       originalAudioRef.current.pause();
       originalAudioRef.current.currentTime = 0;
       originalAudioRef.current.onended = null; // Clear handlers
+    }
+
+    if (originalAudioUrlRef.current) {
+      URL.revokeObjectURL(originalAudioUrlRef.current);
+      originalAudioUrlRef.current = null;
     }
 
     setMode("idle");
@@ -54,6 +62,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       const blob = sliceAudioBuffer(fullAudioBuffer, sentence.startTime, sentence.endTime);
       setOriginalBlob(blob);
       const url = URL.createObjectURL(blob);
+      originalAudioUrlRef.current = url;
       originalAudioRef.current = new Audio(url);
       originalAudioRef.current.playbackRate = playbackRate;
     } catch (e) {
@@ -62,7 +71,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
     }
 
     return () => stopAll();
-  }, [fullAudioBuffer, sentence]); // Remove playbackRate and stopAll from dependencies
+  }, [fullAudioBuffer, sliceKey]); // Re-slice only when the audio segment itself changes
 
   // Real-time rate sync
   useEffect(() => {
