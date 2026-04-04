@@ -1,68 +1,403 @@
 # Product Requirements Document (PRD): DeepListener
 
-**Version:** 3.1 (Updated 2026-01-25)
-**Tech Stack:** Next.js, Prisma (SQLite), Tailwind CSS, WaveSurfer.js, Deepgram/OpenAI/Gemini
+**Version:** 4.0 (Updated 2026-04-04)
+**Status:** This document is aligned to the current codebase implementation, not an aspirational roadmap.
+**Tech Stack:** Next.js App Router, React 19, Prisma + SQLite, Tailwind CSS, WaveSurfer.js, FFmpeg, Deepgram/OpenAI/Gemini, Symphony tooling
 
-## 1. 产品核心理念 (Core Philosophy)
-- **原子级解码**：不放过任何一个连读或弱读。
-- **闭环训练**：听 (Blind) -> 诊 (Capture) -> 练 (Shadowing) -> 复 (SRS)。
+## 1. 产品定位 (Product Positioning)
 
-## 2. 核心功能模块 (Feature Modules)
+DeepListener 是一个面向高阶英语学习者的听力训练与复习系统。它不是泛化的播放器，而是围绕“句子级精听”和“复盘闭环”设计的训练台，核心目标是让用户把听不懂的材料拆成可诊断、可跟读、可复习、可统计的最小单元。
 
-### 模块 A: 波形精听台 (The Workbench)
-- **多模型支持**：Deepgram (Nova-2), OpenAI, Google Gemini.
-- **交互升级**：
-    - 右键拖拽平移 (无 Shadow DOM 阻挡)。
-    - 智能圈选：松开即循环播放选区。
-    - 列表强力同步：无论如何操作，当前句子始终居中。
-- **盲听模式 (Blind Mode)**：
-    - 全局开关，文本默认模糊。
-    - 点击单句揭晓，辅助听力验证。
-- **笔记可视化**：已加入 Vault 的句子显示琥珀色高亮。
+当前代码中的训练闭环是：
 
-### 模块 B: Shadowing 工作台 (跟读)
-- **入口**：顶部 "Start Shadowing" 或列表单句 Mic 图标。
-- **沉浸式 UI**：全屏覆盖，专注当前句。
-- **双波形轨道**：
-    - Track 1: 原音 (Web Audio API 实时切片)。
-    - Track 2: 用户录音。
-- **工作流**：Play Original -> Auto Record -> Auto Replay Recording。
-- **控制**：支持 "Rec Again" (跳过听原音直接重录)。
+**上传音频 -> 自动转录切句 -> 精听/盲听 -> 诊断并加入 Vault -> Shadowing 跟读 -> SRS 复习 -> Dashboard 复盘**
 
-### 模块 C: 难句生词库 (Vault)
-- 列表展示与搜索。
-- 支持编辑笔记、删除条目。
-- 关联 SRS 复习算法。
+## 2. 当前已实现的产品目标
 
-### 模块 D: 归档系统 (Archive)
-- **软删除**：素材不再需要时可归档，不影响已摘录的笔记复习。
-- **Library 过滤**：支持查看 Active / Archived 列表。
+- 让用户以句子为单位浏览和控制音频，而不是只按整段材料播放。
+- 在“没听懂”的瞬间完成归因记录，而不是事后补笔记。
+- 把难句沉淀到 Vault，并进入可操作的 SRS 复习流。
+- 把听、跟读、复习时间记录成可量化的数据，用 dashboard 做回看。
+- 为开发侧提供 Symphony 自动化任务协调能力。
 
-## 3. 数据库设计 (Schema)
+## 3. 当前已实现模块 (Implemented Modules)
 
-```prisma
-model Track {
-  id            String     @id @default(uuid())
-  title         String
-  audioUrl      String
-  transcription String     // JSON string
-  isArchived    Boolean    @default(false) // 软删除标记
-  createdAt     DateTime   @default(now())
-  sentences     Sentence[]
-}
+### 模块 A: 上传与转录 (Upload + Transcription)
 
-model ReviewItem {
-  id          String   @id @default(uuid())
-  sentenceId  String   @unique
-  // ... SRS fields
-}
-```
+当前实现入口：
 
-## 4. 技术挑战与解决方案
+- `POST /api/upload`: 单文件上传
+- `PUT /api/upload`: 批量上传
 
-- **Node.js 代理**：使用 `undici` 全局调度器解决原生 fetch 不走代理的问题。
-- **波形交互**：通过 `shadowDOM: false` 和全局捕获事件解决右键平移冲突。
-- **Shadowing 延迟**：通过预加载解码 `AudioBuffer` 并在内存中切片，实现零延迟切句。
+当前行为：
+
+- 音频文件保存到 `public/uploads/`
+- 上传后立即调用转录 provider 生成分句结果
+- 自动创建 `Track` 和其下的 `Sentence` 记录
+- 句子按转录顺序写入 `orderIndex`
+
+当前 provider 选择逻辑：
+
+- 由 `TRANSCRIPTION_PROVIDER` 决定，支持 `openai` / `google` / `deepgram`
+- 如果没有设置环境变量，代码回退到 `openai`
+- `undici` 的全局 dispatcher 会根据 `HTTPS_PROXY` / `https_proxy` 处理代理场景
+
+说明：
+
+- 旧版 PRD 里把 Deepgram 写成固定默认实现，这和当前代码不一致；当前实现是“环境变量驱动，默认回退 OpenAI”。
+
+### 模块 B: 波形精听台 (Practice Workbench)
+
+当前实现入口：
+
+- `/practice/[id]`
+- 由 `PracticeClient` + `AudioPlayer` 组成核心交互
+
+当前已实现能力：
+
+- WaveSurfer 波形播放
+- 句子列表与播放时间同步
+- 点击句子跳转并播放
+- 文本盲听模式：全局模糊句子，点击单句揭晓
+- 波形圈选区域后即时播放
+- 播放速率调节
+- 句子已加入 Vault 时在列表中高亮显示
+- 句子级入口直接拉起 Shadowing
+- Track 级富文本笔记编辑
+- Track 重命名
+- 导出当前 Track 下所有已摘录句子的拼接音频
+
+当前交互实现：
+
+- 空格控制播放/暂停
+- 鼠标滚轮调整缩放
+- 右键拖拽平移波形
+- 自动滚动句子列表到当前句
+- 支持一个轻量调试模式切换
+
+### 模块 C: 诊断录入与 Vault Capture
+
+当前实现入口：
+
+- Practice 页中的 `DiagnosisModal`
+- `POST /api/vault`
+
+当前已实现能力：
+
+- 对句子打错误归因标签
+- 记录富文本笔记
+- 记录用户主观难度：`NORMAL` / `HARD` / `VERY_HARD`
+- 已存在的 `ReviewItem` 会被 `upsert` 更新，而不是重复创建
+- 新句子默认建议 `Vocab` 标签
+
+当前错误标签集合：
+
+- `Linking`
+- `Vocab`
+- `Misheard`
+- `Comprehension`
+- `Speed`
+- `Grammar`
+- `Accent`
+
+### 模块 D: Shadowing 工作台
+
+当前实现入口：
+
+- Practice 页顶部 “Shadowing” 按钮
+- 句子列表中的单句麦克风入口
+
+当前已实现能力：
+
+- 全屏覆盖式 Shadowing 界面
+- 预加载整条音频并解码为 `AudioBuffer`
+- 在内存中按句子切片，避免切句时重新解码
+- 原音波形与用户录音波形双轨对比
+- 流程模式：`idle` / `playing_original` / `recording` / `reviewing`
+- 支持 `Start Flow`
+- 支持 `Rec Again`
+- 支持原音单句循环
+- 支持前后句切换
+- 支持在 Shadowing 中继续 Capture 到 Vault
+- 支持跟读时的盲听文本显示/揭晓
+- 支持对句子文本直接编辑
+- 支持句子格式标注与自动保存
+
+当前快捷键：
+
+- `Space`: 开始或停止当前流程
+- `R`: 重播原音
+- `ArrowLeft` / `ArrowRight`: 上一句 / 下一句
+- `T`: 切换 stress 工具
+- `C`: 复制句子文本
+- `N`: 打开诊断入口
+- `Escape`: 退出 Shadowing
+
+说明：
+
+- 旧版 PRD 把工作流概括成 “Play Original -> Auto Record -> Auto Replay Recording”，这已经过于简化。当前代码里还包含循环、重录、文本隐藏、句子导航、文本编辑和格式标注。
+
+### 模块 E: Vault 管理
+
+当前实现入口：
+
+- `/vault`
+- `VaultPageClient`
+- `VaultListClient`
+- `EditVaultModal`
+- `POST /api/vault/export`
+- `POST /api/audio/export`
+
+当前已实现能力：
+
+- 展示全部摘录句子
+- 支持仅查看某个 Track 的摘录（`/vault?trackId=...`）
+- 搜索句子正文、笔记和 Track 标题
+- 按难度、标签过滤
+- 按创建时间、到期时间、稳定度、FSRS difficulty 排序
+- 归档 / 取消归档单条 Vault 项
+- 删除 Vault 项
+- 单句播放
+- 按当前筛选结果连续播放
+- 编辑错误标签、主观难度、个人笔记
+- 导出筛选后的音频拼接结果
+- 导出筛选后的纯文本笔记结果
+
+导出筛选当前支持：
+
+- difficulty
+- trackIds
+- dateFrom
+- dateTo
+
+说明：
+
+- 旧版 PRD 只写了 “列表展示与搜索、支持编辑笔记、删除条目”，明显低估了当前 Vault 的管理能力。
+
+### 模块 F: SRS 复习 (Review)
+
+当前实现入口：
+
+- `/review`
+- `POST /api/review/grade`
+
+当前已实现能力：
+
+- 取出待复习句子进行单卡片复习
+- 复习卡自动播放句子音频
+- 可显示/隐藏答案
+- 支持卡片内编辑 Vault 信息
+- 支持从复习流直接归档
+- 支持导出当前到期句子的音频
+- 显示播放统计信息
+
+评分体系：
+
+- `again`
+- `hard`
+- `good`
+- `easy`
+
+调度逻辑：
+
+- 基础调度由 FSRS 计算
+- `again` 会被强制覆盖为 5 分钟后复习
+- `hard` 会被强制覆盖为 15 分钟后复习
+- 同时写入 `ReviewLog`
+
+当前快捷键：
+
+- `Space`: 显示/隐藏答案
+- `R`: 重播音频
+- `1` / `2` / `3` / `4`: Again / Hard / Good / Easy
+
+### 模块 G: Library 管理
+
+当前实现入口：
+
+- `/library`
+- `LibraryManager`
+- `TrackList`
+- `NotesList`
+
+当前已实现能力：
+
+- Active / Archived 视图切换
+- 单文件上传
+- 批量上传
+- Track 状态切换
+- Track 重命名
+- Track 归档与永久删除
+- 查看某条 Track 对应的 Vault 笔记
+- 以 Track 或 Notes 视图浏览素材
+- 按 `trackType` / `trackTopic` 过滤
+- 多选 Track
+- 对多选 Track 连续批量播放
+
+当前 Track 状态：
+
+- `UNLEARNT`
+- `INTENSIVE`
+- `ANALYSIS`
+- `SHADOWING`
+- `SPEED_SHADOWING`
+- `PARAPHRASE`
+- `LEARNT`
+
+### 模块 H: Dashboard 与学习统计
+
+当前实现入口：
+
+- `/dashboard`
+- `/api/study-time`
+- `TimeTrackingProvider`
+
+当前已实现能力：
+
+- TOEFL 倒计时（从 `NEXT_PUBLIC_TARGET_DATE` 读取，默认 `2026-05-10`）
+- 已学习 Track 进度
+- 总学习小时数
+- Total Tracks / Vault Sentences
+- Stability 分布
+- 14 天 Retention 趋势
+- Overdue Backlog
+- 学习活动热力图
+- 内容掌握雷达图
+- 错误标签分布
+- Daily Study Log
+
+时间统计实现：
+
+- 前端 Context 在 `LISTENING` / `SHADOWING` / `REVIEW` 模式下启动 heartbeat
+- 每 10 秒上报一次
+- 判定条件为：有音频播放或最近 60 秒内有用户交互
+- 后端按 `date + type` 聚合到 `StudySession`
+
+说明：
+
+- 旧版 PRD 完全没有覆盖 dashboard 和 study-time 统计模块，这已经与当前实现严重不一致。
+
+### 模块 I: Symphony 开发协调器
+
+当前实现入口：
+
+- `bin/setup`
+- `bin/symphony`
+- `WORKFLOW.md`
+- `src/symphony/*`
+- `/dashboard/symphony`
+- `/api/symphony/state`
+
+当前已实现能力：
+
+- 本地 Symphony runner / orchestrator 框架
+- 基于 workflow 配置组织 tracker、workspace、agent 执行逻辑
+- 读取本地 `.symphony_state.json` 展示运行状态
+- Dashboard 中查看在线状态、活跃 agent 数量和 workspace
+
+说明：
+
+- 这部分是项目内置的开发运维能力，不属于最终学习者的主训练流，但已经是代码库中的正式模块，PRD 应该记录。
+
+## 4. 当前实现的数据模型 (Implemented Data Model)
+
+下面是当前代码实际使用的数据模型摘要，不再使用旧版过于简化的伪 schema。
+
+### `Track`
+
+- `id`
+- `title`
+- `audioUrl`
+- `transcription`
+- `note`
+- `trackType`
+- `trackTopic`
+- `isArchived`
+- `status`
+- `createdAt`
+- `sentences`
+- `categories`
+
+### `Sentence`
+
+- `id`
+- `trackId`
+- `text`
+- `startTime`
+- `endTime`
+- `orderIndex`
+- `formatting`
+- `reviewItem`
+
+### `ReviewItem`
+
+- `id`
+- `sentenceId`
+- `difficulty`
+- `stability`
+- `dr`
+- `state`
+- `reps`
+- `lapses`
+- `lastReview`
+- `due`
+- `retrieval`
+- `lapse`
+- `nextReview`
+- `isArchived`
+- `userNote`
+- `createdAt`
+- `tags`
+- `logs`
+
+说明：
+
+- `difficulty` 是用户标注的主观难度。
+- `dr` 是 FSRS 过程中的 difficulty 数值，不等同于用户标签。
+
+### `ReviewLog`
+
+- 存储复习评分记录
+- 当前至少记录 `rating`、`reviewType`、`duration`、`createdAt`
+
+### `StudySession`
+
+- `date`
+- `type`
+- `duration`
+- 用于 dashboard 学习时长和活跃热力图统计
+
+### `ErrorTag`
+
+- 与 `ReviewItem` 多对多关联
+- 支撑错误归因标签、dashboard 标签统计、笔记导出分组
+
+### `Category` / `TrackCategory`
+
+- schema 已实现
+- 当前主界面主要使用 `trackType` 和 `trackTopic`，而不是完整的 Category UI
+
+## 5. 技术实现约束与解决方案
+
+- **代理支持**：Google / OpenAI 场景通过 `undici` 全局 dispatcher 兼容代理环境。
+- **低延迟 Shadowing**：先解码整轨音频，再按句子切 `AudioBuffer`。
+- **波形交互**：通过自定义 hook 统一键盘、滚轮、右键拖拽和平移逻辑。
+- **导出安全性**：导出路由对 `audioUrl` 做 path traversal 校验，并跳过不存在的文件。
+- **时间统计**：只在真实活跃或音频播放时累计学习时间，避免纯挂机污染统计。
+- **React 19 兼容性**：当前关键交互模块已按最新 lint 规则整理，避免 effect 中同步级联 setState 和不稳定依赖。
+
+## 6. 与旧版 PRD 的主要偏差
+
+旧版文档和当前代码不一致的关键点如下：
+
+- 把 Vault 写得过于简单，遗漏过滤、排序、导出、归档、连续播放
+- 没写 Review 页面和 FSRS 调度覆盖逻辑
+- 没写 Dashboard、StudySession、ErrorTag、ReviewLog
+- 没写 Library 的多选和批量播放能力
+- 把数据库设计写成过时的极简示意
+- 把 Deepgram 写成固定默认，而当前代码是环境变量驱动、默认回退 OpenAI
+- 完全遗漏 Symphony 模块
 
 ---
-*Last Updated: 2026-01-25*
+
+*Last Updated: 2026-04-04*
