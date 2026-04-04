@@ -4,10 +4,10 @@
 DeepListener is an advanced English listening practice tool designed for high-level learners. It focuses on "atomic decoding" of speech, allowing users to drill down into specific sentences, diagnose listening errors (e.g., linking, speed, vocabulary), and practice via shadowing.
 
 ## Technology Stack
-*   **Framework:** Next.js 15 (App Router)
+*   **Framework:** Next.js 16 (App Router)
 *   **Database:** SQLite (Prisma)
 *   **Audio:** WaveSurfer.js, Web Audio API
-*   **AI:** Deepgram (Default), OpenAI, Google Gemini
+*   **AI:** OpenAI (fallback default), Deepgram, Google Gemini
 
 ## Code Quality Standards (Core Guidelines)
 
@@ -35,11 +35,14 @@ DeepListener is an advanced English listening practice tool designed for high-le
 
 ## Setup & Running
 *   **Dev**: `npm run dev`
+*   **Build**: `npm run build`
+*   **Lint**: `npm run lint`
+*   **Tests**: `node --import tsx --test <paths>`
 *   **DB**: `npx prisma migrate dev`
 *   **Sync**: `npm run sync` (rsync to remote)
 
 ## Architecture Details
-*   `src/lib/transcription`: Provider 工厂模式。
+*   `src/lib/transcription`: Provider 工厂模式；`TRANSCRIPTION_PROVIDER` 未设置时回退到 `openai`。
 *   `src/components/feature`: 包含 AudioPlayer 和 ShadowingConsole。
 *   `src/lib/fsrs.ts`: 基于 FSRS-4.5 的复习调度逻辑，详见 [docs/review-system.md](./docs/review-system.md)。
 *   `undici`: 负责全局 fetch 代理拦截。

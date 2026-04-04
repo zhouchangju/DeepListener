@@ -32,12 +32,19 @@ npm run sync            # Sync uploads/ and dev.db to remote server via rsync
 Required `.env` variables:
 
 ```bash
+# SQLite
+DATABASE_URL="file:./dev.db"
+
 # Transcription Provider (choose one)
-TRANSCRIPTION_PROVIDER=deepgram  # Recommended: no proxy needed, accurate timestamps
+# If TRANSCRIPTION_PROVIDER is omitted, the app falls back to OpenAI.
+TRANSCRIPTION_PROVIDER=deepgram  # Recommended in restricted networks; usually no proxy needed
 DEEPGRAM_API_KEY=your_key
 
 # Alternatives (may require HTTPS_PROXY in China)
+# TRANSCRIPTION_PROVIDER=openai
 # OPENAI_API_KEY=sk-...
+#
+# TRANSCRIPTION_PROVIDER=google
 # GOOGLE_API_KEY=AIza...
 
 # Proxy (required for OpenAI/Google in restricted network environments)
@@ -56,7 +63,7 @@ Located in `src/lib/transcription/`, the transcription system uses a factory pat
 - **Global Proxy:** Uses `undici` ProxyAgent to intercept Node.js fetch requests (required for OpenAI/Google behind proxy)
 
 **Key Implementation Detail - Deepgram Sentence Splitting:**
-Unlike other providers, Deepgram doesn't use utterances. Instead:
+Deepgram does not rely on provider-returned utterance boundaries. Instead:
 1. Request word-level timestamps
 2. Locally reconstruct sentences by detecting punctuation (`. ? !`)
 3. This avoids ultra-long sentences even during fast speech without pauses
@@ -108,11 +115,13 @@ src/app/
 └── api/
     ├── upload/                       # Audio upload & transcription
     ├── track/                        # Track CRUD operations
-    ├── sentence/                     # Sentence updates (formatting, difficulty)
+    ├── sentence/                     # Sentence updates (formatting, text)
     ├── review/
     │   ├── grade/route.ts            # FSRS algorithm integration
     │   └── log/route.ts              # Review logging
     ├── vault/                        # Vault item management
+    ├── audio/export/route.ts         # Audio export
+    ├── symphony/state/route.ts       # Symphony dashboard state
     └── study-time/                   # Study session logging
 ```
 
@@ -154,10 +163,10 @@ interface BatchPlaybackState {
 ### Review System Statistics
 
 **Review Page (`/review`):**
-- **Reviewed**: Today's total reviewed cards (from `ReviewLog` table, deduplicated)
-- **In Queue**: Current queue size (items `due <= today` AND not reviewed today)
-- Key design: Query excludes already-reviewed items to prevent infinite loops
-- Real-time updates: Each grade increments `reviewed` and decrements `queue`
+- **Reviewed**: Server-side initial count of today's reviewed items (from `ReviewLog`, deduplicated by item)
+- **In Queue**: Items due now, excluding today's `Good/Easy` items but allowing `Again/Hard` cards to reappear after their short relearning interval
+- Key design: Query keeps relearning cards eligible while avoiding same-day repeats for successful reviews
+- Real-time updates: Each grade increments `reviewed` and decrements `queue`; refresh re-syncs with server counts
 
 **Vault Page (`/vault`):**
 - Displays FSRS metrics for each saved sentence:

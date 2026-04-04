@@ -5,16 +5,16 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 ## 🌟 核心特性
 
 - **多模型转录引擎**：
-    - **Deepgram (默认)**：结合自定义分句算法，解决超长难句问题。
-    - **备选**：OpenAI Whisper, Google Gemini。
+    - **环境变量驱动**：通过 `TRANSCRIPTION_PROVIDER` 选择 `openai` / `deepgram` / `google`；未设置时回退到 `openai`。
+    - **Deepgram**：结合单词级时间戳与本地重组分句逻辑，解决超长难句问题。
 - **波形精听台**：
     - **交互升级**：右键平移、滚轮缩放、圈选即播、自动循环、0.5x-2.0x 变速播放。
     - **盲听模式 (Blind Mode)**：一键模糊文本，强制听力理解。
     - **笔记系统**：
         - **状态标记**：已收藏句子自动高亮 (琥珀色)。
-        - **难度分级**：支持 Easy, Medium, Hard 三级难度标注。
+        - **难度分级**：支持 `Normal` / `Hard` / `Very Hard` 三级难度标注。
     - **进度管理**：
-        - **状态流转**：支持未学习 -> 精听 -> Shadowing -> 已学习等多阶段状态管理。
+        - **状态流转**：支持 `UNLEARNT -> INTENSIVE -> ANALYSIS -> SHADOWING -> SPEED_SHADOWING -> PARAPHRASE -> LEARNT` 多阶段管理。
 - **Shadowing 工作台 (跟读)**：
     - **双波形对比**：原音与录音波形同屏显示，直观对比节奏与重音。
     - **交互升级**：支持单句循环播放、打断式录音、实时进度显示。
@@ -22,13 +22,14 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
     - **极速切片**：基于内存的音频切片，切换句子零延迟。
 - **素材管理 (Library)**：
     - **归档系统**：支持素材软删除 (Archive) 和物理删除 (Delete)。
-    - **分类与笔记**：支持添加多标签 (Categories) 和全局 Markdown 笔记。
+    - **筛选与笔记**：支持按 `trackType` / `trackTopic` 过滤，并维护 Track 级别笔记。
     - **重命名**：支持修改自动生成的音频标题。
+    - **批量循环播放**：支持多选 Track 后按顺序循环播放。
     - **移动端适配**：全站响应式设计，支持手机端操作。
 - **归因诊断系统**：强制记录听不懂的原因（连读、生词、语速等）。
 - **智能复习 (Vault)**：
-    - **间隔复习**：类似 Anki 的复习算法。
-    - **音频导出**：将收藏的句子音频合并导出为 MP3，用于泛听复习。每个音频间隔 2 秒静音，支持导出全部、今日复习或单个音频文件的笔记。
+    - **间隔复习**：基于 FSRS-4.5，并对 `Again` / `Hard` 做 5 分钟 / 15 分钟短间隔重学。
+    - **导出能力**：支持导出全部、到期、单个 Track 或过滤后的句子音频，也支持按标签 / 难度 / Track / 日期导出笔记。
 
 ## 🚀 快速开始
 
@@ -61,17 +62,27 @@ npm install
 创建或编辑 `.env` 文件：
 
 ```bash
-# 推荐使用 Deepgram (无需代理，精准时间轴)
+# SQLite
+DATABASE_URL="file:./dev.db"
+
+# 推荐：Deepgram（通常无需代理，时间轴更稳）
 TRANSCRIPTION_PROVIDER=deepgram
 DEEPGRAM_API_KEY=your_deepgram_key
 
 # 备选：OpenAI / Google
+# TRANSCRIPTION_PROVIDER=openai
 # OPENAI_API_KEY=sk-...
+#
+# TRANSCRIPTION_PROVIDER=google
 # GOOGLE_API_KEY=AIza...
 
-# 网络代理 (国内环境必填，针对 OpenAI/Google)
+# 网络代理（OpenAI / Google 在受限网络环境下通常需要）
 HTTPS_PROXY=http://127.0.0.1:7890
 ```
+
+说明：
+- 如果未设置 `TRANSCRIPTION_PROVIDER`，系统会回退到 `openai`
+- Deepgram 通常不依赖代理，但如果设置了 `HTTPS_PROXY`，工厂层依然会统一接管请求
 
 ### 3. 数据库初始化
 ```bash
@@ -113,9 +124,9 @@ npm run build
 ### 音频导出
 
 在以下位置可以导出音频：
-- **Vault 页面**：导出所有收藏的句子或今日需要复习的句子
-- **Review 页面**：右下角浮动按钮，导出今日待复习的句子
-- **Track 练习页面**：导出当前音频文件的所有笔记
+- **Vault 页面**：导出全部、到期、当前过滤结果对应的句子音频，也可导出文本笔记
+- **Review 页面**：导出当前到期待复习队列的句子音频
+- **Track 练习页面**：导出当前音频文件对应的收藏句子音频
 
 导出的 MP3 文件格式：
 - 比特率：192 kbps
@@ -123,7 +134,7 @@ npm run build
 - 文件命名：`DeepListener_Export_YYYY-MM-DD.mp3`
 - 排序：按来源音频分组，组内按句子顺序排列
 
-导出的音频可用于在其他播放器中进行泛听复习，巩固所学内容。
+文本笔记导出为 `.txt`，会按标签分组，并保留难度、来源 Track、筛选条件与纯文本备注内容。
 
 ## 📚 文档资源
 

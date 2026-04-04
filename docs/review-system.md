@@ -77,15 +77,15 @@ DeepListener 默认设置 `request_retention: 0.9`。这意味着算法会调整
 复习页面（`/review`）显示两个核心统计数据：
 
 ### Reviewed（已复习）
-- **定义**：今天已经复习过的不同项目总数
+- **定义**：页面加载时，统计今天已有 `ReviewLog` 的项目数（按 `reviewItemId` 去重）
 - **数据来源**：从数据库 `ReviewLog` 表统计（去重）
 - **更新时机**：
   - 页面加载时：统计数据库中今天的复习记录
-  - 每次评分后：实时 +1
+  - 当前会话内每次评分后：前端先实时 `+1`，刷新页面后再与服务端统计重新同步
 
 ### In Queue（待复习）
-- **定义**：当前队列中未复习的项目数（包含重学阶段的卡片）
-- **数据来源**：从数据库查询所有 `due <= 当前时间` 的项目
+- **定义**：当前服务端返回的待复习项目数（包含时间已到的重学卡片）
+- **数据来源**：从数据库查询所有 `due <= 当前时间` 且 `isArchived = false` 的项目，再结合今日评分记录过滤
 - **更新时机**：
   - 页面加载时：当前队列长度
   - 每次评分后：实时 -1
@@ -110,7 +110,7 @@ const relearningItemIds = todayReviews
 // 3. 查询待复习队列
 const rawItems = await prisma.reviewItem.findMany({
   where: {
-    due: { lte: 当前时间 },  // 只显示已到期的卡片
+    due: { lte: 当前时间 },  // 只显示当前已经到期的卡片
     isArchived: false,
     OR: [
       { id: { notIn: todayReviewedIds } },  // 未复习过
@@ -135,7 +135,7 @@ const rawItems = await prisma.reviewItem.findMany({
 复习客户端（`ReviewClient.tsx`）在每次评分后：
 - `reviewed++`：增加已复习计数
 - `remaining--`：减少待复习计数
-- 刷新页面后，数据会与服务端重新同步
+- 刷新页面后，数据会与服务端重新同步；因此页面内的即时数字以“快速反馈”为主，最终以刷新后的服务端统计为准
 
 ## 用户界面与交互设计
 

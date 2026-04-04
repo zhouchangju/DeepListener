@@ -1,5 +1,9 @@
 # Anki-Style Relearning Implementation Summary
 
+> Status: this is a historical implementation note.
+> The current review queue no longer uses the `due <= now + 15 minutes` window described below.
+> For the current behavior, refer to `src/app/review/page.tsx`, `src/app/api/review/grade/route.ts`, and `docs/review-system.md`.
+
 ## Overview
 Implemented short-interval relearning for Again (5 min) and Hard (15 min) ratings in the review system, replacing the previous "force to tomorrow" logic.
 

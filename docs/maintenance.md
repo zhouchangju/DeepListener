@@ -1,53 +1,110 @@
 # DeepListener 开发维护手册
 
-## 1. 如何增加新的转录 Provider (例如 Deepgram)
+## 1. 转录 Provider 现状
 
-系统采用了工厂模式（Factory Pattern），增加新 Provider 仅需三步：
+项目当前内置 3 个 Provider：
 
-1.  **创建实现类**：在 `src/lib/transcription/` 下创建 `deepgram-provider.ts`，实现 `TranscriptionProvider` 接口。
-2.  **实现 `transcribe` 方法**：确保返回符合 `TranscriptionResponse` 接口的数据。
-3.  **注册工厂**：在 `factory.ts` 的 `switch` 语句中加入新 Provider 的标识。
+- `openai`
+- `deepgram`
+- `google`
 
-## 2. 核心算法解析
+选择逻辑位于 `src/lib/transcription/factory.ts`：
 
-### 2.1 智能分句策略 (Deepgram Provider)
-我们不使用 Deepgram 默认的 `utterances` 切分，因为对于语速快且无停顿的音频，它容易产生超长难句。
-**当前策略**：
-- 请求 `word-level` 时间戳。
-- **本地重组**：遍历单词流，基于标点符号 (`. ? !`) 动态合并生成句子。
-- **优势**：即使说话人一口气说一分钟，只要语法上有句号，我们就能精准切分出短句，且时间轴精确到毫秒。
+- 通过 `TRANSCRIPTION_PROVIDER` 选择具体实现
+- 未设置或设置为未知值时，回退到 `openai`
+- 如果存在 `HTTPS_PROXY` 或 `https_proxy`，工厂会使用 `undici` 的 `ProxyAgent` 接管 Node 侧请求
 
-### 2.2 Gemini 时间轴修正
-Gemini 有时会出现“60进制混淆”问题（把 1:30 识别为 130s）。前端 `AudioPlayer` 内置了重叠检测逻辑 (`endTime > next.startTime`) 来进行运行时热修复。
+### 如何增加新的 Provider
 
-## 3. 数据库维护
+1. 在 `src/lib/transcription/` 下创建新的 `*-provider.ts`
+2. 实现 `TranscriptionProvider` 接口，返回符合 `TranscriptionResponse` 的 `fullText`、`segments` 与 `rawJson`
+3. 在 `factory.ts` 中注册新的 provider 标识
+4. 同步更新 `README.md`、`AGENTS.md` 或其他使用文档中的环境变量说明
 
-项目当前使用 SQLite (`prisma/dev.db`)。
-- **查看数据**：运行 `npx prisma studio` 可视化查看所有记录。
-- **修改 Schema**：修改 `prisma/schema.prisma` 后，务必运行 `npx prisma migrate dev`。
+## 2. 核心转录策略
 
-## 4. 常见问题 (FAQ)
+### 2.1 Deepgram 本地重组分句
+
+Deepgram Provider 会请求单词级时间戳，然后在本地按标点符号 (`. ? !`) 重组句子边界，而不是完全依赖服务端返回的句级边界。
+
+当前策略的作用：
+
+- 避免快语速音频被切成超长句
+- 保留更稳定的句子时间轴
+- 让 Practice / Shadowing / Export 都基于统一的句子切分
+
+### 2.2 Gemini 时间轴热修复
+
+Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠时间段的防御性处理，用于缓解 `endTime > next.startTime` 之类的异常输入。
+
+## 3. 数据与文件维护
+
+项目当前使用 SQLite，本地数据库通常由 `DATABASE_URL="file:./dev.db"` 指向仓库根目录下的 `dev.db`。
+
+- **Schema**：`prisma/schema.prisma`
+- **数据库查看**：`npx prisma studio`
+- **迁移**：修改 schema 后运行 `npx prisma migrate dev`
+- **音频文件**：上传内容保存在 `public/uploads/`
+
+## 4. 导出链路
+
+### 音频导出
+
+`POST /api/audio/export` 支持 4 种导出模式：
+
+- `all`
+- `due`
+- `track`
+- `filtered`
+
+实现要点：
+
+- 按 Track 分组
+- 组内按 `Sentence.orderIndex` 排序
+- 使用 `ffmpeg` 拼接片段并插入 2 秒静音
+- 对音频路径做 path traversal 防御
+
+### 笔记导出
+
+`POST /api/vault/export` 支持以下过滤维度：
+
+- `tags`
+- `difficulties`
+- `trackIds`
+- `dateFrom`
+- `dateTo`
+
+导出的文本会按标签分组，并附带来源 Track、难度和纯文本备注。
+
+## 5. 常见问题
 
 ### Q: 为什么 Node.js 报错 `fetch failed`？
-A: 大概率是代理没配对。请确保 `.env` 中的 `HTTPS_PROXY` 协议（http/https）和端口号正确。
 
-### Q: 为什么 Google API 报 429 错误？
-A: 免费层级配额限制。Gemini 会根据你的 IP 区域分配配额。如果 429 持续出现，请尝试更换代理出口，或切换到 OpenAI/Deepgram。
+A: 先检查 `.env` 中的 `HTTPS_PROXY` 是否正确。OpenAI / Google 在受限网络环境下通常需要代理；Deepgram 一般不需要，但如果设置了代理变量，工厂层仍会统一接管请求。
 
-## 5. 数据同步与备份 (Remote Sync)
+### Q: 为什么 Google API 报 429？
 
-为了防止本地音频文件和数据库丢失，系统内置了基于 `rsync` 的增量同步机制。
+A: 常见原因是免费层级配额或代理出口限制。可以更换代理出口，或切换为 OpenAI / Deepgram。
 
-### 同步命令
+### Q: 为什么音频导出失败？
+
+A: 优先检查：
+
+- `ffmpeg` 是否已安装并在 `PATH` 中
+- 导出所引用的音频文件是否仍存在于 `public/uploads/`
+- 导出过滤条件下是否真的有可导出的句子
+
+## 6. 数据同步与备份
+
+为了防止本地音频文件和数据库丢失，项目保留了基于 `rsync` 的同步脚本：
+
 ```bash
 npm run sync
 ```
 
-### 运行原理
-- **增量传输**：仅上传 `public/uploads/` 中新增的音频文件，节省时间和带宽。
-- **数据库备份**：同步本地 `dev.db` 到服务器指定目录。
-- **依赖**：要求本地 Mac 和远程服务器均安装 `rsync`（Mac 已内置，Linux 服务器通常也已内置）。
+同步内容：
 
-### 免密建议
-建议配置 SSH Key 免密登录，以实现一键同步：
-`ssh-copy-id root@124.221.194.112`
+- `public/uploads/`
+- 根目录 `dev.db`
+
+建议提前配置 SSH Key 免密登录，再执行同步脚本。
