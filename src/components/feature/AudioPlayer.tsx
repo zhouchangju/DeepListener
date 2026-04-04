@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useWaveSurfer } from "./audio-player/useWaveSurfer";
 import { useAutoScroll } from "./audio-player/useAutoScroll";
 import { useAudioInteractions } from "./audio-player/useAudioInteractions";
+import { getPlayerControlsState } from "./audio-player/presentation";
 import { SentenceList } from "./audio-player/SentenceList";
 import { PlayerControls } from "./audio-player/PlayerControls";
 import { WaveformArea } from "./audio-player/WaveformArea";
 
 interface ReviewItem {
   tags?: { name: string }[];
-  userNote?: string;
+  userNote?: string | null;
   difficulty?: string;
 }
 
@@ -56,7 +57,6 @@ export default function AudioPlayer({
   const timeRef = useRef<HTMLSpanElement>(null);
 
   // State
-  const [isPlaying, setIsPlaying] = useState(false);
   const [loopMode, setLoopMode] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(-1);
   const [zoomLevel, setZoomLevel] = useState(25);
@@ -69,7 +69,11 @@ export default function AudioPlayer({
   const { listContainerRef, onListScroll, scrollToItem } = useAutoScroll();
 
   useEffect(() => {
-    setRevealedIds(new Set());
+    const timer = window.setTimeout(() => {
+      setRevealedIds(new Set());
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [blindMode]);
 
   // Core Sync Logic
@@ -95,7 +99,7 @@ export default function AudioPlayer({
   );
 
   // WaveSurfer Hook
-  const { wavesurferRef, regionsRef } = useWaveSurfer({
+  const { wavesurferRef, regionsRef, isPlaying: waveSurferIsPlaying } = useWaveSurfer({
     containerRef,
     timelineRef,
     audioUrl,
@@ -123,10 +127,16 @@ export default function AudioPlayer({
     },
   });
 
+  const playerControlsState = getPlayerControlsState({
+    isPlaying: waveSurferIsPlaying,
+    isReady,
+    duration: wavesurferRef.current?.getDuration(),
+  });
+
   // Callbacks
-  const handlePlayPause = useCallback(() => wavesurferRef.current?.playPause(), [wavesurferRef]);
-  const handleToggleLoop = useCallback(() => setLoopMode((prev) => !prev), []);
-  const handleClearRegions = useCallback(() => regionsRef.current?.clearRegions(), [regionsRef]);
+  const handlePlayPause = () => wavesurferRef.current?.playPause();
+  const handleToggleLoop = () => setLoopMode((prev) => !prev);
+  const handleClearRegions = () => regionsRef.current?.clearRegions();
 
   useAudioInteractions({
     containerRef,
@@ -155,29 +165,35 @@ export default function AudioPlayer({
   }, [isReady, wavesurferRef, regionsRef]);
 
   // Handlers
-  const handleSentenceClick = useCallback((s: Sentence, index: number) => {
+  const handleSentenceClick = (s: Sentence, index: number) => {
     if (debugMode) console.log(`Sentence ${index}:`, s.text);
-    if (blindMode) setRevealedIds((prev) => new Set(prev).add(s.id));
+    if (blindMode) {
+      setRevealedIds((prev) => {
+        const nextIds = new Set(prev);
+        nextIds.add(s.id);
+        return nextIds;
+      });
+    }
     wavesurferRef.current?.setTime(s.startTime);
     wavesurferRef.current?.play();
-    regionsRef.current.clearRegions();
-  }, [debugMode, blindMode, wavesurferRef, regionsRef]);
+    regionsRef.current?.clearRegions();
+  };
 
-  const handleToggleDebug = useCallback((e: React.MouseEvent) => {
+  const handleToggleDebug = (e: React.MouseEvent) => {
     if (e.altKey) setDebugMode((prev) => !prev);
-  }, []);
+  };
 
-  const handleShadowing = useCallback((index: number) => {
+  const handleShadowing = (index: number) => {
     wavesurferRef.current?.pause();
     onShadowing(index);
-  }, [onShadowing, wavesurferRef]);
+  };
 
   return (
     <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
       <PlayerControls
-        isPlaying={isPlaying}
+        isPlaying={playerControlsState.isPlaying}
         timeRef={timeRef}
-        duration={isReady ? wavesurferRef.current?.getDuration() || 0 : 0}
+        duration={playerControlsState.duration}
         loopMode={loopMode}
         playbackRate={playbackRate}
         onRateChange={setPlaybackRate}

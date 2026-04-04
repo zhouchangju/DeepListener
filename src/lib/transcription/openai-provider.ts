@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { type TranscriptionSegment as OpenAITranscriptionSegment, type TranscriptionVerbose } from "openai/resources/audio/transcriptions";
 import { createReadStream } from "fs";
 import { TranscriptionProvider, TranscriptionResponse } from "./types";
 
@@ -20,13 +21,16 @@ export class OpenAIProvider implements TranscriptionProvider {
       timestamp_granularities: ["segment"],
     });
 
+    const verboseResponse = response as TranscriptionVerbose;
+    const segments = verboseResponse.segments?.map((segment: OpenAITranscriptionSegment) => ({
+      text: segment.text,
+      start: segment.start,
+      end: segment.end,
+    })) || [];
+
     return {
       fullText: response.text,
-      segments: response.segments?.map((s: any) => ({
-        text: s.text,
-        start: s.start,
-        end: s.end,
-      })) || [],
+      segments,
       rawJson: JSON.stringify(response),
     };
   }

@@ -1,4 +1,4 @@
-import { useEffect, RefObject } from "react";
+import { useEffect, useEffectEvent, RefObject } from "react";
 
 interface UseAudioInteractionsProps {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -13,6 +13,17 @@ export function useAudioInteractions({
   setZoomLevel,
   onPlayPause,
 }: UseAudioInteractionsProps) {
+  const handlePlayPause = useEffectEvent(() => {
+    onPlayPause();
+  });
+
+  const handleZoom = useEffectEvent((deltaY: number) => {
+    setZoomLevel((prev) => {
+      const factor = deltaY > 0 ? 0.85 : 1.15;
+      return Math.max(10, Math.min(800, prev * factor));
+    });
+  });
+
   // Keyboard (Space)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,12 +31,12 @@ export function useAudioInteractions({
       const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName) || target.isContentEditable;
       if (e.code === "Space" && !isInput) {
         e.preventDefault();
-        onPlayPause();
+        handlePlayPause();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onPlayPause]);
+  }, []);
 
   // Mouse Wheel (Zoom/Pan)
   useEffect(() => {
@@ -41,16 +52,13 @@ export function useAudioInteractions({
         const scrollable = container.querySelector("div");
         if (scrollable) scrollable.scrollLeft += e.deltaY;
       } else {
-        setZoomLevel((prev) => {
-          const factor = e.deltaY > 0 ? 0.85 : 1.15;
-          return Math.max(10, Math.min(800, prev * factor));
-        });
+        handleZoom(e.deltaY);
       }
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
-  }, [isReady]);
+  }, [containerRef, isReady]);
 
   // Right Click Pan
   useEffect(() => {
@@ -108,5 +116,5 @@ export function useAudioInteractions({
       window.removeEventListener("mouseup", onMouseUp, true);
       window.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [isReady]);
+  }, [containerRef]);
 }

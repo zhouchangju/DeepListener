@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CalendarClock, Trophy, Clock, Headphones, Mic2 } from "lucide-react";
-import { StatusRingChart, TypeDistributionChart } from "../StatsCharts";
 
 interface OverviewSectionProps {
   countdownDays: number;
@@ -9,8 +8,6 @@ interface OverviewSectionProps {
   progressPercent: number;
   totalHours: number;
   c1Progress: number;
-  statusData: any[];
-  typeData: any[];
   totalTracks: number;
   totalSentences: number;
 }
@@ -21,8 +18,6 @@ export function OverviewSection({
   progressPercent,
   totalHours,
   c1Progress,
-  statusData,
-  typeData,
   totalTracks,
   totalSentences
 }: OverviewSectionProps) {
@@ -58,7 +53,7 @@ export function OverviewSection({
             </div>
             <Progress value={progressPercent} className="h-3 bg-indigo-100" />
             <div className="text-xs text-muted-foreground">
-              "已学习" (Learnt) counts towards this goal.
+              &quot;已学习&quot; (Learnt) counts towards this goal.
             </div>
           </CardContent>
         </Card>

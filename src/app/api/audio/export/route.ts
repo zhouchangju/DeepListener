@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
@@ -12,6 +13,50 @@ interface AudioSegment {
   audioPath: string;
   startTime: number;
   endTime: number;
+}
+
+interface FilteredReviewItemsWhereOptions {
+  difficulties?: string[];
+  trackIds?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function buildFilteredReviewItemsWhere({
+  difficulties,
+  trackIds,
+  dateFrom,
+  dateTo,
+}: FilteredReviewItemsWhereOptions): Prisma.ReviewItemWhereInput {
+  const where: Prisma.ReviewItemWhereInput = {
+    isArchived: false,
+  };
+
+  if (difficulties && difficulties.length > 0) {
+    where.difficulty = { in: difficulties };
+  }
+
+  if (trackIds && trackIds.length > 0) {
+    where.sentence = { trackId: { in: trackIds } };
+  }
+
+  if (dateFrom || dateTo) {
+    const createdAt: Prisma.DateTimeFilter = {};
+
+    if (dateFrom) {
+      createdAt.gte = new Date(dateFrom);
+    }
+
+    if (dateTo) {
+      const inclusiveDateTo = new Date(dateTo);
+      inclusiveDateTo.setHours(23, 59, 59, 999);
+      createdAt.lte = inclusiveDateTo;
+    }
+
+    where.createdAt = createdAt;
+  }
+
+  return where;
 }
 
 function generateFilename(): string {
@@ -89,13 +134,12 @@ async function gatherSegments(
 
     case 'filtered':
       reviewItems = await prisma.reviewItem.findMany({
-        where: {
-          isArchived: false,
-          ...(difficulties && difficulties.length > 0 && { difficulty: { in: difficulties } }),
-          ...(trackIds && trackIds.length > 0 && { sentence: { trackId: { in: trackIds } } }),
-          ...(dateFrom && { createdAt: { gte: new Date(dateFrom) } }),
-          ...(dateTo && { createdAt: { lte: new Date(dateTo) } }),
-        },
+        where: buildFilteredReviewItemsWhere({
+          difficulties,
+          trackIds,
+          dateFrom,
+          dateTo,
+        }),
         include: {
           sentence: {
             include: { track: true },

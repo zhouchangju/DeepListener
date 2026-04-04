@@ -8,6 +8,21 @@ import LibraryManager from "./LibraryManager";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface LibraryTrack {
+  id: string;
+  title: string;
+  audioUrl: string;
+  note: string | null;
+  trackType: string | null;
+  trackTopic: string | null;
+  isArchived: boolean;
+  status: string;
+  createdAt: Date;
+  _count: {
+    sentences: number;
+  };
+}
+
 export default async function LibraryPage({
   searchParams,
 }: {
@@ -63,7 +78,7 @@ export default async function LibraryPage({
 }
 
 async function LibraryContent({ showArchived }: { showArchived: boolean }) {
-  const tracks = await prisma.track.findMany({
+  const tracks: LibraryTrack[] = await prisma.track.findMany({
     where: { isArchived: showArchived },
     orderBy: { createdAt: "desc" },
     select: {
@@ -82,7 +97,7 @@ async function LibraryContent({ showArchived }: { showArchived: boolean }) {
     }
   });
 
-  return <LibraryManager tracks={tracks as any} />;
+  return <LibraryManager tracks={tracks} />;
 }
 
 function LibrarySkeleton() {

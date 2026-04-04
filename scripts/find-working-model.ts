@@ -4,6 +4,10 @@ import { ProxyAgent, setGlobalDispatcher } from "undici";
 
 dotenv.config();
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function main() {
   const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy;
   if (proxyUrl) {
@@ -32,13 +36,13 @@ async function main() {
         console.log(`✅ ${modelName}: Available! Response: ${result.response.text().substring(0, 10)}...`);
         // 如果成功了，这就是我们要找的模型
         process.exit(0); 
-      } catch (e: any) {
-        console.log(`❌ ${modelName}: ${e.message.split('\n')[0]}`);
+      } catch (error: unknown) {
+        console.log(`❌ ${modelName}: ${getErrorMessage(error).split('\n')[0]}`);
       }
     }
 
-  } catch (error: any) {
-    console.error("Diagnostic failed:", error.message);
+  } catch (error: unknown) {
+    console.error("Diagnostic failed:", getErrorMessage(error));
   }
 }
 

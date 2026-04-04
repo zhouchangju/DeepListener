@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Brain, BarChart3, Activity, AlertCircle } from "lucide-react";
 import { StabilityDistributionChart, RetentionTrendChart } from "../MemoryCharts";
+import { LeechItem, NamedValueDatum, RetentionDatum } from "../types";
 
 interface MemorySectionProps {
-  stabilityData: any[];
-  retentionData: any[];
-  leeches: any[];
+  stabilityData: NamedValueDatum[];
+  retentionData: RetentionDatum[];
+  leeches: LeechItem[];
 }
 
 export function MemorySection({ stabilityData, retentionData, leeches }: MemorySectionProps) {
@@ -48,7 +49,7 @@ export function MemorySection({ stabilityData, retentionData, leeches }: MemoryS
           </CardHeader>
           <CardContent className="space-y-3">
             {leeches.length > 0 ? (
-              leeches.map((l: any) => (
+              leeches.map((l) => (
                 <div key={l.id} className="text-xs p-2 bg-rose-50 border border-rose-100 rounded text-rose-700 truncate">
                   {l.sentence.text}
                 </div>

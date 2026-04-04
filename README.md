@@ -83,6 +83,16 @@ npx prisma migrate dev
 npm run dev
 ```
 
+### 5. 提交前验证
+推荐在提交前至少运行：
+
+```bash
+npm run lint
+npm run build
+```
+
+如果改动涉及 dashboard、vault、review、audio player 或 shadowing 流程，建议再补跑对应的 `node --import tsx --test ...` 定向回归测试。
+
 ## 📂 目录结构预览
 
 - `/src/lib/transcription`: 多提供商转录引擎实现。
@@ -117,6 +127,8 @@ npm run dev
 
 ## 📚 文档资源
 
+- [Symphony 智能开发协调器](./docs/symphony.md) - 自动化任务处理与 AI 开发流程
 - [技术原理：解决 Node.js 代理超时](./docs/solving-node-proxy-timeout.md)
 - [维护手册：如何扩展 API](./docs/maintenance.md)
 - [产品需求文档 (PRD)](./docs/requirement.md)
+- [Lint Warning Cleanup Plan](./docs/superpowers/plans/2026-04-04-lint-warning-cleanup.md) - warning 清理分批策略与最终验证结果

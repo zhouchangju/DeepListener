@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Download, Clock, FileText, Calendar } from "lucide-react";
+import { Download, Clock, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
 
@@ -137,36 +137,6 @@ export default function ExportButtons({
   const exportNotes = async () => {
     setIsExporting('notes');
     try {
-      // Get filtered item IDs for notes export
-      const filteredItemIds = items
-        .filter(item => {
-          if (selectedDifficulties.length > 0) {
-            const d = item.difficulty || 'NORMAL';
-            if (!selectedDifficulties.includes(d)) return false;
-          }
-          if (selectedTrackIds.length > 0) {
-            if (!selectedTrackIds.includes(item.sentence.track.id)) return false;
-          }
-          if (dateFrom) {
-            const itemDate = new Date(item.createdAt || '');
-            const fromDate = new Date(dateFrom);
-            if (itemDate < fromDate) return false;
-          }
-          if (dateTo) {
-            const itemDate = new Date(item.createdAt || '');
-            const toDate = new Date(dateTo);
-            toDate.setHours(23, 59, 59, 999);
-            if (itemDate > toDate) return false;
-          }
-          return true;
-        })
-        .map(item => {
-          // Extract ID from the item - we need to pass the full items with IDs
-          // For now, we'll use the backend to handle filtering
-          return null;
-        })
-        .filter(Boolean);
-
       const response = await fetch('/api/vault/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# Symphony Setup Script
+# Based on https://github.com/openai/symphony/blob/main/elixir/README.md
+
+set -e
+
+echo "--- Symphony Setup ---"
+
+echo "1. Installing Node.js dependencies..."
+npm install
+
+echo "2. Checking for .env file..."
+if [ ! -f .env ]; then
+  echo "Creating .env from .env.example (if exists)..."
+  if [ -f .env.example ]; then
+    cp .env.example .env
+  else
+    touch .env
+  fi
+fi
+
+if ! grep -q "LINEAR_API_KEY" .env; then
+  echo "" >> .env
+  echo "Adding LINEAR_API_KEY placeholder to .env..."
+  echo "LINEAR_API_KEY=your_linear_api_key_here" >> .env
+fi
+
+echo "3. Synchronizing database schema..."
+npx prisma generate
+
+if [ -f dev.db ]; then
+  echo "Existing database found (dev.db). Applying pending migrations safely..."
+  # 'migrate deploy' applies migrations without ever prompting to reset the database.
+  if npx prisma migrate deploy; then
+    echo "Database schema is up to date."
+  else
+    echo "WARNING: Automatic migration deployment failed. This usually happens if your local database has drifted from the migration history."
+    echo "To fix this, you may need to run 'npx prisma migrate dev' manually, but BE CAREFUL: it may ask to RESET your database and delete all your data."
+  fi
+else
+  echo "No existing database found. Initializing a new one..."
+  npx prisma migrate dev --name init
+fi
+
+echo "Setup complete! Please configure your LINEAR_API_KEY in .env before running Symphony."

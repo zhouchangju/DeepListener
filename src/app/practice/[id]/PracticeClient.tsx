@@ -34,7 +34,7 @@ interface Sentence {
   startTime: number;
   endTime: number;
   formatting?: string | null;
-  reviewItem?: { tags?: { name: string }[]; userNote?: string; difficulty?: string } | null;
+  reviewItem?: { tags?: { name: string }[]; userNote?: string | null; difficulty?: string } | null;
 }
 
 

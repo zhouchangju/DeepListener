@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   getShadowingOverlayClassName,
@@ -32,6 +33,12 @@ test("background audio player is hidden while shadowing is open", () => {
 test("track notes stay mounted during shadowing so F1-F4 shortcuts keep working", () => {
   assert.equal(shouldRenderTrackNotes(false), true);
   assert.equal(shouldRenderTrackNotes(true), true);
+});
+
+test("track notes helper accepts the shadowing mode flag from practice client", () => {
+  const source = readFileSync(new URL("./presentation.ts", import.meta.url), "utf8");
+
+  assert.match(source, /export function shouldRenderTrackNotes\([^)]*shadowingMode\?: boolean[^)]*\)/);
 });
 
 test("audio slice key only changes when the sentence timing changes", () => {

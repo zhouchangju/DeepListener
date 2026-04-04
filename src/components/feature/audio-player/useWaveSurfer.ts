@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, useState, RefObject } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js";
@@ -36,14 +36,42 @@ export function useWaveSurfer({
 }: UseWaveSurferProps) {
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<RegionsPlugin | null>(null);
+  const playbackRateRef = useRef(playbackRate);
+  const zoomLevelRef = useRef(zoomLevel);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || !timelineRef.current) return;
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
+
+  useEffect(() => {
+    zoomLevelRef.current = zoomLevel;
+  }, [zoomLevel]);
+
+  const handleReady = useEffectEvent(() => {
+    onReady();
+  });
+
+  const handleTimeUpdate = useEffectEvent((time: number) => {
+    onTimeUpdate(time);
+  });
+
+  const handleRegionUpdateEnd = useEffectEvent((region: Region) => {
+    onRegionUpdateEnd(region);
+  });
+
+  const handleInteraction = useEffectEvent((time: number) => {
+    onInteraction(time);
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const timeline = timelineRef.current;
+    if (!container || !timeline) return;
 
     const ws = WaveSurfer.create({
-      container: containerRef.current,
+      container,
       waveColor: "#cbd5e1",
       progressColor: "#4f46e5",
       cursorColor: "#f43f5e",
@@ -51,10 +79,10 @@ export function useWaveSurfer({
       barWidth: 2,
       barGap: 1,
       height: 100,
-      minPxPerSec: zoomLevel,
+      minPxPerSec: zoomLevelRef.current,
       autoCenter: true,
       plugins: [
-        TimelinePlugin.create({ container: timelineRef.current }),
+        TimelinePlugin.create({ container: timeline }),
         Minimap.create({ height: 20, waveColor: "#eee", progressColor: "#4f46e5" }),
       ],
     });
@@ -70,18 +98,18 @@ export function useWaveSurfer({
       });
     });
 
-    regions.on("region-update-end", onRegionUpdateEnd);
+    regions.on("region-updated", (region) => handleRegionUpdateEnd(region as Region));
 
     // Playback Events
     ws.on("ready", () => {
       setIsReady(true);
-      ws.setPlaybackRate(playbackRate); // Set initial rate
-      onReady();
+      ws.setPlaybackRate(playbackRateRef.current);
+      handleReady();
     });
     ws.on("play", () => setIsPlaying(true));
     ws.on("pause", () => setIsPlaying(false));
-    ws.on("timeupdate", onTimeUpdate);
-    ws.on("interaction", onInteraction);
+    ws.on("timeupdate", handleTimeUpdate);
+    ws.on("interaction", handleInteraction);
 
     // Load Audio
     ws.load(audioUrl).catch((e) => {
@@ -92,6 +120,9 @@ export function useWaveSurfer({
 
     return () => {
       setIsReady(false);
+      setIsPlaying(false);
+      wavesurferRef.current = null;
+      regionsRef.current = null;
       ws.unAll();
       setTimeout(() => {
         try {
@@ -101,7 +132,7 @@ export function useWaveSurfer({
         }
       }, 0);
     };
-  }, [audioUrl]); // Re-init on URL change only
+  }, [audioUrl, containerRef, timelineRef]);
 
   // Sync zoom level
   useEffect(() => {

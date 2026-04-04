@@ -98,7 +98,7 @@ export default function BatchUploadButton() {
           router.push(`/practice/${success[0].id}`);
         }, 2000);
       }
-    } catch (error) {
+    } catch {
       toast.error("Batch upload failed. Check your connection.", { id: toastId });
       setProgress(
         initialProgress.map((p) => ({ ...p, status: "error", error: "Upload failed" }))

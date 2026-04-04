@@ -17,14 +17,14 @@ type SortOption = "createdAt" | "due" | "stability" | "dr";
 interface VaultItem {
   id: string;
   userNote?: string | null;
-  difficulty?: string;
+  difficulty?: string | null;
   isArchived: boolean;
-  due?: Date;
-  nextReview?: Date;
-  stability?: number;
-  dr?: number;
-  retrieval?: number;
-  lapse?: number;
+  due?: Date | null;
+  nextReview?: Date | null;
+  stability?: number | null;
+  dr?: number | null;
+  retrieval?: number | null;
+  lapse?: number | null;
   createdAt: Date;
   tags: { id: string; name: string }[];
   sentence: {
@@ -37,6 +37,15 @@ interface VaultItem {
       audioUrl: string;
     };
   };
+}
+
+function getReviewDateTimestamp(item: Pick<VaultItem, "due" | "nextReview">) {
+  return item.due?.getTime() ?? item.nextReview?.getTime() ?? Number.POSITIVE_INFINITY;
+}
+
+function formatReviewDateLabel(item: Pick<VaultItem, "due" | "nextReview">) {
+  const timestamp = getReviewDateTimestamp(item);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleDateString() : "No review date";
 }
 
 export default function VaultListClient({ initialItems, totalCount }: { initialItems: VaultItem[], totalCount?: number }) {
@@ -158,7 +167,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     return [...filtered].sort((a, b) => {
       switch (sortBy) {
         case "due":
-          return new Date(a.due || a.nextReview).getTime() - new Date(b.due || b.nextReview).getTime();
+          return getReviewDateTimestamp(a) - getReviewDateTimestamp(b);
         case "stability":
           return (a.stability || 0) - (b.stability || 0);
         case "dr":
@@ -575,7 +584,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      Next: {new Date(item.due || item.nextReview).toLocaleDateString()}
+                      Next: {formatReviewDateLabel(item)}
                     </span>
                   </div>
 

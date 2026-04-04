@@ -30,13 +30,35 @@ interface ReviewChartProps {
   futureData: { date: string; count: number }[];
 }
 
-export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
-  // Combine data and mark each entry as past or future
-  const combinedData = [
-    ...pastData.map(d => ({ ...d, type: 'past' })),
-    ...futureData.map(d => ({ ...d, type: 'future' })),
-  ];
+interface ReviewChartDatum {
+  date: string;
+  fullDate: string;
+  past: number;
+  future: number;
+}
 
+interface ReviewTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ReviewChartDatum }>;
+}
+
+function ReviewTooltip({ active, payload }: ReviewTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+
+  return (
+    <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
+      <p className="text-sm font-semibold text-gray-700">{data.fullDate}</p>
+      <p className="text-sm text-indigo-600">Reviewed: {data.past}</p>
+      <p className="text-sm text-emerald-600">Due: {data.future}</p>
+    </div>
+  );
+}
+
+export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
   // Get unique dates sorted chronologically
   const allDates = Array.from(
     new Set([...pastData.map(d => d.date), ...futureData.map(d => d.date)])
@@ -61,20 +83,6 @@ export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
     };
   });
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
-          <p className="text-sm font-semibold text-gray-700">{data.fullDate}</p>
-          <p className="text-sm text-indigo-600">Reviewed: {data.past}</p>
-          <p className="text-sm text-emerald-600">Due: {data.future}</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <ChartWrapper fallbackHeight={350}>
       <BarChart
@@ -91,7 +99,7 @@ export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
           tickLine={false}
         />
         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9' }} />
+        <Tooltip content={<ReviewTooltip />} cursor={{ fill: '#f1f5f9' }} />
         <Legend verticalAlign="top" height={36}/>
         <ReferenceLine x={pastData.length - 0.5} stroke="#cbd5e1" strokeDasharray="3 3" />
         <Bar dataKey="past" name="Completed Reviews" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />

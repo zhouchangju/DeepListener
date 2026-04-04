@@ -25,7 +25,8 @@ export function shouldRenderBackgroundAudioPlayer(shadowingMode: boolean) {
   return !shadowingMode;
 }
 
-export function shouldRenderTrackNotes() {
+export function shouldRenderTrackNotes(shadowingMode?: boolean) {
+  void shadowingMode;
   return true;
 }
 

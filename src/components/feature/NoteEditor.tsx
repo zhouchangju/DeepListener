@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold, Copy } from "lucide-react";
 import { toast } from "sonner";
@@ -50,15 +50,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
     isContentLoadedRef.current = false;
   }, [trackId]);
 
-  const handleInput = () => {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-    typingTimeoutRef.current = setTimeout(() => {
-      saveNote();
-    }, 1500);
-  };
-
-  const saveNote = async () => {
+  const saveNote = useCallback(async () => {
     if (!editorRef.current) return;
     const currentContent = editorRef.current.innerHTML;
 
@@ -81,13 +73,21 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [onSaved, trackId]);
 
-  const exec = (command: string, value: string = "") => {
+  const handleInput = useCallback(() => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      void saveNote();
+    }, 1500);
+  }, [saveNote]);
+
+  const exec = useCallback((command: string, value: string = "") => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
     handleInput();
-  };
+  }, [handleInput]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [exec]);
 
   const handleCopy = async () => {
     if (!editorRef.current) return;

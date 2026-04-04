@@ -35,6 +35,8 @@ export default function MiniWavePlayer({
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<RegionsPlugin | null>(null);
   const loopRef = useRef(loop);
+  const hasRegionRef = useRef(false);
+  const playbackRateRef = useRef(playbackRate);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasRegion, setHasRegion] = useState(false);
 
@@ -44,6 +46,7 @@ export default function MiniWavePlayer({
   }, [loop]);
 
   useEffect(() => {
+    playbackRateRef.current = playbackRate;
     if (wavesurferRef.current) {
       wavesurferRef.current.setPlaybackRate(playbackRate);
     }
@@ -76,12 +79,15 @@ export default function MiniWavePlayer({
         regions.getRegions().forEach((r) => {
           if (r.id !== region.id) r.remove();
         });
+        hasRegionRef.current = true;
         setHasRegion(true);
         region.play(); // Auto play when created
       });
 
       regions.on("region-removed", () => {
-        if (regions.getRegions().length === 0) setHasRegion(false);
+        const nextHasRegion = regions.getRegions().length > 0;
+        hasRegionRef.current = nextHasRegion;
+        if (!nextHasRegion) setHasRegion(false);
       });
 
       regions.on("region-out", (region) => {
@@ -95,7 +101,7 @@ export default function MiniWavePlayer({
       console.warn("WaveSurfer load error:", err);
     });
     
-    ws.setPlaybackRate(playbackRate); // Set initial rate
+    ws.setPlaybackRate(playbackRateRef.current); // Set initial rate
     wavesurferRef.current = ws;
 
     ws.on("play", () => setIsPlaying(true));
@@ -103,7 +109,7 @@ export default function MiniWavePlayer({
     ws.on("finish", () => {
       setIsPlaying(false);
       // Loop the entire audio if loop is enabled and no region is active
-      if (loopRef.current && !hasRegion) {
+      if (loopRef.current && !hasRegionRef.current) {
         ws.play();
       }
     });
@@ -121,12 +127,13 @@ export default function MiniWavePlayer({
         URL.revokeObjectURL(url);
       }
     };
-  }, [audioBlob, height, waveColor, progressColor, enableRegions, autoPlay]); // Removed playbackRate from dependency to avoid recreation
+  }, [audioBlob, height, waveColor, progressColor, enableRegions, autoPlay]);
 
   const togglePlay = () => wavesurferRef.current?.playPause();
   
   const clearRegions = () => {
     regionsRef.current?.clearRegions();
+    hasRegionRef.current = false;
     setHasRegion(false);
   };
 

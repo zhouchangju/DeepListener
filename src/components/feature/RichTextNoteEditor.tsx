@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold } from "lucide-react";
 
@@ -26,35 +26,22 @@ export default function RichTextNoteEditor({
   reloadKey,
 }: RichTextNoteEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [content, setContent] = useState(initialNote || "");
-  const isContentLoadedRef = useRef(false);
+  const initialHtml = initialNote || "";
 
-  // Reset load flag when reloadKey changes (e.g., modal reopens)
+  // Reload the DOM editor when the source note changes or the parent forces a refresh.
   useEffect(() => {
-    isContentLoadedRef.current = false;
-  }, [reloadKey]);
-
-  // Load content only once (or when reloadKey changes)
-  useEffect(() => {
-    // Skip if already loaded
-    if (isContentLoadedRef.current) return;
-
-    setContent(initialNote || "");
-    isContentLoadedRef.current = true;
-
     const timer = setTimeout(() => {
       if (editorRef.current) {
-        editorRef.current.innerHTML = initialNote || "";
+        editorRef.current.innerHTML = initialHtml;
       }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [initialNote]);
+  }, [initialHtml, reloadKey]);
 
   const handleInput = () => {
     if (!editorRef.current) return;
     const currentContent = editorRef.current.innerHTML;
-    setContent(currentContent);
     onChange?.(currentContent);
   };
 

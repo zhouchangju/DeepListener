@@ -7,9 +7,10 @@ import { WorkloadSection } from "./sections/WorkloadSection";
 import { BehaviorSection } from "./sections/BehaviorSection";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Brain, Activity, Trophy } from "lucide-react";
+import { DashboardData } from "./types";
 
 interface DashboardTabsProps {
-  data: any; // Simplified for brevity, in real app should be typed
+  data: DashboardData;
 }
 
 export function DashboardTabs({ data }: DashboardTabsProps) {
@@ -50,8 +51,8 @@ export function DashboardTabs({ data }: DashboardTabsProps) {
             progressPercent={data.progressPercent}
             totalHours={data.totalHours}
             c1Progress={data.c1Progress}
-            statusData={data.statusData}
-            typeData={data.typeData}
+            totalTracks={data.totalTracks}
+            totalSentences={data.totalSentences}
           />
         )}
         {activeTab === "memory" && (

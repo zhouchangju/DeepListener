@@ -6,7 +6,7 @@ import { InteractiveText } from "../notation/InteractiveText";
 
 interface ReviewItem {
   tags?: { name: string }[];
-  userNote?: string;
+  userNote?: string | null;
   difficulty?: string;
 }
 

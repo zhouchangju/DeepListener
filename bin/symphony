@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Symphony Orchestrator Entry Point
+# Based on https://github.com/openai/symphony/blob/main/elixir/README.md
+
+set -e
+
+# Load .env if it exists
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
+
+# Determine workflow path
+WORKFLOW_PATH=${1:-"./WORKFLOW.md"}
+
+echo "--- Symphony Orchestrator ---"
+echo "Workflow: $WORKFLOW_PATH"
+
+# Run the orchestrator using tsx
+npx tsx src/symphony/main.ts "$WORKFLOW_PATH"

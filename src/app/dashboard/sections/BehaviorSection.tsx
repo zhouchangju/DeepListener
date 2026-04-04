@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Trophy } from "lucide-react";
 import { StudyHeatmap, ContentMasteryRadar } from "../BehaviorCharts";
 import ErrorTagChart from "../StatsCharts";
+import { NamedValueDatum, RadarDatum } from "../types";
 
 interface BehaviorSectionProps {
   heatmapData: Record<string, number>;
-  radarData: any[];
-  tagData: any[];
+  radarData: RadarDatum[];
+  tagData: NamedValueDatum[];
 }
 
 export function BehaviorSection({ heatmapData, radarData, tagData }: BehaviorSectionProps) {

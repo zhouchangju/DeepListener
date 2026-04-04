@@ -20,7 +20,7 @@ const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "G
 interface VaultItem {
   id: string;
   userNote?: string | null;
-  difficulty?: string;
+  difficulty?: string | null;
   tags?: { id: string; name: string }[];
   sentence?: {
     text: string;
@@ -36,7 +36,6 @@ interface EditVaultModalProps {
 }
 
 export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditVaultModalProps) {
-  const [note, setNote] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("NORMAL");
   const [loading, setLoading] = useState(false);
@@ -45,7 +44,6 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
 
   useEffect(() => {
     if (item) {
-      setNote(item.userNote || "");
       setSelectedTags(item.tags?.map((t) => t.name) || []);
       setDifficulty(item.difficulty || "NORMAL");
       // Force re-mount editor when item changes
@@ -71,6 +69,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
   };
 
   const handleSave = async () => {
+    if (!item) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/vault/${item.id}`, {
@@ -84,7 +83,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
       toast.success("Saved successfully");
       onSaved({ tags: selectedTags, difficulty });
       onClose();
-    } catch (e) {
+    } catch {
       toast.error("Failed to save changes");
     } finally {
       setLoading(false);
@@ -157,7 +156,6 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
               key={editorKey}
               initialNote={item.userNote}
               reviewItemId={item.id}
-              onNoteChange={(newNote) => setNote(newNote)}
             />
           </div>
         )}

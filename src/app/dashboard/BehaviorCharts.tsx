@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { RadarDatum } from "./types";
 
 function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.ReactNode; fallbackHeight?: number }) {
   const [isReady, setIsReady] = useState(false);
@@ -32,7 +33,7 @@ function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.Reac
   );
 }
 
-export function ContentMasteryRadar({ data }: { data: any[] }) {
+export function ContentMasteryRadar({ data }: { data: RadarDatum[] }) {
   return (
     <ChartWrapper fallbackHeight={300}>
       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
@@ -69,9 +70,6 @@ export function StudyHeatmap({ data }: { data: Record<string, number> }) {
   let currentStreak = 0;
   let maxStreak = 0;
   let tempStreak = 0;
-  
-  const todayStr = new Date().toISOString().split('T')[0];
-  const sortedDates = [...dateKeys].reverse();
   
   // Current Streak (starting from today or yesterday)
   const checkDate = new Date();

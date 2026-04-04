@@ -31,7 +31,7 @@ export default function UploadButton() {
       const track = await res.json();
       toast.success("Ready to practice!", { id: toastId });
       router.push(`/practice/${track.id}`);
-    } catch (error) {
+    } catch {
       toast.error("Upload failed. Check your OpenAI API Key.", { id: toastId });
     } finally {
       setUploading(false);

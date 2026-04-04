@@ -61,7 +61,7 @@ export class GoogleProvider implements TranscriptionProvider {
         segments,
         rawJson: cleanJson,
       };
-    } catch (e) {
+    } catch {
       console.error("Failed to parse Gemini response as JSON:", responseText);
       throw new Error("Gemini transcription failed to return valid JSON format.");
     }

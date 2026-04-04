@@ -7,14 +7,14 @@ import VaultListClient from "./VaultListClient";
 interface VaultItem {
   id: string;
   userNote?: string | null;
-  difficulty?: string;
+  difficulty?: string | null;
   isArchived: boolean;
-  due?: Date;
-  nextReview?: Date;
-  stability?: number;
-  dr?: number;
-  retrieval?: number;
-  lapse?: number;
+  due?: Date | null;
+  nextReview?: Date | null;
+  stability?: number | null;
+  dr?: number | null;
+  retrieval?: number | null;
+  lapse?: number | null;
   createdAt: Date;
   tags: { id: string; name: string }[];
   sentence: {

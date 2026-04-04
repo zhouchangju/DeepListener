@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Activity } from "lucide-react";
 import { ReviewChart } from "../ReviewChart";
 import { OverdueBacklogChart } from "../MemoryCharts";
+import { NamedValueDatum, ReviewCountDatum } from "../types";
 
 interface WorkloadSectionProps {
-  pastData: any[];
-  futureData: any[];
-  overdueData: any[];
+  pastData: ReviewCountDatum[];
+  futureData: ReviewCountDatum[];
+  overdueData: NamedValueDatum[];
 }
 
 export function WorkloadSection({ pastData, futureData, overdueData }: WorkloadSectionProps) {

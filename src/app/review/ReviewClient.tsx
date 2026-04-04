@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useEffectEvent } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,9 @@ type ReviewItem = {
     startTime: number;
     endTime: number;
     track: {
+      id: string;
       audioUrl: string;
+      title: string;
     };
   };
   tags: Array<{ id: string; name: string }>;
@@ -39,7 +41,9 @@ type ReviewGradeResponse = {
   isArchived?: boolean;
 };
 
-type EditSavedItem = Partial<ReviewItem> & {
+type EditSavedItem = {
+  userNote?: string | null;
+  difficulty?: string;
   tags?: string[];
 };
 
@@ -77,12 +81,8 @@ export default function ReviewClient({
 
   useEffect(() => {
     const filtered = initialItems.filter((item) => !item.isArchived);
-
-    if (filtered.length < items.length && currentIndex >= filtered.length) {
-      setCurrentIndex(Math.max(0, filtered.length - 1));
-    }
-
     setItems(filtered);
+    setCurrentIndex((prevIndex) => Math.min(prevIndex, Math.max(0, filtered.length - 1)));
   }, [initialItems]);
 
   useEffect(() => {
@@ -102,54 +102,6 @@ export default function ReviewClient({
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showHelpTooltip]);
-
-  useEffect(() => {
-    if (!current) return;
-    setShowAnswer(false);
-    // Delay audio playback by 500ms when switching to a new card
-    const timer = setTimeout(() => {
-      playAudio();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [currentIndex, current]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isEditing) return;
-
-      // Space key: toggle answer visibility
-      if (e.key === " ") {
-        e.preventDefault();
-        setShowAnswer(prev => !prev);
-        return;
-      }
-
-      // R key: replay audio immediately
-      if (e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        playAudio();
-        return;
-      }
-
-      // Number keys: always work for grading
-      switch (e.key.toLowerCase()) {
-        case '1':
-          handleGrade("again");
-          break;
-        case '2':
-          handleGrade("hard");
-          break;
-        case '3':
-          handleGrade("good");
-          break;
-        case '4':
-          handleGrade("easy");
-          break;
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isEditing, currentIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -185,6 +137,10 @@ export default function ReviewClient({
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.play().catch(e => console.log("Auto-play prevented:", e));
   };
+
+  const playAudioInEffect = useEffectEvent(() => {
+    playAudio();
+  });
 
   const handleGrade = async (quality: ReviewQuality) => {
     if (!current) return;
@@ -234,6 +190,55 @@ export default function ReviewClient({
       toast.error("Failed to save progress");
     }
   };
+
+  const handleGradeInEffect = useEffectEvent((quality: ReviewQuality) => {
+    void handleGrade(quality);
+  });
+
+  useEffect(() => {
+    if (!current) return;
+    setShowAnswer(false);
+    const timer = setTimeout(() => {
+      playAudioInEffect();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [current]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditing) return;
+
+      if (e.key === " ") {
+        e.preventDefault();
+        setShowAnswer((prev) => !prev);
+        return;
+      }
+
+      if (e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        playAudioInEffect();
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case "1":
+          handleGradeInEffect("again");
+          break;
+        case "2":
+          handleGradeInEffect("hard");
+          break;
+        case "3":
+          handleGradeInEffect("good");
+          break;
+        case "4":
+          handleGradeInEffect("easy");
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isEditing]);
 
   const exportAudio = async () => {
     setIsExporting(true);

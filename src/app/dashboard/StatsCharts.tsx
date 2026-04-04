@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { NamedValueDatum } from "./types";
 
 const STATUS_COLORS: Record<string, string> = {
   "未学习": "#94a3b8", // Slate
@@ -76,7 +77,7 @@ export function TypeDistributionChart({ data }: { data: { name: string; value: n
   );
 }
 
-export default function ErrorTagChart({ data }: { data: any[] }) {
+export default function ErrorTagChart({ data }: { data: NamedValueDatum[] }) {
   return (
     <ChartWrapper fallbackHeight={250}>
       <PieChart>

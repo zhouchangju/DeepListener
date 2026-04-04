@@ -12,8 +12,7 @@ import {
   LineChart,
   Line,
   CartesianGrid,
-  ReferenceLine,
-  Legend
+  ReferenceLine
 } from "recharts";
 
 function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.ReactNode; fallbackHeight?: number }) {

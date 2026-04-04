@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, Check, BookOpen, Check as CheckIcon } from "lucide-react";
+import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, BookOpen, Check as CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {

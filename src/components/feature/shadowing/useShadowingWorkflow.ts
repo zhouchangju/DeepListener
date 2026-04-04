@@ -13,65 +13,130 @@ interface UseShadowingWorkflowProps {
 }
 
 export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }: UseShadowingWorkflowProps) {
-  const [mode, setMode] = useState<Mode>("idle");
-  const [originalBlob, setOriginalBlob] = useState<Blob | null>(null);
-  const [userBlob, setUserBlob] = useState<Blob | null>(null);
-  const [isLooping, setIsLooping] = useState(false);
-  
+  const [modeState, setModeState] = useState<{ sliceKey: string; value: Mode }>({
+    sliceKey: "",
+    value: "idle",
+  });
+  const [originalBlobState, setOriginalBlobState] = useState<{ sliceKey: string; blob: Blob | null }>({
+    sliceKey: "",
+    blob: null,
+  });
+  const [userBlobState, setUserBlobState] = useState<{ sliceKey: string; blob: Blob | null }>({
+    sliceKey: "",
+    blob: null,
+  });
+  const [loopState, setLoopState] = useState<{ sliceKey: string; value: boolean }>({
+    sliceKey: "",
+    value: false,
+  });
+
   const originalAudioRef = useRef<HTMLAudioElement | null>(null);
   const originalAudioUrlRef = useRef<string | null>(null);
   const abortedRef = useRef(false);
+  const isLoopingRef = useRef(false);
   const activeSentenceIdRef = useRef<string | undefined>(undefined);
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { startRecording, stopRecording } = useAudioRecorder();
   const sliceKey = getShadowingAudioSliceKey(sentence);
 
-  // Stop everything cleanup
-  const stopAll = useCallback(() => {
-    abortedRef.current = true;
+  const mode = modeState.sliceKey === sliceKey ? modeState.value : "idle";
+  const originalBlob = originalBlobState.sliceKey === sliceKey ? originalBlobState.blob : null;
+  const userBlob = userBlobState.sliceKey === sliceKey ? userBlobState.blob : null;
+  const isLooping = loopState.sliceKey === sliceKey ? loopState.value : false;
+
+  const setModeForCurrentSlice = useCallback((value: Mode) => {
+    setModeState({ sliceKey, value });
+  }, [sliceKey]);
+
+  const setOriginalBlobForCurrentSlice = useCallback((blob: Blob | null) => {
+    setOriginalBlobState({ sliceKey, blob });
+  }, [sliceKey]);
+
+  const setUserBlobForCurrentSlice = useCallback((blob: Blob | null) => {
+    setUserBlobState({ sliceKey, blob });
+  }, [sliceKey]);
+
+  const setLoopingForCurrentSlice = useCallback((value: boolean) => {
+    isLoopingRef.current = value;
+    setLoopState({ sliceKey, value });
+  }, [sliceKey]);
+
+  const resetMedia = useCallback(() => {
     stopRecording();
-    
+
     if (loopTimeoutRef.current) {
       clearTimeout(loopTimeoutRef.current);
+      loopTimeoutRef.current = null;
     }
 
     if (originalAudioRef.current) {
       originalAudioRef.current.pause();
       originalAudioRef.current.currentTime = 0;
-      originalAudioRef.current.onended = null; // Clear handlers
+      originalAudioRef.current.onended = null;
     }
+  }, [stopRecording]);
 
+  const destroyOriginalAudio = useCallback(() => {
     if (originalAudioUrlRef.current) {
       URL.revokeObjectURL(originalAudioUrlRef.current);
       originalAudioUrlRef.current = null;
     }
 
-    setMode("idle");
-    setIsLooping(false);
-  }, [stopRecording]);
+    originalAudioRef.current = null;
+  }, []);
 
-  // Initialize slice (only when sentence or fullAudioBuffer changes)
+  const stopAll = useCallback(() => {
+    abortedRef.current = true;
+    resetMedia();
+    setModeForCurrentSlice("idle");
+    setLoopingForCurrentSlice(false);
+  }, [resetMedia, setLoopingForCurrentSlice, setModeForCurrentSlice]);
+
   useEffect(() => {
-    stopAll(); // Stop previous when sentence changes
-    abortedRef.current = false; // Reset for new sentence
-    activeSentenceIdRef.current = sentence.id; // Track active sentence
-    setOriginalBlob(null);
-    setUserBlob(null);
+    abortedRef.current = true;
+    resetMedia();
+    destroyOriginalAudio();
+    activeSentenceIdRef.current = sentence.id;
 
-    try {
-      const blob = sliceAudioBuffer(fullAudioBuffer, sentence.startTime, sentence.endTime);
-      setOriginalBlob(blob);
-      const url = URL.createObjectURL(blob);
-      originalAudioUrlRef.current = url;
-      originalAudioRef.current = new Audio(url);
-      originalAudioRef.current.playbackRate = playbackRate;
-    } catch (e) {
-      console.error("Slice failed", e);
-      toast.error("Audio slice failed");
-    }
+    const timer = window.setTimeout(() => {
+      abortedRef.current = false;
+      setModeForCurrentSlice("idle");
+      setLoopingForCurrentSlice(false);
+      setUserBlobForCurrentSlice(null);
+      setOriginalBlobForCurrentSlice(null);
 
-    return () => stopAll();
-  }, [fullAudioBuffer, sliceKey]); // Re-slice only when the audio segment itself changes
+      try {
+        const blob = sliceAudioBuffer(fullAudioBuffer, sentence.startTime, sentence.endTime);
+        setOriginalBlobForCurrentSlice(blob);
+        const url = URL.createObjectURL(blob);
+        originalAudioUrlRef.current = url;
+        originalAudioRef.current = new Audio(url);
+        originalAudioRef.current.playbackRate = playbackRate;
+      } catch (error) {
+        console.error("Slice failed", error);
+        toast.error("Audio slice failed");
+      }
+    }, 0);
+
+    return () => {
+      abortedRef.current = true;
+      window.clearTimeout(timer);
+      resetMedia();
+      destroyOriginalAudio();
+    };
+  }, [
+    destroyOriginalAudio,
+    fullAudioBuffer,
+    playbackRate,
+    resetMedia,
+    sentence.endTime,
+    sentence.id,
+    sentence.startTime,
+    setLoopingForCurrentSlice,
+    setModeForCurrentSlice,
+    setOriginalBlobForCurrentSlice,
+    setUserBlobForCurrentSlice,
+  ]);
 
   // Real-time rate sync
   useEffect(() => {
@@ -84,105 +149,128 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   useEffect(() => {
     const audio = originalAudioRef.current;
     if (!audio) return;
-    
-    // Clear any existing loop timeout when dependency changes
-    if (loopTimeoutRef.current) clearTimeout(loopTimeoutRef.current);
+
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current);
+      loopTimeoutRef.current = null;
+    }
 
     if (isLooping) {
-        audio.loop = false; // We handle loop manually
-        setMode("playing_original");
-        
-        const playStep = () => {
-             audio.currentTime = 0;
-             audio.play().catch(() => {});
-        };
+      audio.loop = false;
 
-        audio.onended = () => {
-            if (!isLooping) return; // Should be handled by unmount/dep change but safety check
-            loopTimeoutRef.current = setTimeout(() => {
-                 playStep();
-            }, 1000); // 1s Delay
-        };
+      const playStep = () => {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      };
 
-        playStep();
+      audio.onended = () => {
+        if (!isLoopingRef.current) return;
+        loopTimeoutRef.current = setTimeout(() => {
+          playStep();
+        }, 1000);
+      };
+
+      playStep();
     } else {
-        // If we just turned off looping, pause if playing
-        // But be careful not to interfere if we transitioned to another mode (like recording)
-        // Actually stopAll() handles mode reset, but if we toggle button...
-        if (mode === "playing_original") {
-             audio.pause();
-             setMode("idle");
-        }
-        // Remove handler if it was the loop handler
-        // Note: playOriginal/startFlow override onended, so this is fine.
+      audio.pause();
+      audio.onended = null;
     }
-    
+
     return () => {
-        if (loopTimeoutRef.current) clearTimeout(loopTimeoutRef.current);
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current);
+        loopTimeoutRef.current = null;
+      }
     };
-  }, [isLooping]); // Depend on isLooping. When it changes, effect re-runs.
+  }, [isLooping]);
 
   const toggleLoop = useCallback(() => {
-    stopRecording(); // Ensure recording stops
-    setIsLooping(prev => !prev);
-  }, [stopRecording]);
+    const nextIsLooping = !isLooping;
+    resetMedia();
+    abortedRef.current = false;
+    setLoopingForCurrentSlice(nextIsLooping);
+    setModeForCurrentSlice(nextIsLooping ? "playing_original" : "idle");
+  }, [isLooping, resetMedia, setLoopingForCurrentSlice, setModeForCurrentSlice]);
 
   const playOriginal = useCallback((onEnded?: () => void) => {
-    stopRecording(); // Interrupt recording
-    setIsLooping(false); // Disable loop if manual play
+    resetMedia();
+    abortedRef.current = false;
+    setLoopingForCurrentSlice(false);
 
     const audio = originalAudioRef.current;
     if (!audio) return;
-    
-    setMode("playing_original");
+
+    setModeForCurrentSlice("playing_original");
     audio.playbackRate = playbackRate;
     audio.currentTime = 0;
-    audio.play();
+    audio.play().catch(() => {});
     audio.onended = () => {
-        setMode("idle"); // Reset to idle after single play unless flow overrides
-        onEnded?.();
+      setModeForCurrentSlice("idle");
+      onEnded?.();
     };
-  }, [playbackRate, stopRecording]);
+  }, [playbackRate, resetMedia, setLoopingForCurrentSlice, setModeForCurrentSlice]);
 
   const handleStartFlow = useCallback(() => {
-    stopAll(); // Reset everything
+    resetMedia();
     abortedRef.current = false;
-    setMode("playing_original");
-    setUserBlob(null);
-    
+    setLoopingForCurrentSlice(false);
+    setModeForCurrentSlice("playing_original");
+    setUserBlobForCurrentSlice(null);
+
     const audio = originalAudioRef.current;
     if (!audio) return;
 
     audio.playbackRate = playbackRate;
     audio.currentTime = 0;
-    audio.play();
-    
-    // Override onended for the flow
+    audio.play().catch(() => {});
+
     audio.onended = () => {
       if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
-      setMode("recording");
+      setModeForCurrentSlice("recording");
       const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
-      
+
       startRecording(duration).then((blob) => {
         if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
-        setUserBlob(blob);
-        setMode("reviewing");
+        setUserBlobForCurrentSlice(blob);
+        setModeForCurrentSlice("reviewing");
       });
     };
-  }, [sentence, startRecording, stopAll, playbackRate]);
+  }, [
+    playbackRate,
+    resetMedia,
+    sentence.endTime,
+    sentence.id,
+    sentence.startTime,
+    setLoopingForCurrentSlice,
+    setModeForCurrentSlice,
+    setUserBlobForCurrentSlice,
+    startRecording,
+  ]);
 
   const handleRecAgain = useCallback(() => {
-    stopAll(); // Reset
+    resetMedia();
     abortedRef.current = false;
-    setMode("recording");
+    setLoopingForCurrentSlice(false);
+    setModeForCurrentSlice("recording");
+    setUserBlobForCurrentSlice(null);
     const duration = ((sentence.endTime - sentence.startTime) / playbackRate) * 1000 * 1.5;
-    
+
     startRecording(duration).then((blob) => {
       if (abortedRef.current || activeSentenceIdRef.current !== sentence.id) return;
-      setUserBlob(blob);
-      setMode("reviewing");
+      setUserBlobForCurrentSlice(blob);
+      setModeForCurrentSlice("reviewing");
     });
-  }, [sentence, startRecording, stopAll, playbackRate]);
+  }, [
+    playbackRate,
+    resetMedia,
+    sentence.endTime,
+    sentence.id,
+    sentence.startTime,
+    setLoopingForCurrentSlice,
+    setModeForCurrentSlice,
+    setUserBlobForCurrentSlice,
+    startRecording,
+  ]);
 
   return {
     mode,

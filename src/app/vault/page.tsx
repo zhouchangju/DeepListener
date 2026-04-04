@@ -1,10 +1,38 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import VaultListClient from "./VaultListClient";
 import VaultPageClient from "./VaultPageClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+
+interface VaultPageTrack {
+  id: string;
+  title: string;
+  audioUrl: string;
+}
+
+interface VaultPageItem {
+  id: string;
+  userNote: string | null;
+  difficulty: string | null;
+  isArchived: boolean;
+  due: Date | null;
+  nextReview: Date | null;
+  stability: number | null;
+  dr: number | null;
+  retrieval: number | null;
+  lapse: number | null;
+  createdAt: Date;
+  tags: { id: string; name: string }[];
+  sentence: {
+    id: string;
+    text: string;
+    startTime: number;
+    endTime: number;
+    formatting: string | null;
+    track: VaultPageTrack;
+  };
+}
 
 export default function VaultPage() {
   return (
@@ -79,15 +107,17 @@ async function VaultContent() {
     prisma.reviewItem.count()
   ]);
 
-  const uniqueTracks = [...new Map(
-    items
+  const typedItems: VaultPageItem[] = items;
+
+  const uniqueTracks: VaultPageTrack[] = [...new Map(
+    typedItems
       .filter(i => !i.isArchived)
       .map(i => [i.sentence.track.id, i.sentence.track])
   ).values()];
 
   return (
     <VaultPageClient
-      items={items as any}
+      items={typedItems}
       availableTracks={uniqueTracks}
       dueCount={dueCount}
       totalCount={totalCount}
