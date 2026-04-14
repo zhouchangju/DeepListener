@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { LayoutGrid, StickyNote, Filter, X, ListMusic, CheckSquare, Square } from "lucide-react";
+import { LayoutGrid, StickyNote, Filter, X, ListMusic, CheckSquare, Square, Download, Loader2 } from "lucide-react";
 import TrackList from "./TrackList";
 import NotesList from "./NotesList";
 import { Button } from "@/components/ui/button";
 import BatchAudioPlayer from "./BatchAudioPlayer";
 import { useBatchPlayback } from "./useBatchPlayback";
+import { toast } from "sonner";
 
 interface Track {
     id: string;
@@ -32,8 +33,11 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
   const [view, setView] = useState<"tracks" | "notes">("tracks");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [filterTopic, setFilterTopic] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
 
   // Batch playback
   const selectedTracks = useMemo(() => {
@@ -50,13 +54,28 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
     return tracks.filter(t => {
         if (filterType && t.trackType !== filterType) return false;
         if (filterTopic && t.trackTopic !== filterTopic) return false;
+        
+        if (dateFrom) {
+            const trackDate = new Date(t.createdAt);
+            const fromDate = new Date(dateFrom);
+            if (trackDate < fromDate) return false;
+        }
+        if (dateTo) {
+            const trackDate = new Date(t.createdAt);
+            const toDate = new Date(dateTo);
+            toDate.setHours(23, 59, 59, 999);
+            if (trackDate > toDate) return false;
+        }
+
         return true;
     });
-  }, [tracks, filterType, filterTopic]);
+  }, [tracks, filterType, filterTopic, dateFrom, dateTo]);
 
   const clearFilters = () => {
     setFilterType(null);
     setFilterTopic(null);
+    setDateFrom("");
+    setDateTo("");
   };
 
   // Selection handlers
@@ -87,6 +106,57 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
   const startBatchPlayback = () => {
     if (selectedTracks.length === 0) return;
     controls.start(0);
+  };
+
+  const exportAudio = async () => {
+    if (filteredTracks.length === 0 && selectedTrackIds.size === 0) return;
+    
+    setIsExporting(true);
+    try {
+      const body: Record<string, unknown> = {
+        isArchived: tracks.length > 0 ? tracks[0].isArchived : false,
+      };
+
+      if (selectionMode && selectedTrackIds.size > 0) {
+        body.selectedTrackIds = Array.from(selectedTrackIds);
+      } else {
+        if (filterType) body.trackType = filterType;
+        if (filterTopic) body.trackTopic = filterTopic;
+        if (dateFrom) body.dateFrom = dateFrom;
+        if (dateTo) body.dateTo = dateTo;
+      }
+
+      const response = await fetch('/api/library/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const filename = response.headers
+        .get('Content-Disposition')
+        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Library_Export.mp3';
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Audio exported successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -168,7 +238,24 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
                 {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
 
-            {(filterType || filterTopic) && (
+            {/* Date Range Filters */}
+            <div className="flex items-center gap-1.5 bg-white border rounded-md px-2 py-1">
+                <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="text-xs bg-transparent border-none outline-none focus:ring-0 w-[110px]"
+                />
+                <span className="text-gray-300">~</span>
+                <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="text-xs bg-transparent border-none outline-none focus:ring-0 w-[110px]"
+                />
+            </div>
+
+            {(filterType || filterTopic || dateFrom || dateTo) && (
                 <Button 
                     variant="ghost" 
                     size="sm" 
@@ -178,6 +265,24 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
                     <X className="w-4 h-4 mr-1" /> Clear
                 </Button>
             )}
+
+            {/* Export Button */}
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={exportAudio}
+                disabled={isExporting || (filteredTracks.length === 0 && selectedTrackIds.size === 0)}
+                className="h-8 ml-2 gap-2"
+            >
+                {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                    <Download className="w-4 h-4" />
+                )}
+                {selectionMode && selectedTrackIds.size > 0 
+                    ? `Export Selected (${selectedTrackIds.size})`
+                    : `Export Audio (${filteredTracks.length})`}
+            </Button>
         </div>
 
         {/* Selection Controls */}
@@ -244,3 +349,4 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
     </div>
   );
 }
+
