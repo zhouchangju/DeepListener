@@ -28,10 +28,12 @@ export default function RichTextNoteEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const initialHtml = initialNote || "";
 
-  // Reload the DOM editor when the source note changes or the parent forces a refresh.
+  // Only push HTML into contentEditable when the source actually changed.
+  // Rewriting the same HTML after each parent echo will reset the caret to
+  // the start and feels like keystrokes are broken.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (editorRef.current) {
+      if (editorRef.current && editorRef.current.innerHTML !== initialHtml) {
         editorRef.current.innerHTML = initialHtml;
       }
     }, 0);

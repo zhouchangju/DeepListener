@@ -28,7 +28,9 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   const lastSavedContentRef = useRef(initialNote || "");
   const isContentLoadedRef = useRef(false);
 
-  // Load content only once on mount or when trackId changes
+  // Load content only once on mount or when trackId changes.
+  // Never blindly rewrite identical contentEditable HTML after typing:
+  // that resets the caret to the start and looks like a keyboard bug.
   useEffect(() => {
     // Skip if already loaded for this track
     if (isContentLoadedRef.current) return;
@@ -37,7 +39,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
     isContentLoadedRef.current = true;
 
     const timer = setTimeout(() => {
-      if (editorRef.current) {
+      if (editorRef.current && editorRef.current.innerHTML !== (initialNote || "")) {
         editorRef.current.innerHTML = initialNote || "";
       }
     }, 0);

@@ -19,6 +19,8 @@ interface MiniWavePlayerProps {
   loop?: boolean;
 }
 
+type MiniWavePlayerSource = Blob | string;
+
 export default function MiniWavePlayer({
   audioBlob,
   height = 60,
@@ -37,8 +39,22 @@ export default function MiniWavePlayer({
   const loopRef = useRef(loop);
   const hasRegionRef = useRef(false);
   const playbackRateRef = useRef(playbackRate);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasRegion, setHasRegion] = useState(false);
+  const [isPlayingState, setIsPlayingState] = useState<{
+    source: MiniWavePlayerSource;
+    value: boolean;
+  }>({
+    source: audioBlob,
+    value: false,
+  });
+  const [hasRegionState, setHasRegionState] = useState<{
+    source: MiniWavePlayerSource;
+    value: boolean;
+  }>({
+    source: audioBlob,
+    value: false,
+  });
+  const isPlaying = isPlayingState.source === audioBlob ? isPlayingState.value : false;
+  const hasRegion = hasRegionState.source === audioBlob ? hasRegionState.value : false;
 
   // Keep loopRef in sync with loop prop
   useEffect(() => {
@@ -53,6 +69,10 @@ export default function MiniWavePlayer({
   }, [playbackRate]);
 
   useEffect(() => {
+    hasRegionRef.current = false;
+    regionsRef.current = null;
+    wavesurferRef.current = null;
+
     if (!containerRef.current) return;
 
     const ws = WaveSurfer.create({
@@ -80,14 +100,22 @@ export default function MiniWavePlayer({
           if (r.id !== region.id) r.remove();
         });
         hasRegionRef.current = true;
-        setHasRegion(true);
+        setHasRegionState({
+          source: audioBlob,
+          value: true,
+        });
         region.play(); // Auto play when created
       });
 
       regions.on("region-removed", () => {
         const nextHasRegion = regions.getRegions().length > 0;
         hasRegionRef.current = nextHasRegion;
-        if (!nextHasRegion) setHasRegion(false);
+        if (!nextHasRegion) {
+          setHasRegionState({
+            source: audioBlob,
+            value: false,
+          });
+        }
       });
 
       regions.on("region-out", (region) => {
@@ -104,10 +132,24 @@ export default function MiniWavePlayer({
     ws.setPlaybackRate(playbackRateRef.current); // Set initial rate
     wavesurferRef.current = ws;
 
-    ws.on("play", () => setIsPlaying(true));
-    ws.on("pause", () => setIsPlaying(false));
+    ws.on("play", () => {
+      setIsPlayingState({
+        source: audioBlob,
+        value: true,
+      });
+    });
+    ws.on("pause", () => {
+      setIsPlayingState({
+        source: audioBlob,
+        value: false,
+      });
+    });
     ws.on("finish", () => {
-      setIsPlaying(false);
+      setIsPlayingState({
+        source: audioBlob,
+        value: false,
+      });
+
       // Loop the entire audio if loop is enabled and no region is active
       if (loopRef.current && !hasRegionRef.current) {
         ws.play();
@@ -122,6 +164,10 @@ export default function MiniWavePlayer({
 
     return () => {
       ws.destroy();
+      wavesurferRef.current = null;
+      regionsRef.current = null;
+      hasRegionRef.current = false;
+
       // Revoke object URL to prevent memory leak
       if (typeof audioBlob !== 'string') {
         URL.revokeObjectURL(url);
@@ -134,7 +180,10 @@ export default function MiniWavePlayer({
   const clearRegions = () => {
     regionsRef.current?.clearRegions();
     hasRegionRef.current = false;
-    setHasRegion(false);
+    setHasRegionState({
+      source: audioBlob,
+      value: false,
+    });
   };
 
   return (

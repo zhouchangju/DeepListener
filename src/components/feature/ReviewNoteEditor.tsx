@@ -18,7 +18,9 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   const lastSavedContentRef = useRef(initialNote || "");
   const isContentLoadedRef = useRef(false);
 
-  // Load content only once on mount or when reviewItemId changes
+  // Load content only once on mount or when reviewItemId changes.
+  // Never blindly rewrite identical contentEditable HTML after typing:
+  // that resets the caret to the start and looks like a keyboard bug.
   useEffect(() => {
     // Skip if already loaded for this item
     if (isContentLoadedRef.current) return;
@@ -27,7 +29,7 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
     isContentLoadedRef.current = true;
 
     const timer = setTimeout(() => {
-      if (editorRef.current) {
+      if (editorRef.current && editorRef.current.innerHTML !== (initialNote || "")) {
         editorRef.current.innerHTML = initialNote || "";
       }
     }, 0);

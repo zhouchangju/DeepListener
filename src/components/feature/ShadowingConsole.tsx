@@ -53,7 +53,7 @@ export default function ShadowingConsole({
   const [isEditingText, setIsEditingText] = useState(false);
   const [tempText, setTempText] = useState(sentence.text);
 
-  const { mode, originalBlob, userBlob, isLooping, startFlow, playOriginal, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
+  const { mode, originalBlob, isOriginalBlobReady, userBlob, isLooping, startFlow, playOriginal, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
@@ -221,7 +221,9 @@ export default function ShadowingConsole({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-800">Shadowing Mode</h2>
+            <h2 className="text-xl font-bold text-slate-800">
+              Shadowing Mode(<span style={{ color: "red" }}>抓主谓宾/Chunk</span>)
+            </h2>
             <div className="text-sm font-medium px-3 py-1 bg-slate-100 rounded-full text-slate-600">
               {currentIndex + 1} / {totalCount}
             </div>
@@ -332,7 +334,7 @@ export default function ShadowingConsole({
 
           {/* Visualization Area */}
           <div className="w-full space-y-4">
-            {!originalBlob && (
+            {!isOriginalBlobReady && !originalBlob && (
               <div className="flex items-center justify-center text-slate-400 gap-2 h-32">
                 <Loader2 className="h-6 w-6 animate-spin" /> Loading audio segment...
               </div>
@@ -341,7 +343,6 @@ export default function ShadowingConsole({
             {shouldRenderOriginalWavePlayer(mode, !!originalBlob) && originalBlob && (
               <div className={mode === "reviewing" ? "" : "opacity-80"}>
                 <MiniWavePlayer
-                  key={sentence.id + "-original"}
                   audioBlob={originalBlob}
                   label="Original"
                   waveColor="#94a3b8"

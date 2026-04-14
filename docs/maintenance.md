@@ -94,6 +94,23 @@ A: 优先检查：
 - 导出所引用的音频文件是否仍存在于 `public/uploads/`
 - 导出过滤条件下是否真的有可导出的句子
 
+### Q: 为什么笔记编辑时光标会突然跳回开头？
+
+A: 先检查 `contentEditable` 编辑器有没有在父组件回传相同内容时，再次执行 `innerHTML = ...`。这不是键盘监听问题，而是 DOM 被重复写回后浏览器重置了 caret / selection。
+
+当前维护约束：
+
+- `src/components/feature/NoteEditor.tsx`
+- `src/components/feature/ReviewNoteEditor.tsx`
+- `src/components/feature/RichTextNoteEditor.tsx`
+
+对这些编辑器，必须遵守：
+
+- 只有在源内容真的变化时，才允许写回 `editorRef.current.innerHTML`
+- 如果只是父组件把当前编辑中的内容原样回传，不能重新写 DOM
+- 排查“输入后跳到开头”时，先查 `innerHTML` 写回路径，再查键盘事件
+- 保留 `src/components/feature/contentEditable-sync.test.ts` 这个回归测试，不要删除
+
 ## 6. 数据同步与备份
 
 为了防止本地音频文件和数据库丢失，项目保留了基于 `rsync` 的同步脚本：

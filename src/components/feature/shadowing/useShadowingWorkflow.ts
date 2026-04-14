@@ -2,7 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { sliceAudioBuffer } from "@/lib/audio-utils";
 import { toast } from "sonner";
 import { useAudioRecorder } from "./useAudioRecorder";
-import { getShadowingAudioSliceKey } from "./presentation";
+import {
+  getDisplayedShadowingOriginalAudio,
+  getShadowingAudioSliceKey,
+} from "./presentation";
 
 type Mode = "idle" | "playing_original" | "recording" | "reviewing";
 
@@ -38,9 +41,14 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { startRecording, stopRecording } = useAudioRecorder();
   const sliceKey = getShadowingAudioSliceKey(sentence);
+  const displayedOriginalAudio = getDisplayedShadowingOriginalAudio(
+    originalBlobState,
+    sliceKey
+  );
 
   const mode = modeState.sliceKey === sliceKey ? modeState.value : "idle";
-  const originalBlob = originalBlobState.sliceKey === sliceKey ? originalBlobState.blob : null;
+  const originalBlob = displayedOriginalAudio.blob;
+  const isOriginalBlobReady = displayedOriginalAudio.isReady;
   const userBlob = userBlobState.sliceKey === sliceKey ? userBlobState.blob : null;
   const isLooping = loopState.sliceKey === sliceKey ? loopState.value : false;
 
@@ -103,7 +111,6 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       setModeForCurrentSlice("idle");
       setLoopingForCurrentSlice(false);
       setUserBlobForCurrentSlice(null);
-      setOriginalBlobForCurrentSlice(null);
 
       try {
         const blob = sliceAudioBuffer(fullAudioBuffer, sentence.startTime, sentence.endTime);
@@ -113,6 +120,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
         originalAudioRef.current = new Audio(url);
         originalAudioRef.current.playbackRate = playbackRate;
       } catch (error) {
+        setOriginalBlobForCurrentSlice(null);
         console.error("Slice failed", error);
         toast.error("Audio slice failed");
       }
@@ -275,6 +283,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   return {
     mode,
     originalBlob,
+    isOriginalBlobReady,
     userBlob,
     isLooping,
     startFlow: handleStartFlow,

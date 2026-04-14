@@ -10,6 +10,11 @@ interface ShadowingSentenceLike {
   endTime: number;
 }
 
+interface ShadowingOriginalAudioState<T> {
+  sliceKey: string;
+  blob: T | null;
+}
+
 export function getShadowingOverlayClassName() {
   return "fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4 outline-none";
 }
@@ -32,4 +37,14 @@ export function shouldRenderTrackNotes(shadowingMode?: boolean) {
 
 export function getShadowingAudioSliceKey(sentence: ShadowingSentenceLike) {
   return `${sentence.id ?? "unknown"}:${sentence.startTime}:${sentence.endTime}`;
+}
+
+export function getDisplayedShadowingOriginalAudio<T>(
+  state: ShadowingOriginalAudioState<T>,
+  activeSliceKey: string
+) {
+  return {
+    blob: state.blob,
+    isReady: state.sliceKey === activeSliceKey,
+  };
 }

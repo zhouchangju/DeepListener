@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:ci": "node scripts/run-node-tests.mjs",
     "sync": "rsync -avz --progress public/uploads/ root@124.221.194.112:/var/www/html/DeepListener/public/uploads/ && rsync -avz --progress dev.db root@124.221.194.112:/var/www/html/DeepListener/",
     "symphony": "./bin/symphony",
     "setup": "./bin/setup"

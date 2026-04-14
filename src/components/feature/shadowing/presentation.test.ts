@@ -8,6 +8,7 @@ import {
   shouldRenderBackgroundAudioPlayer,
   shouldRenderTrackNotes,
   getShadowingAudioSliceKey,
+  getDisplayedShadowingOriginalAudio,
 } from "./presentation";
 
 test("shadowing overlay avoids backdrop blur to reduce full-screen repainting", () => {
@@ -73,4 +74,42 @@ test("audio slice key only changes when the sentence timing changes", () => {
       endTime: 12.8,
     })
   );
+});
+
+test("previous original waveform stays visible while the next slice is preparing", () => {
+  assert.deepEqual(
+    getDisplayedShadowingOriginalAudio(
+      {
+        sliceKey: "sentence-1:0:1",
+        blob: "blob-a",
+      },
+      "sentence-2:1:2"
+    ),
+    {
+      blob: "blob-a",
+      isReady: false,
+    }
+  );
+});
+
+test("current original waveform is marked ready once the active slice finishes preparing", () => {
+  assert.deepEqual(
+    getDisplayedShadowingOriginalAudio(
+      {
+        sliceKey: "sentence-2:1:2",
+        blob: "blob-b",
+      },
+      "sentence-2:1:2"
+    ),
+    {
+      blob: "blob-b",
+      isReady: true,
+    }
+  );
+});
+
+test("original waveform player is not keyed by sentence id during sentence switches", () => {
+  const source = readFileSync(new URL("../ShadowingConsole.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /key=\{sentence\.id \+ "-original"\}/);
 });
