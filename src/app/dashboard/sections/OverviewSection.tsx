@@ -35,7 +35,7 @@ export function OverviewSection({
               <span className="text-5xl font-bold">{countdownDays}</span>
               <span className="text-xl text-indigo-100">days left</span>
             </div>
-            <div className="text-sm text-indigo-200 mt-2">Target Date: May 10, 2026</div>
+            <div className="text-sm text-indigo-200 mt-2">Target Date: May 16, 2026</div>
           </CardContent>
         </Card>
 

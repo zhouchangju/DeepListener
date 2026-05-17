@@ -10,8 +10,8 @@ function formatDuration(seconds: number): string {
 }
 
 export default function DashboardPage() {
-  // Read target date from environment variable, default to 2026-05-10
-  const targetDateStr = process.env.NEXT_PUBLIC_TARGET_DATE || "2026-05-10";
+  // Read target date from environment variable, default to 2026-05-16
+  const targetDateStr = process.env.NEXT_PUBLIC_TARGET_DATE || "2026-05-16";
   const targetDate = new Date(targetDateStr);
   const today = new Date();
   const diffTime = Math.abs(targetDate.getTime() - today.getTime());
