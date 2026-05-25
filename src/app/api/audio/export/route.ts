@@ -5,6 +5,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import { tmpdir } from 'os';
+import { DIFFICULTIES } from '@/lib/domain-constants';
+import { resolveStoredUploadPath } from '@/lib/upload-policy';
 
 export const maxDuration = 300; // 5 minutes
 export const maxSegments = 500; // Maximum segments to export
@@ -59,6 +61,15 @@ export function buildFilteredReviewItemsWhere({
   return where;
 }
 
+export function buildDueReviewItemsWhere(now: Date = new Date()): Prisma.ReviewItemWhereInput {
+  return {
+    due: {
+      lte: now,
+    },
+    isArchived: false,
+  };
+}
+
 function generateFilename(): string {
   const date = new Date().toISOString().split('T')[0];
   return `DeepListener_Export_${date}.mp3`;
@@ -93,19 +104,14 @@ async function gatherSegments(
 
     case 'due':
       reviewItems = await prisma.reviewItem.findMany({
-        where: {
-          nextReview: {
-            lte: new Date(),
-          },
-          isArchived: false,
-        },
+        where: buildDueReviewItemsWhere(),
         include: {
           sentence: {
             include: { track: true },
           },
         },
         orderBy: {
-          nextReview: 'asc',
+          due: 'asc',
         },
       });
       break;
@@ -179,27 +185,9 @@ async function gatherSegments(
     for (const item of items) {
       // Validate audioUrl to prevent path traversal
       const audioUrl = item.sentence.track.audioUrl;
-
-      // Normalize: strip leading slash (stored as /uploads/... in DB)
-      const normalizedUrl = audioUrl.startsWith('/') ? audioUrl.slice(1) : audioUrl;
-
-      // Check for path traversal attempts
-      if (normalizedUrl.includes('..') || normalizedUrl.includes('\\')) {
-        console.warn(`Invalid audioUrl detected (potential path traversal): ${audioUrl}`);
-        continue;
-      }
-
-      const audioPath = path.join(
-        process.cwd(),
-        'public',
-        normalizedUrl
-      );
-
-      // Ensure the resolved path is within the public directory
-      const publicDir = path.join(process.cwd(), 'public');
-      const resolvedPath = path.resolve(audioPath);
-      if (!resolvedPath.startsWith(publicDir)) {
-        console.warn(`Audio path escapes public directory: ${resolvedPath}`);
+      const audioPath = resolveStoredUploadPath(audioUrl);
+      if (!audioPath) {
+        console.warn(`Invalid audioUrl detected: ${audioUrl}`);
         continue;
       }
 
@@ -248,10 +236,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const VALID_DIFFICULTIES = ['NORMAL', 'HARD', 'VERY_HARD'];
-
     if (difficulties !== undefined) {
-      if (!Array.isArray(difficulties) || difficulties.some((d: unknown) => !VALID_DIFFICULTIES.includes(d as string))) {
+      if (!Array.isArray(difficulties) || difficulties.some((d: unknown) => !DIFFICULTIES.includes(d as typeof DIFFICULTIES[number]))) {
         return new Response(
           JSON.stringify({ error: 'Invalid difficulties value' }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }

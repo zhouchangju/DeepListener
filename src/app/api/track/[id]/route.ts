@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
-import path from "path";
+import { formatZodError, trackPatchSchema } from "@/lib/api-schemas";
+import { resolveStoredUploadPath } from "@/lib/upload-policy";
 
 // DELETE (保持不变)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,9 +12,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     if (!track) return NextResponse.json({ error: "Track not found" }, { status: 404 });
 
-    if (track.audioUrl.startsWith("/uploads/")) {
-      const fileName = track.audioUrl.replace("/uploads/", "");
-      const filePath = path.join(process.cwd(), "public/uploads", fileName);
+    const filePath = resolveStoredUploadPath(track.audioUrl);
+    if (filePath) {
       try {
         await unlink(filePath);
       } catch (e) {
@@ -33,20 +33,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await req.json();
-    
-    // 过滤只允许更新的字段
-    const data: Record<string, string | boolean> = {};
-    if (typeof body.title === "string") data.title = body.title;
-    if (typeof body.note === "string") data.note = body.note;
-    if (typeof body.trackType === "string") data.trackType = body.trackType;
-    if (typeof body.trackTopic === "string") data.trackTopic = body.trackTopic;
-    if (typeof body.isArchived === "boolean") data.isArchived = body.isArchived;
-    if (typeof body.status === "string") data.status = body.status;
+    const parsed = trackPatchSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
 
     const track = await prisma.track.update({
       where: { id },
-      data,
+      data: parsed.data,
     });
 
     return NextResponse.json(track);

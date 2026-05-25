@@ -5,6 +5,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import { tmpdir } from 'os';
+import { resolveStoredUploadPath } from '@/lib/upload-policy';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -74,19 +75,9 @@ async function gatherTracks(
   const audioTracks: AudioTrack[] = [];
   for (const track of tracks) {
     const audioUrl = track.audioUrl;
-    const normalizedUrl = audioUrl.startsWith('/') ? audioUrl.slice(1) : audioUrl;
-
-    if (normalizedUrl.includes('..') || normalizedUrl.includes('\\')) {
-      console.warn(`Invalid audioUrl detected (potential path traversal): ${audioUrl}`);
-      continue;
-    }
-
-    const audioPath = path.join(process.cwd(), 'public', normalizedUrl);
-    const publicDir = path.join(process.cwd(), 'public');
-    const resolvedPath = path.resolve(audioPath);
-    
-    if (!resolvedPath.startsWith(publicDir)) {
-      console.warn(`Audio path escapes public directory: ${resolvedPath}`);
+    const audioPath = resolveStoredUploadPath(audioUrl);
+    if (!audioPath) {
+      console.warn(`Invalid audioUrl detected: ${audioUrl}`);
       continue;
     }
 

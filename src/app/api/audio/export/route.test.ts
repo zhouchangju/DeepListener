@@ -31,3 +31,22 @@ test("filtered export keeps both date bounds and makes dateTo inclusive", async 
     "dateFrom should not be overwritten when dateTo is also provided"
   );
 });
+
+test("due export query uses due date as the source of truth", async () => {
+  const routeModule = await import("./route");
+
+  assert.equal(
+    typeof routeModule.buildDueReviewItemsWhere,
+    "function",
+    "route should expose buildDueReviewItemsWhere for due export queries"
+  );
+
+  const now = new Date("2026-05-17T10:30:00.000Z");
+  const where = routeModule.buildDueReviewItemsWhere(now);
+
+  assert.deepEqual(where, {
+    due: { lte: now },
+    isArchived: false,
+  });
+  assert.equal("nextReview" in where, false);
+});

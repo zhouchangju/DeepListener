@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateNextReview } from "@/lib/fsrs";
+import { formatZodError, reviewGradeSchema, type ReviewQuality } from "@/lib/api-schemas";
 
-function mapRatingToNumber(quality: 'again' | 'hard' | 'good' | 'easy'): number {
+function mapRatingToNumber(quality: ReviewQuality): number {
   switch (quality) {
     case 'again': return 1;
     case 'hard': return 2;
     case 'good': return 3;
     case 'easy': return 4;
-    default: return 3;
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { reviewItemId, quality }: { reviewItemId: string; quality: 'again' | 'hard' | 'good' | 'easy' } = await req.json();
+    const parsed = reviewGradeSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+
+    const { reviewItemId, quality } = parsed.data;
 
     const currentItem = await prisma.reviewItem.findUnique({
       where: { id: reviewItemId },

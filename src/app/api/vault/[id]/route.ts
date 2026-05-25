@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatZodError, vaultPatchSchema } from "@/lib/api-schemas";
 
 // 删除收藏
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,16 +20,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { userNote, tags, difficulty } = await req.json();
+    const parsed = vaultPatchSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
 
-    const data: { userNote?: string; tags?: { set: { name: string }[] }; difficulty?: string } = {
-      userNote,
-    };
+    const { userNote, tags, difficulty } = parsed.data;
+    const data: { userNote?: string | null; tags?: { set: { name: string }[] }; difficulty?: string } = {};
+
+    if (userNote !== undefined) data.userNote = userNote;
 
     // Only update tags if provided
     if (tags !== undefined) {
+      for (const tagName of tags) {
+        await prisma.errorTag.upsert({
+          where: { name: tagName },
+          update: {},
+          create: { name: tagName },
+        });
+      }
+
       data.tags = {
-        set: tags.map((t: string) => ({ name: t })),
+        set: tags.map((t) => ({ name: t })),
       };
     }
 

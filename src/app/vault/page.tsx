@@ -5,6 +5,8 @@ import VaultPageClient from "./VaultPageClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+export const dynamic = "force-dynamic";
+
 interface VaultPageTrack {
   id: string;
   title: string;

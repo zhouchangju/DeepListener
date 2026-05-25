@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { DashboardTabs } from "./DashboardTabs";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCountdownDays } from "./date-utils";
+import { TRACK_STATUS_LABELS } from "@/lib/domain-constants";
+
+export const dynamic = "force-dynamic";
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -13,9 +17,7 @@ export default function DashboardPage() {
   // Read target date from environment variable, default to 2026-05-16
   const targetDateStr = process.env.NEXT_PUBLIC_TARGET_DATE || "2026-05-16";
   const targetDate = new Date(targetDateStr);
-  const today = new Date();
-  const diffTime = Math.abs(targetDate.getTime() - today.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = getCountdownDays(new Date(), targetDate);
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-8">
@@ -25,16 +27,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  UNLEARNT: "未学习",
-  INTENSIVE: "精听",
-  ANALYSIS: "分析",
-  SHADOWING: "Shadowing",
-  SPEED_SHADOWING: "倍速 Shadowing",
-  PARAPHRASE: "Paraphrase",
-  LEARNT: "已学习",
-};
 
 function groupByCount<T>(items: T[], keyFn: (item: T) => string): Record<string, number> {
   const counts: Record<string, number> = {};
@@ -202,7 +194,7 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
   const totalTracks = tracks.length;
   const learntCount = tracks.filter(t => t.status === "LEARNT").length;
   const progressPercent = Math.min(Math.round((learntCount / 100) * 100), 100);
-  const statusCounts = groupByCount(tracks, t => STATUS_LABELS[t.status] || t.status);
+  const statusCounts = groupByCount(tracks, t => TRACK_STATUS_LABELS[t.status as keyof typeof TRACK_STATUS_LABELS] || t.status);
   const statusData = countsToChartData(statusCounts);
   const typeCounts = groupByCount(tracks, t => t.trackType || "Uncategorized");
   const typeData = countsToChartData(typeCounts).sort((a, b) => b.value - a.value);

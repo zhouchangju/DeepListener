@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { formatZodError, vaultCreateSchema } from "@/lib/api-schemas";
 
 export async function POST(req: NextRequest) {
   try {
-    const { sentenceId, tags, note, difficulty = "NORMAL" } = await req.json();
+    const parsed = vaultCreateSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+    }
+
+    const { sentenceId, tags, note, difficulty } = parsed.data;
 
     // Ensure tags exist in DB
     for (const tagName of tags) {

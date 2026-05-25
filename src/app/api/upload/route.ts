@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getTranscriptionProvider } from "@/lib/transcription/factory";
+import { buildUploadTarget, validateUploadFileMetadata } from "@/lib/upload-policy";
+
+async function removeUploadedFile(uploadPath: string | null) {
+  if (!uploadPath) return;
+  try {
+    await unlink(uploadPath);
+  } catch {
+    // Ignore cleanup failures; the original error is more useful to callers.
+  }
+}
 
 export async function POST(req: NextRequest) {
+  let uploadPath: string | null = null;
+  let fileWritten = false;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -14,12 +25,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `${uuidv4()}-${file.name}`;
-    const uploadPath = path.join(process.cwd(), "public/uploads", fileName);
-    const audioUrl = `/uploads/${fileName}`;
+    const validation = validateUploadFileMetadata(file);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
 
+    const target = buildUploadTarget({ originalName: file.name });
+    uploadPath = target.uploadPath;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await mkdir(target.uploadDir, { recursive: true });
     await writeFile(uploadPath, buffer);
+    fileWritten = true;
 
     // 使用工厂获取当前选定的 Transcription Provider
     const provider = getTranscriptionProvider();
@@ -32,7 +48,7 @@ export async function POST(req: NextRequest) {
     const track = await prisma.track.create({
       data: {
         title: file.name.replace(/\.[^/.]+$/, ""),
-        audioUrl: audioUrl,
+        audioUrl: target.audioUrl,
         transcription: transcription.rawJson,
         status: "UNLEARNT",
         sentences: {
@@ -51,6 +67,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(track);
   } catch (error: unknown) {
+    if (fileWritten) await removeUploadedFile(uploadPath);
     console.error("Upload error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -75,14 +92,23 @@ export async function PUT(req: NextRequest) {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const fileName = `${uuidv4()}-${file.name}`;
-      const uploadPath = path.join(process.cwd(), "public/uploads", fileName);
-      const audioUrl = `/uploads/${fileName}`;
+      let uploadPath: string | null = null;
+      let fileWritten = false;
 
       try {
+        const validation = validateUploadFileMetadata(file);
+        if (!validation.ok) {
+          throw new Error(validation.error);
+        }
+
+        const target = buildUploadTarget({ originalName: file.name });
+        uploadPath = target.uploadPath;
+
         // Save file
         const buffer = Buffer.from(await file.arrayBuffer());
+        await mkdir(target.uploadDir, { recursive: true });
         await writeFile(uploadPath, buffer);
+        fileWritten = true;
 
         // Transcribe
         console.log(`[${i + 1}/${files.length}] Starting transcription: ${file.name}`);
@@ -93,7 +119,7 @@ export async function PUT(req: NextRequest) {
         const track = await prisma.track.create({
           data: {
             title: file.name.replace(/\.[^/.]+$/, ""),
-            audioUrl: audioUrl,
+            audioUrl: target.audioUrl,
             transcription: transcription.rawJson,
             status: "UNLEARNT",
             sentences: {
@@ -113,6 +139,7 @@ export async function PUT(req: NextRequest) {
           audioUrl: track.audioUrl,
         });
       } catch (error: unknown) {
+        if (fileWritten) await removeUploadedFile(uploadPath);
         console.error(`[${i + 1}/${files.length}] Failed to process ${file.name}:`, error);
         const message = error instanceof Error ? error.message : "Unknown error";
         results.failed.push({
