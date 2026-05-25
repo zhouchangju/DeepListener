@@ -20,6 +20,7 @@ const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "G
 interface VaultItem {
   id: string;
   userNote?: string | null;
+  hasUserNote?: boolean;
   difficulty?: string | null;
   tags?: { id: string; name: string }[];
   sentence?: {
@@ -39,6 +40,8 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("NORMAL");
   const [loading, setLoading] = useState(false);
+  const [noteLoading, setNoteLoading] = useState(false);
+  const [loadedNote, setLoadedNote] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -46,10 +49,39 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
     if (item) {
       setSelectedTags(item.tags?.map((t) => t.name) || []);
       setDifficulty(item.difficulty || "NORMAL");
+      setLoadedNote(item.userNote ?? null);
       // Force re-mount editor when item changes
       setEditorKey(prev => prev + 1);
     }
   }, [item, item?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !item?.id || item.userNote !== undefined || !item.hasUserNote) return;
+
+    let cancelled = false;
+    setNoteLoading(true);
+    fetch(`/api/vault/${item.id}`, { headers: { Accept: "application/json" } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to load note");
+        return await res.json() as { userNote?: string | null };
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setLoadedNote(data.userNote ?? null);
+          setEditorKey(prev => prev + 1);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Failed to load note");
+      })
+      .finally(() => {
+        if (!cancelled) setNoteLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, item]);
 
   const handleCopyText = async (text: string) => {
     try {
@@ -152,11 +184,17 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
             </div>
 
             <div className="text-sm font-medium mt-2">Personal Note</div>
-            <ReviewNoteEditor
-              key={editorKey}
-              initialNote={item.userNote}
-              reviewItemId={item.id}
-            />
+            {noteLoading ? (
+              <div className="rounded-lg border bg-slate-50 p-3 text-sm text-slate-500">
+                Loading note...
+              </div>
+            ) : (
+              <ReviewNoteEditor
+                key={editorKey}
+                initialNote={loadedNote}
+                reviewItemId={item.id}
+              />
+            )}
           </div>
         )}
 

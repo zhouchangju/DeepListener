@@ -1,126 +1,138 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ExportButtons from "./ExportButtons";
 import VaultListClient from "./VaultListClient";
-
-interface VaultItem {
-  id: string;
-  userNote?: string | null;
-  difficulty?: string | null;
-  isArchived: boolean;
-  due?: Date | null;
-  nextReview?: Date | null;
-  stability?: number | null;
-  dr?: number | null;
-  retrieval?: number | null;
-  lapse?: number | null;
-  createdAt: Date;
-  tags: { id: string; name: string }[];
-  sentence: {
-    text: string;
-    startTime: number;
-    endTime: number;
-    track: {
-      id: string;
-      title: string;
-      audioUrl: string;
-    };
-  };
-}
+import type { VaultQueryState } from "./vault-query";
+import type { VaultItem, VaultPlaybackItem } from "./vault-items";
 
 interface Track {
   id: string;
   title: string;
 }
 
-interface VaultItemForExport {
-  difficulty?: string | null;
-  sentence: { track: { id: string } };
-  createdAt: Date | string;
-}
+type VaultQueryUpdate = Partial<
+  Pick<
+    VaultQueryState,
+    | "page"
+    | "pageSize"
+    | "showArchived"
+    | "selectedDifficulties"
+    | "selectedTrackIds"
+    | "selectedTags"
+    | "searchQuery"
+    | "sortBy"
+    | "dateFrom"
+    | "dateTo"
+    | "initialTrackId"
+  >
+>;
 
 interface VaultPageClientProps {
   items: VaultItem[];
+  playbackItems: VaultPlaybackItem[];
   availableTracks: Track[];
+  allTags: string[];
   dueCount: number;
-  totalCount?: number;
+  totalCount: number;
+  filteredCount: number;
+  exportCount: number;
+  activeTrackName: string | null;
+  query: VaultQueryState;
 }
 
 export default function VaultPageClient({
   items,
+  playbackItems,
   availableTracks,
+  allTags,
   dueCount,
-  totalCount
+  totalCount,
+  filteredCount,
+  exportCount,
+  activeTrackName,
+  query,
 }: VaultPageClientProps) {
-  // Shared filter state
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Filter items for display
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      // Archive filter is handled in VaultListClient
-      if (item.isArchived) return false;
+  const updateQuery = useCallback((updates: VaultQueryUpdate) => {
+    const next = new URLSearchParams(searchParams.toString());
 
-      // Difficulty filter
-      if (selectedDifficulties.length > 0) {
-        const d = item.difficulty || 'NORMAL';
-        if (!selectedDifficulties.includes(d)) return false;
-      }
+    setNumberParam(next, "page", updates.page ?? 1, 1);
+    setNumberParam(next, "pageSize", updates.pageSize ?? query.pageSize, 50);
+    setBooleanParam(next, "archived", updates.showArchived ?? query.showArchived);
+    setStringParam(next, "trackId", "initialTrackId" in updates ? updates.initialTrackId ?? null : query.initialTrackId);
+    setListParam(next, "trackIds", updates.selectedTrackIds ?? query.selectedTrackIds);
+    setListParam(next, "difficulties", updates.selectedDifficulties ?? query.selectedDifficulties);
+    setListParam(next, "tags", updates.selectedTags ?? query.selectedTags);
+    setStringParam(next, "search", updates.searchQuery ?? query.searchQuery);
+    setStringParam(next, "sort", updates.sortBy ?? query.sortBy, "createdAt");
+    setStringParam(next, "dateFrom", updates.dateFrom ?? query.dateFrom);
+    setStringParam(next, "dateTo", updates.dateTo ?? query.dateTo);
 
-      // Track filter
-      if (selectedTrackIds.length > 0) {
-        if (!selectedTrackIds.includes(item.sentence.track.id)) return false;
-      }
-
-      // Date range filter
-      if (dateFrom) {
-        const itemDate = new Date(item.createdAt);
-        const fromDate = new Date(dateFrom);
-        if (itemDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const itemDate = new Date(item.createdAt);
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (itemDate > toDate) return false;
-      }
-
-      return true;
-    });
-  }, [items, selectedDifficulties, selectedTrackIds, dateFrom, dateTo]);
-
-  // Export items with filter applied
-  const exportItems: VaultItemForExport[] = useMemo(() => {
-    return filteredItems.map(item => ({
-      difficulty: item.difficulty,
-      sentence: { track: { id: item.sentence.track.id } },
-      createdAt: item.createdAt,
-    }));
-  }, [filteredItems]);
+    const queryString = next.toString();
+    router.replace(queryString ? `/vault?${queryString}` : "/vault");
+  }, [query, router, searchParams]);
 
   return (
     <>
       <ExportButtons
-        items={exportItems}
         availableTracks={availableTracks}
         dueCount={dueCount}
-        selectedDifficulties={selectedDifficulties}
-        setSelectedDifficulties={setSelectedDifficulties}
-        selectedTrackIds={selectedTrackIds}
-        setSelectedTrackIds={setSelectedTrackIds}
-        dateFrom={dateFrom}
-        setDateFrom={setDateFrom}
-        dateTo={dateTo}
-        setDateTo={setDateTo}
+        exportCount={exportCount}
+        selectedDifficulties={query.selectedDifficulties}
+        setSelectedDifficulties={(values) => updateQuery({ selectedDifficulties: values })}
+        selectedTrackIds={query.selectedTrackIds}
+        setSelectedTrackIds={(values) => updateQuery({ selectedTrackIds: values })}
+        dateFrom={query.dateFrom}
+        setDateFrom={(value) => updateQuery({ dateFrom: value })}
+        dateTo={query.dateTo}
+        setDateTo={(value) => updateQuery({ dateTo: value })}
       />
       <VaultListClient
-        initialItems={filteredItems}
+        initialItems={items}
+        playbackItems={playbackItems}
+        allTags={allTags}
+        activeTrackName={activeTrackName}
+        filteredCount={filteredCount}
         totalCount={totalCount}
+        query={query}
+        onQueryChange={updateQuery}
       />
     </>
   );
+}
+
+function setListParam(params: URLSearchParams, key: string, values: string[]) {
+  if (values.length === 0) {
+    params.delete(key);
+    return;
+  }
+  params.set(key, values.join(","));
+}
+
+function setStringParam(params: URLSearchParams, key: string, value: string | null, defaultValue = "") {
+  if (!value || value === defaultValue) {
+    params.delete(key);
+    return;
+  }
+  params.set(key, value);
+}
+
+function setBooleanParam(params: URLSearchParams, key: string, value: boolean) {
+  if (!value) {
+    params.delete(key);
+    return;
+  }
+  params.set(key, "1");
+}
+
+function setNumberParam(params: URLSearchParams, key: string, value: number, defaultValue: number) {
+  if (value === defaultValue) {
+    params.delete(key);
+    return;
+  }
+  params.set(key, String(value));
 }

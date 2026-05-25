@@ -3,23 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Download, Clock, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { downloadResponseBlob, downloadTextResponse } from "@/lib/client-download";
 
 interface Track {
   id: string;
   title: string;
 }
 
-interface VaultItemForExport {
-  difficulty?: string | null;
-  sentence: { track: { id: string } };
-  createdAt?: string | Date;
-}
-
 interface ExportButtonsProps {
-  items: VaultItemForExport[];
   availableTracks: Track[];
   dueCount: number;
+  exportCount: number;
   // Filter state props
   selectedDifficulties: string[];
   setSelectedDifficulties: (vals: string[]) => void;
@@ -32,9 +27,9 @@ interface ExportButtonsProps {
 }
 
 export default function ExportButtons({
-  items,
   availableTracks,
   dueCount,
+  exportCount,
   selectedDifficulties,
   setSelectedDifficulties,
   selectedTrackIds,
@@ -45,30 +40,6 @@ export default function ExportButtons({
   setDateTo,
 }: ExportButtonsProps) {
   const [isExporting, setIsExporting] = useState<string | null>(null);
-
-  const exportCount = useMemo(() => {
-    return items.filter(item => {
-      if (selectedDifficulties.length > 0) {
-        const d = item.difficulty || 'NORMAL';
-        if (!selectedDifficulties.includes(d)) return false;
-      }
-      if (selectedTrackIds.length > 0) {
-        if (!selectedTrackIds.includes(item.sentence.track.id)) return false;
-      }
-      if (dateFrom) {
-        const itemDate = new Date(item.createdAt || '');
-        const fromDate = new Date(dateFrom);
-        if (itemDate < fromDate) return false;
-      }
-      if (dateTo) {
-        const itemDate = new Date(item.createdAt || '');
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (itemDate > toDate) return false;
-      }
-      return true;
-    }).length;
-  }, [items, selectedDifficulties, selectedTrackIds, dateFrom, dateTo]);
 
   const toggleDifficulty = (value: string) => {
     setSelectedDifficulties(
@@ -91,21 +62,6 @@ export default function ExportButtons({
     setDateTo('');
   };
 
-  const downloadBlob = async (response: Response, fallbackName: string) => {
-    const filename = response.headers
-      .get('Content-Disposition')
-      ?.match(/filename="(.+)"/)?.[1] || fallbackName;
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const exportAudio = async (type: 'due' | 'filtered') => {
     setIsExporting(type);
     try {
@@ -125,7 +81,7 @@ export default function ExportButtons({
         const error = await response.json();
         throw new Error(error.error || 'Export failed');
       }
-      await downloadBlob(response, 'DeepListener_Export.mp3');
+      await downloadResponseBlob(response, 'DeepListener_Export.mp3');
       toast.success('Audio exported successfully');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to export audio');
@@ -152,19 +108,7 @@ export default function ExportButtons({
         const error = await response.json();
         throw new Error(error.error || 'Export failed');
       }
-      const text = await response.text();
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-      const filename = response.headers
-        .get('Content-Disposition')
-        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Notes.txt';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadTextResponse(response, 'DeepListener_Notes.txt');
       toast.success('Notes exported successfully');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to export notes');

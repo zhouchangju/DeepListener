@@ -1,107 +1,71 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, ExternalLink, Calendar, Trash2, Edit3, Archive, ArchiveRestore, X, Filter, Search, ArrowUpDown, Brain, BarChart3, Clock, Pause, SkipForward } from "lucide-react";
-import Link from "next/link";
+import { Play, Archive, ArchiveRestore, X } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
-import { useRouter, useSearchParams } from "next/navigation";
-import { getIntervalDescription, getDifficultyLabel } from "@/lib/fsrs";
-import { sanitizeHtml } from "@/lib/sanitize-html";
+import { useRouter } from "next/navigation";
+import type { VaultQueryState } from "./vault-query";
+import type { SortOption, VaultItem, VaultPlaybackItem } from "./vault-items";
+import { VaultFilters } from "./VaultFilters";
+import { VaultListItem } from "./VaultListItem";
+import { VaultPlayAllBar } from "./VaultPlayAllBar";
+import { useVaultPlayback } from "./useVaultPlayback";
 
-type SortOption = "createdAt" | "due" | "stability" | "dr";
+type VaultQueryUpdate = Partial<
+  Pick<
+    VaultQueryState,
+    | "page"
+    | "showArchived"
+    | "selectedDifficulties"
+    | "selectedTags"
+    | "searchQuery"
+    | "sortBy"
+    | "initialTrackId"
+  >
+>;
 
-interface VaultItem {
-  id: string;
-  userNote?: string | null;
-  difficulty?: string | null;
-  isArchived: boolean;
-  due?: Date | null;
-  nextReview?: Date | null;
-  stability?: number | null;
-  dr?: number | null;
-  retrieval?: number | null;
-  lapse?: number | null;
-  createdAt: Date;
-  tags: { id: string; name: string }[];
-  sentence: {
-    text: string;
-    startTime: number;
-    endTime: number;
-    track: {
-      id: string;
-      title: string;
-      audioUrl: string;
-    };
-  };
+interface VaultListClientProps {
+  initialItems: VaultItem[];
+  playbackItems: VaultPlaybackItem[];
+  allTags: string[];
+  activeTrackName: string | null;
+  filteredCount: number;
+  totalCount: number;
+  query: VaultQueryState;
+  onQueryChange: (updates: VaultQueryUpdate) => void;
 }
 
-function getReviewDateTimestamp(item: Pick<VaultItem, "due" | "nextReview">) {
-  return item.due?.getTime() ?? item.nextReview?.getTime() ?? Number.POSITIVE_INFINITY;
-}
-
-function formatReviewDateLabel(item: Pick<VaultItem, "due" | "nextReview">) {
-  const timestamp = getReviewDateTimestamp(item);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleDateString() : "No review date";
-}
-
-export default function VaultListClient({ initialItems, totalCount }: { initialItems: VaultItem[], totalCount?: number }) {
-  const [playingId, setPlayingId] = useState<string | null>(null);
+export default function VaultListClient({
+  initialItems,
+  playbackItems,
+  allTags,
+  activeTrackName,
+  filteredCount,
+  totalCount,
+  query,
+  onQueryChange,
+}: VaultListClientProps) {
   const [editingItem, setEditingItem] = useState<VaultItem | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("createdAt");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
-  const [playAllActive, setPlayAllActive] = useState(false);
-  const [playAllIndex, setPlayAllIndex] = useState(0);
-  const [playAllPaused, setPlayAllPaused] = useState(false);
-  const playAllIndexRef = useRef(0);
-  const searchParams = useSearchParams();
-  const initialTrackId = searchParams.get('trackId');
-
-  const activeTrackName = useMemo(() => {
-    if (!initialTrackId) return null;
-    const item = initialItems.find(i => i.sentence.track.id === initialTrackId);
-    return item?.sentence.track.title ?? null;
-  }, [initialTrackId, initialItems]);
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    initialItems.forEach(item => {
-      item.tags?.forEach((tag) => tagSet.add(tag.name));
-    });
-    return Array.from(tagSet).sort();
-  }, [initialItems]);
 
   const allDifficulties = ["NORMAL", "HARD", "VERY_HARD"];
+  const totalPages = Math.max(1, Math.ceil(filteredCount / query.pageSize));
+  const pageStart = filteredCount === 0 ? 0 : (query.page - 1) * query.pageSize + 1;
+  const pageEnd = Math.min(query.page * query.pageSize, filteredCount);
 
   const clearFilters = () => {
-    setSelectedDifficulties([]);
-    setSelectedTags([]);
-    setSearchQuery("");
+    onQueryChange({
+      selectedDifficulties: [],
+      selectedTags: [],
+      searchQuery: "",
+    });
   };
 
-  const hasActiveFilters = selectedDifficulties.length > 0 || selectedTags.length > 0 || searchQuery.length > 0;
-
-  playAllIndexRef.current = playAllIndex;
-
-  useEffect(() => {
-    return () => {
-      const audio = audioRef.current;
-      if (audio) {
-        const a = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
-        if (a.activeTimer) clearTimeout(a.activeTimer);
-        audio.pause();
-      }
-    };
-  }, []);
+  const hasActiveFilters = query.selectedDifficulties.length > 0 || query.selectedTags.length > 0 || query.searchQuery.length > 0;
+  const activeFilterCount = query.selectedDifficulties.length + query.selectedTags.length + (query.searchQuery ? 1 : 0);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sentence from your vault?")) return;
@@ -132,189 +96,33 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
     }
   };
 
-  const filteredItems = useMemo(() => {
-    const filtered = initialItems.filter((item) => {
-      if (initialTrackId && item.sentence.track.id !== initialTrackId) return false;
-      if (!showArchived && item.isArchived) return false;
-      if (showArchived && !item.isArchived) return false;
+  const filteredItems = useMemo(() => initialItems, [initialItems]);
 
-      if (selectedDifficulties.length > 0) {
-        const difficulty = item.difficulty || "NORMAL";
-        if (!selectedDifficulties.includes(difficulty)) return false;
-      }
-
-      if (selectedTags.length > 0) {
-        const itemTags = item.tags?.map((t) => t.name) || [];
-        const hasAllTags = selectedTags.every(tag => itemTags.includes(tag));
-        if (!hasAllTags) return false;
-      }
-
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const text = item.sentence.text.toLowerCase();
-        const note = (item.userNote || "").toLowerCase();
-        const track = item.sentence.track.title.toLowerCase();
-
-        if (!text.includes(query) && !note.includes(query) && !track.includes(query)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Apply sorting
-    return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case "due":
-          return getReviewDateTimestamp(a) - getReviewDateTimestamp(b);
-        case "stability":
-          return (a.stability || 0) - (b.stability || 0);
-        case "dr":
-          return (b.dr || 0) - (a.dr || 0);
-        case "createdAt":
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-  }, [initialItems, initialTrackId, showArchived, selectedDifficulties, selectedTags, searchQuery, sortBy]);
-
-  const stopPlayAll = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
-      if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
-      audio.pause();
-    }
-    setPlayAllActive(false);
-    setPlayAllPaused(false);
-    setPlayAllIndex(0);
-    setPlayingId(null);
-  }, []);
-
-  const playAudio = (item: VaultItem) => {
-    if (playAllActive) {
-      stopPlayAll();
-    }
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-    const audio = audioRef.current;
-    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
-
-    if (playingId === item.id) {
-      if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
-      audio.pause();
-      setPlayingId(null);
-      return;
-    }
-
-    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
-    audio.pause();
-
-    audio.src = item.sentence.track.audioUrl;
-    audio.currentTime = item.sentence.startTime;
-    audio.play();
-    setPlayingId(item.id);
-
-    const duration = (item.sentence.endTime - item.sentence.startTime) * 1000;
-
-    const timer = setTimeout(() => {
-      setPlayingId(prevId => {
-        if (prevId === item.id) {
-          audio.pause();
-          return null;
-        }
-        return prevId;
-      });
-    }, duration);
-
-    audioWithTimer.activeTimer = timer;
-  };
-
-  const playItemAtIndex = useCallback((index: number, items: typeof filteredItems) => {
-    if (index >= items.length) {
-      stopPlayAll();
-      toast.success(`Finished playing ${items.length} sentences`);
-      return;
-    }
-
-    const item = items[index];
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-    const audio = audioRef.current;
-    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
-
-    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
-
-    audio.src = item.sentence.track.audioUrl;
-    audio.currentTime = item.sentence.startTime;
-    audio.play().catch(() => {
-      stopPlayAll();
-    });
-    setPlayingId(item.id);
-    setPlayAllIndex(index);
-    playAllIndexRef.current = index;
-
-    const duration = (item.sentence.endTime - item.sentence.startTime) * 1000;
-    audioWithTimer.activeTimer = setTimeout(() => {
-      playItemAtIndex(playAllIndexRef.current + 1, items);
-    }, duration);
-  }, [stopPlayAll]);
-
-  const startPlayAll = useCallback(() => {
-    if (filteredItems.length === 0) return;
-    setPlayAllActive(true);
-    setPlayAllPaused(false);
-    playItemAtIndex(0, filteredItems);
-  }, [filteredItems, playItemAtIndex]);
-
-  const pausePlayAll = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const audioWithTimer = audio as HTMLAudioElement & { activeTimer?: ReturnType<typeof setTimeout> };
-    if (audioWithTimer.activeTimer) clearTimeout(audioWithTimer.activeTimer);
-    audio.pause();
-    setPlayAllPaused(true);
-  }, []);
-
-  const resumePlayAll = useCallback(() => {
-    setPlayAllPaused(false);
-    playItemAtIndex(playAllIndexRef.current, filteredItems);
-  }, [filteredItems, playItemAtIndex]);
-
-  const nextInPlayAll = useCallback(() => {
-    playItemAtIndex(playAllIndexRef.current + 1, filteredItems);
-  }, [filteredItems, playItemAtIndex]);
-
-  const toggleFilter = (value: string, current: string[], setter: (vals: string[]) => void) => {
-    setter(current.includes(value) ? current.filter(v => v !== value) : [...current, value]);
-  };
-
-  const getDifficultyStyle = (difficulty: string) => {
-    switch (difficulty) {
-      case "HARD":
-        return "bg-orange-50 border-orange-200";
-      case "VERY_HARD":
-        return "bg-red-50 border-red-200";
-      default:
-        return "hover:border-indigo-200";
-    }
-  };
+  const {
+    nextInPlayAll,
+    pausePlayAll,
+    playAllActive,
+    playAllIndex,
+    playAllPaused,
+    playAudio,
+    playingId,
+    resumePlayAll,
+    startPlayAll,
+    stopPlayAll,
+  } = useVaultPlayback(playbackItems);
 
   return (
     <div className={`space-y-4 ${playAllActive ? 'pb-20' : ''}`}>
       {/* Archive Toggle Filter */}
       <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg border">
         <div className="flex items-center gap-2">
-          {showArchived ? (
+          {query.showArchived ? (
             <ArchiveRestore className="w-4 h-4 text-gray-600" />
           ) : (
             <Archive className="w-4 h-4 text-gray-600" />
           )}
           <span className="text-sm text-gray-600">
-            {showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
+            {query.showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -322,18 +130,18 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
             variant={playAllActive ? "default" : "outline"}
             size="sm"
             onClick={playAllActive ? stopPlayAll : startPlayAll}
-            disabled={filteredItems.length === 0}
+            disabled={playbackItems.length === 0}
             className="flex items-center gap-1.5"
           >
             <Play className="w-4 h-4" />
-            {playAllActive ? 'Stop' : `Play All (${filteredItems.length})`}
+            {playAllActive ? 'Stop' : `Play All (${playbackItems.length})`}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowArchived(!showArchived)}
+            onClick={() => onQueryChange({ showArchived: !query.showArchived })}
           >
-            {showArchived ? 'Show Active' : 'Show Archived'}
+            {query.showArchived ? 'Show Active' : 'Show Archived'}
           </Button>
         </div>
       </div>
@@ -344,7 +152,7 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
             Filtered by track: <strong>{activeTrackName}</strong>
           </span>
           <button
-            onClick={() => router.push('/vault')}
+            onClick={() => onQueryChange({ initialTrackId: null })}
             className="ml-auto text-indigo-400 hover:text-indigo-700 transition-colors"
             title="Clear track filter"
           >
@@ -353,252 +161,38 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
         </div>
       )}
 
-      {/* Advanced Filters */}
-      <div className="bg-white rounded-lg border">
-        {/* Filter Toggle Header */}
-        <div
-          onClick={() => setShowFilters(!showFilters)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
-              Filters
-            </span>
-            {hasActiveFilters && (
-              <Badge variant="default" className="ml-2">
-                {selectedDifficulties.length + selectedTags.length + (searchQuery ? 1 : 0)}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearFilters();
-                }}
-                className="h-7 px-2 text-xs"
-              >
-                <X className="w-3.5 h-3.5 mr-1" />
-                Clear
-              </Button>
-            )}
-            <div className="text-gray-400">
-              {showFilters ? '▼' : '▶'}
-            </div>
-          </div>
-        </div>
+      <VaultFilters
+        showFilters={showFilters}
+        hasActiveFilters={hasActiveFilters}
+        activeFilterCount={activeFilterCount}
+        searchQuery={query.searchQuery}
+        selectedDifficulties={query.selectedDifficulties}
+        selectedTags={query.selectedTags}
+        allDifficulties={allDifficulties}
+        allTags={allTags}
+        sortBy={query.sortBy}
+        filteredCount={filteredCount}
+        visibleCount={filteredItems.length}
+        totalCount={totalCount}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        onClearFilters={clearFilters}
+        onSearchQueryChange={(searchQuery) => onQueryChange({ searchQuery })}
+        onSelectedDifficultiesChange={(selectedDifficulties) => onQueryChange({ selectedDifficulties })}
+        onSelectedTagsChange={(selectedTags) => onQueryChange({ selectedTags })}
+        onSortByChange={(sortBy: SortOption) => onQueryChange({ sortBy })}
+      />
 
-        {/* Expandable Filter Options */}
-        {showFilters && (
-          <div className="px-4 py-3 border-t space-y-4">
-            {/* Search */}
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-2 block">
-                Search
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search in text, notes, or track title..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Difficulty Filter */}
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-2 block">
-                Difficulty
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {allDifficulties.map((difficulty) => (
-                  <button
-                    key={difficulty}
-                    onClick={() => toggleFilter(difficulty, selectedDifficulties, setSelectedDifficulties)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
-                      selectedDifficulties.includes(difficulty)
-                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {difficulty === 'NORMAL' ? 'Normal' : difficulty === 'HARD' ? 'Hard' : 'Very Hard'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tags Filter */}
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-2 block">
-                Tags
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleFilter(tag, selectedTags, setSelectedTags)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
-                      selectedTags.includes(tag)
-                        ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sort Options */}
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-2 block">
-                Sort By
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "createdAt", label: "Date Added", icon: Calendar },
-                  { id: "due", label: "Review Date", icon: Clock },
-                  { id: "stability", label: "Stability", icon: Brain },
-                  { id: "dr", label: "Difficulty (FSRS)", icon: BarChart3 },
-                ].map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => setSortBy(option.id as SortOption)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all ${
-                      sortBy === option.id
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <option.icon className="w-3 h-3" />
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Results Summary */}
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                Showing {filteredItems.length} of {initialItems.length} notes
-                {totalCount && ` (Total: ${totalCount} in vault)`}
-                {hasActiveFilters && ' (filtered)'}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {filteredItems.map((item) => {
-        const difficulty = item.difficulty || "NORMAL";
-        return (
-          <Card key={item.id} className={`group transition-colors ${getDifficultyStyle(difficulty)}`}>
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <Button
-                  variant={playingId === item.id ? "default" : "outline"}
-                  size="icon"
-                  className="rounded-full flex-shrink-0"
-                  onClick={() => playAudio(item)}
-                >
-                  <Play className={`h-4 w-4 ${playingId === item.id ? "animate-pulse" : ""}`} />
-                </Button>
-
-                <div className="flex-grow">
-                  <div className="flex justify-between items-start">
-                    <p className="text-lg font-medium leading-relaxed text-gray-800">
-                      {item.sentence.text}
-                    </p>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-indigo-600"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-amber-600"
-                        onClick={() => handleToggleArchive(item.id)}
-                        title={item.isArchived ? "Unarchive" : "Archive"}
-                      >
-                        {item.isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-red-600"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                    {/* FSRS Stats */}
-                    <div className="flex items-center gap-3 bg-slate-50 px-2 py-1 rounded text-[10px] text-slate-500 border border-slate-100">
-                      <div className="flex items-center gap-1" title="Memory Stability">
-                        <Brain className="h-3 w-3 text-indigo-400" />
-                        <span>S: <span className="font-medium text-slate-700">{getIntervalDescription(item.stability ?? 0)}</span></span>
-                      </div>
-                      <div className="flex items-center gap-1" title="Difficulty Rating">
-                        <BarChart3 className="h-3 w-3 text-amber-400" />
-                        <span>D: <span className="font-medium text-slate-700">{(item.dr ?? 5).toFixed(1)} ({getDifficultyLabel(item.dr ?? 5)})</span></span>
-                      </div>
-                      <div className="flex items-center gap-1" title="Retrieval / Lapse">
-                        <ArrowUpDown className="h-3 w-3 text-emerald-400" />
-                        <span>R/L: <span className="font-medium text-slate-700">{item.retrieval ?? 0}/{item.lapse ?? 0}</span></span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-1">
-                      {item.tags.map((tag) => (
-                        <Badge key={tag.id} variant="secondary" className="text-[10px] uppercase tracking-wider">
-                          {tag.name}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    <span className="text-gray-300">|</span>
-                    
-                    <Link 
-                      href={`/practice/${item.sentence.track.id}`}
-                      className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {item.sentence.track.title}
-                    </Link>
-
-                    <span className="text-gray-300">|</span>
-
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Next: {formatReviewDateLabel(item)}
-                    </span>
-                  </div>
-
-                  {item.userNote && (
-                    <div className="mt-3 text-sm text-gray-700 bg-white/50 p-3 rounded border-l-2 border-indigo-200 prose prose-sm max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.userNote) }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+      {filteredItems.map((item) => (
+        <VaultListItem
+          key={item.id}
+          item={item}
+          isPlaying={playingId === item.id}
+          onPlay={playAudio}
+          onEdit={setEditingItem}
+          onToggleArchive={handleToggleArchive}
+          onDelete={handleDelete}
+        />
+      ))}
 
       <EditVaultModal 
         isOpen={!!editingItem} 
@@ -609,63 +203,53 @@ export default function VaultListClient({ initialItems, totalCount }: { initialI
 
       {filteredItems.length === 0 && (
         <div className="text-center py-20 bg-white rounded-xl border border-dashed text-gray-400">
-          {showArchived
+          {query.showArchived
             ? 'No archived notes. Archive some notes to see them here!'
-            : initialTrackId
+            : query.initialTrackId
             ? 'No saved notes for this track yet. Capture difficult sentences from the practice page!'
             : 'Your vault is empty. Capture some difficult sentences from the Workbench first!'}
         </div>
       )}
 
-      {/* Sticky Play All bar */}
-      {playAllActive && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg px-4 py-3">
-          <div className="container mx-auto flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-500 flex-shrink-0">
-              {playAllIndex + 1} / {filteredItems.length}
+      {filteredCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border rounded-lg">
+          <div className="text-xs text-gray-500">
+            Showing {pageStart}-{pageEnd} of {filteredCount} notes
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={query.page <= 1}
+              onClick={() => onQueryChange({ page: query.page - 1 })}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-gray-500">
+              Page {query.page} of {totalPages}
             </span>
-            <div className="flex-grow min-w-0">
-              {filteredItems[playAllIndex] && (
-                <>
-                  <p className="text-xs text-gray-400 truncate">
-                    {filteredItems[playAllIndex].sentence.track.title}
-                  </p>
-                  <p className="text-sm font-medium text-gray-800 truncate">
-                    {filteredItems[playAllIndex].sentence.text}
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {playAllPaused ? (
-                <Button size="icon" variant="outline" className="h-8 w-8" onClick={resumePlayAll}>
-                  <Play className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button size="icon" variant="outline" className="h-8 w-8" onClick={pausePlayAll}>
-                  <Pause className="h-4 w-4" />
-                </Button>
-              )}
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-8 w-8"
-                onClick={nextInPlayAll}
-                disabled={playAllIndex >= filteredItems.length - 1}
-              >
-                <SkipForward className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-gray-400 hover:text-red-500"
-                onClick={stopPlayAll}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={query.page >= totalPages}
+              onClick={() => onQueryChange({ page: query.page + 1 })}
+            >
+              Next
+            </Button>
           </div>
         </div>
+      )}
+
+      {playAllActive && (
+        <VaultPlayAllBar
+          items={playbackItems}
+          playAllIndex={playAllIndex}
+          playAllPaused={playAllPaused}
+          onResume={resumePlayAll}
+          onPause={pausePlayAll}
+          onNext={nextInPlayAll}
+          onStop={stopPlayAll}
+        />
       )}
     </div>
   );

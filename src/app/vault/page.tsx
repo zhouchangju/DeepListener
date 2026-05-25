@@ -1,42 +1,19 @@
-import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import VaultPageClient from "./VaultPageClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getVaultPageData, type VaultSearchParams } from "./vault-query";
 
 export const dynamic = "force-dynamic";
 
-interface VaultPageTrack {
-  id: string;
-  title: string;
-  audioUrl: string;
-}
+export default async function VaultPage({
+  searchParams,
+}: {
+  searchParams?: Promise<VaultSearchParams> | VaultSearchParams;
+}) {
+  const resolvedSearchParams = await searchParams;
 
-interface VaultPageItem {
-  id: string;
-  userNote: string | null;
-  difficulty: string | null;
-  isArchived: boolean;
-  due: Date | null;
-  nextReview: Date | null;
-  stability: number | null;
-  dr: number | null;
-  retrieval: number | null;
-  lapse: number | null;
-  createdAt: Date;
-  tags: { id: string; name: string }[];
-  sentence: {
-    id: string;
-    text: string;
-    startTime: number;
-    endTime: number;
-    formatting: string | null;
-    track: VaultPageTrack;
-  };
-}
-
-export default function VaultPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
@@ -54,75 +31,18 @@ export default function VaultPage() {
       </div>
 
       <Suspense fallback={<VaultListSkeleton />}>
-        <VaultContent />
+        <VaultContent searchParams={resolvedSearchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function VaultContent() {
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-
-  const [items, dueCount, totalCount] = await Promise.all([
-    prisma.reviewItem.findMany({
-      select: {
-        id: true,
-        userNote: true,
-        difficulty: true,
-        isArchived: true,
-        due: true,
-        nextReview: true,
-        stability: true,
-        dr: true,
-        retrieval: true,
-        lapse: true,
-        createdAt: true,
-        tags: {
-          select: { id: true, name: true }
-        },
-        sentence: {
-          select: {
-            id: true,
-            text: true,
-            startTime: true,
-            endTime: true,
-            formatting: true,
-            track: {
-              select: {
-                id: true,
-                title: true,
-                audioUrl: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.reviewItem.count({
-      where: {
-        due: { lte: endOfToday },
-        isArchived: false,
-      },
-    }),
-    prisma.reviewItem.count()
-  ]);
-
-  const typedItems: VaultPageItem[] = items;
-
-  const uniqueTracks: VaultPageTrack[] = [...new Map(
-    typedItems
-      .filter(i => !i.isArchived)
-      .map(i => [i.sentence.track.id, i.sentence.track])
-  ).values()];
+async function VaultContent({ searchParams }: { searchParams: VaultSearchParams }) {
+  const data = await getVaultPageData(searchParams);
 
   return (
     <VaultPageClient
-      items={typedItems}
-      availableTracks={uniqueTracks}
-      dueCount={dueCount}
-      totalCount={totalCount}
+      {...data}
     />
   );
 }
