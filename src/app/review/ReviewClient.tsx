@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect, useEffectEvent } from "react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { useState, useEffect, useEffectEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Play, Eye, RotateCcw, Check, Edit3, Download, Archive, TrendingDown, TrendingUp, HelpCircle } from "lucide-react";
+import { Edit3, Download, Archive } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
-import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
-import { sanitizeHtml } from "@/lib/sanitize-html";
+import { downloadResponseBlob } from "@/lib/client-download";
+import { useRouter } from "next/navigation";
+import { removeCurrentReviewItem } from "./review-queue";
+import { useReviewAudio } from "./useReviewAudio";
+import { ReviewCard } from "./ReviewCard";
 
 type ReviewQuality = "again" | "hard" | "good" | "easy";
 
@@ -54,6 +55,7 @@ export default function ReviewClient({
   items: ReviewItem[];
   reviewedCount: number;
 }) {
+  const router = useRouter();
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -64,15 +66,9 @@ export default function ReviewClient({
   const [items, setItems] = useState(initialItems);
   const [reviewed, setReviewed] = useState(reviewedCount);
   const [remaining, setRemaining] = useState(initialItems.length);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const currentItemRef = useRef<ReviewItem | null>(null);
 
   const current = items[currentIndex];
-
-  // Keep ref in sync with current item
-  useEffect(() => {
-    currentItemRef.current = current;
-  }, [current]);
+  const { playAudio } = useReviewAudio({ current, playbackRate });
 
   useEffect(() => {
     setReviewed(reviewedCount);
@@ -103,41 +99,6 @@ export default function ReviewClient({
     }
   }, [showHelpTooltip]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = playbackRate;
-    }
-  }, [playbackRate]);
-
-  const playAudio = () => {
-    const currentItem = currentItemRef.current;
-    if (!currentItem) return;
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    const audio = new Audio(currentItem.sentence.track.audioUrl);
-    audioRef.current = audio;
-
-    audio.src = currentItem.sentence.track.audioUrl;
-    audio.currentTime = currentItem.sentence.startTime;
-    audio.playbackRate = playbackRate;
-
-    const stopTime = currentItem.sentence.endTime;
-
-    const onTimeUpdate = () => {
-      if (audio.currentTime >= stopTime) {
-        audio.pause();
-        audio.removeEventListener("timeupdate", onTimeUpdate);
-      }
-    };
-
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.play().catch(e => console.log("Auto-play prevented:", e));
-  };
-
   const playAudioInEffect = useEffectEvent(() => {
     playAudio();
   });
@@ -157,34 +118,25 @@ export default function ReviewClient({
 
       if (!res.ok) throw new Error("Failed to update");
 
-      // Update counts
       setReviewed((prev) => prev + 1);
       setRemaining((prev) => Math.max(0, prev - 1));
 
-      // Remove from current session for both 'again' and 'hard'
-      if (quality === "again" || quality === "hard") {
-        setItems(prevItems => {
-          const newItems = [...prevItems];
-          newItems.splice(currentIndex, 1);
-          return newItems;
-        });
+      const transition = removeCurrentReviewItem({ items, currentIndex });
+      setItems(transition.items);
+      setCurrentIndex(transition.currentIndex);
 
+      if (quality === "again" || quality === "hard") {
         if (quality === "again") {
           toast.success("Will review again in 5 minutes");
         } else {
           toast.success("Will review again in 15 minutes");
         }
+      } else if (transition.completed) {
+        toast.success("Batch completed! Loading more...");
+      }
 
-        if (items.length === 1) {
-          window.location.reload();
-        }
-      } else {
-        if (currentIndex < items.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-        } else {
-          toast.success("Batch completed! Loading more...");
-          window.location.reload();
-        }
+      if (transition.completed) {
+        router.refresh();
       }
     } catch {
       toast.error("Failed to save progress");
@@ -257,19 +209,7 @@ export default function ReviewClient({
         throw new Error(error.error || 'Export failed');
       }
 
-      const filename = response.headers
-        .get('Content-Disposition')
-        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Export.mp3';
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
       toast.success('Audio exported successfully');
     } catch (error) {
@@ -298,15 +238,13 @@ export default function ReviewClient({
         setRemaining((prev) => Math.max(0, prev - 1));
       }
 
-      setItems((prevItems) => {
-        const newItems = [...prevItems];
-        newItems.splice(currentIndex, 1);
-        return newItems;
-      });
+      const transition = removeCurrentReviewItem({ items, currentIndex });
+      setItems(transition.items);
+      setCurrentIndex(transition.currentIndex);
 
-      if (items.length === 1) {
+      if (transition.completed) {
         toast.success('Session completed!');
-        window.location.reload();
+        router.refresh();
       }
     } catch {
       toast.error('Failed to archive note');
@@ -362,113 +300,15 @@ export default function ReviewClient({
         </div>
       </div>
 
-      <Card className="min-h-[300px] flex flex-col justify-between relative">
-        {/* Help icon in top-right corner */}
-        <div className="absolute top-4 right-4 z-10">
-          <HelpCircle
-            className="h-5 w-5 text-gray-400 cursor-help hover:text-gray-600 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowHelpTooltip(!showHelpTooltip);
-            }}
-          />
-          <div
-            className={`absolute top-6 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 transition-opacity shadow-lg z-50 ${
-              showHelpTooltip ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            } hover:opacity-100 md:group-hover:opacity-100 md:pointer-events-auto`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="font-semibold mb-2">快捷键指南：</div>
-            <div className="space-y-1">
-              <div>• 点击播放按钮或按 <kbd className="bg-gray-700 px-1 rounded">R</kbd> 重播音频</div>
-              <div>• 按 <kbd className="bg-gray-700 px-1 rounded">Space</kbd> 显示/隐藏答案</div>
-              <div>• 按 <kbd className="bg-gray-700 px-1 rounded">1-4</kbd> 评分（Again/Hard/Good/Easy）</div>
-            </div>
-          </div>
-        </div>
-
-        <CardContent className="pt-10 text-center flex-grow">
-          <Button
-            variant="secondary"
-            size="lg"
-            className="rounded-full h-16 w-16 mb-4"
-            onClick={playAudio}
-          >
-            <Play className="h-8 w-8" />
-          </Button>
-
-          {showAnswer && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-              <div className="flex justify-center">
-                <InteractiveText
-                  text={current.sentence.text}
-                  formatting={current.sentence.formatting}
-                  mode="read"
-                  className="text-lg font-medium leading-relaxed text-gray-800 text-center justify-center"
-                />
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                {current.tags.map((tag) => (
-                  <Badge key={tag.id} variant="secondary">{tag.name}</Badge>
-                ))}
-              </div>
-              {current.userNote && (
-                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">NOTE:</div>
-                  <div
-                    className="prose prose-sm max-w-none whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(current.userNote) }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-
-        <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-5">
-          <Button className="w-full h-12 text-base" onClick={() => setShowAnswer(!showAnswer)}>
-            <Eye className="mr-2 h-5 w-5" /> {showAnswer ? 'Hide' : 'Reveal'} Answer (Space)
-          </Button>
-
-          <div className="grid grid-cols-4 gap-2 w-full">
-            <Button
-              variant="outline"
-              className="border-red-200 hover:bg-red-50 text-red-600 flex-col h-auto py-3"
-              onClick={() => handleGrade("again")}
-            >
-              <RotateCcw className="h-4 w-4 mb-1" />
-              <span className="text-xs font-medium">Again</span>
-              <span className="text-[10px] text-gray-400">1</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="border-orange-200 hover:bg-orange-50 text-orange-600 flex-col h-auto py-3"
-              onClick={() => handleGrade("hard")}
-            >
-              <TrendingDown className="h-4 w-4 mb-1" />
-              <span className="text-xs font-medium">Hard</span>
-              <span className="text-[10px] text-gray-400">2</span>
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3"
-              onClick={() => handleGrade("good")}
-            >
-              <Check className="h-4 w-4 mb-1" />
-              <span className="text-xs font-medium">Good</span>
-              <span className="text-[10px] text-green-200">3</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="border-blue-200 hover:bg-blue-50 text-blue-600 flex-col h-auto py-3"
-              onClick={() => handleGrade("easy")}
-            >
-              <TrendingUp className="h-4 w-4 mb-1" />
-              <span className="text-xs font-medium">Easy</span>
-              <span className="text-[10px] text-gray-400">4</span>
-            </Button>
-          </div>
-        </CardFooter>
-      </Card>
+      <ReviewCard
+        current={current}
+        showAnswer={showAnswer}
+        showHelpTooltip={showHelpTooltip}
+        onToggleHelpTooltip={() => setShowHelpTooltip(!showHelpTooltip)}
+        onPlayAudio={playAudio}
+        onToggleAnswer={() => setShowAnswer(!showAnswer)}
+        onGrade={handleGrade}
+      />
 
       <EditVaultModal
         isOpen={isEditing}
