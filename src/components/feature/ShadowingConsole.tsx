@@ -1,10 +1,20 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy, Eye, EyeOff } from "lucide-react";
+import { Mic, Play, RotateCcw, SkipForward, X, Loader2, Repeat, Pause, Edit3, Check, Bookmark, BookmarkCheck, Copy, Eye, EyeOff, Keyboard } from "lucide-react";
 import MiniWavePlayer from "./MiniWavePlayer";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
-import { getShadowingOverlayClassName, shouldRenderOriginalWavePlayer } from "./shadowing/presentation";
+import {
+  getDictationDraftStateForSentence,
+  getInitialDictationDraftState,
+  getPracticeModeButtonClassName,
+  getShadowingOverlayClassName,
+  isDictationSubmitShortcut,
+  shouldRenderOriginalWavePlayer,
+  type ShadowingPracticeMode,
+} from "./shadowing/presentation";
+import { compareDictationAnswer } from "./shadowing/dictation";
+import DictationPanel from "./shadowing/DictationPanel";
 import SpeedSelector from "./SpeedSelector";
 import { useState, useEffect, useRef } from "react";
 import { InteractiveText } from "./notation/InteractiveText";
@@ -16,7 +26,15 @@ import { toast } from "sonner";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
 export function getShadowingActionButtonsClassName() {
-  return "absolute -right-16 top-0 flex flex-col gap-1";
+  return "absolute right-0 top-0 z-10 flex flex-row gap-1";
+}
+
+function isEditableKeyTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
 }
 
 interface ShadowingConsoleProps {
@@ -44,10 +62,14 @@ export default function ShadowingConsole({
   const router = useRouter();
   const { setMode } = useTimeTracking();
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [practiceMode, setPracticeMode] = useState<ShadowingPracticeMode>("shadowing");
   const [activeTool, setActiveTool] = useState<NotationType | null>(null);
   const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
   const [blindMode, setBlindMode] = useState(false);
   const [isTextRevealed, setIsTextRevealed] = useState(false);
+  const [dictationDraft, setDictationDraft] = useState(() =>
+    getInitialDictationDraftState(sentence)
+  );
 
   // Text Editing State
   const [isEditingText, setIsEditingText] = useState(false);
@@ -58,6 +80,10 @@ export default function ShadowingConsole({
     fullAudioBuffer,
     playbackRate,
   });
+  const activeDictationDraft = getDictationDraftStateForSentence(
+    dictationDraft,
+    sentence
+  );
 
   // Focus on mount
   useEffect(() => {
@@ -82,7 +108,8 @@ export default function ShadowingConsole({
     setTempText(sentence.text); // Sync temp text
     setIsEditingText(false); // Reset edit mode
     setIsTextRevealed(false); // Reset text reveal
-  }, [sentence.id, sentence.formatting, sentence.text]);
+    setDictationDraft(getInitialDictationDraftState(sentence));
+  }, [sentence]);
 
   // Auto-play original audio after 0.5s when switching to next sentence
   const isFirstRender = useRef(true);
@@ -92,13 +119,26 @@ export default function ShadowingConsole({
       return;
     }
 
+    if (practiceMode !== "shadowing") return;
+
     // Auto-start playback after 0.5s delay (without auto-recording)
     const timer = setTimeout(() => {
       playOriginal();
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [sentence.id, playOriginal]);
+  }, [sentence.id, playOriginal, practiceMode]);
+
+  useEffect(() => {
+    if (practiceMode !== "dictation" || !isOriginalBlobReady) return;
+    if (activeDictationDraft.hasPlayedOnce || activeDictationDraft.result) return;
+
+    setDictationDraft({
+      ...activeDictationDraft,
+      hasPlayedOnce: true,
+    });
+    playOriginal();
+  }, [practiceMode, isOriginalBlobReady, activeDictationDraft, playOriginal]);
 
   const handleSaveText = async () => {
     try {
@@ -159,9 +199,76 @@ export default function ShadowingConsole({
     onClose();
   };
 
+  const handlePracticeModeChange = (nextMode: ShadowingPracticeMode) => {
+    if (practiceMode === nextMode) return;
+
+    stopAll();
+    setIsEditingText(false);
+    setActiveTool(null);
+    setPracticeMode(nextMode);
+
+    if (nextMode === "dictation") {
+      setDictationDraft((previous) =>
+        getDictationDraftStateForSentence(previous, sentence)
+      );
+    }
+  };
+
+  const handleDictationAnswerChange = (answer: string) => {
+    setDictationDraft((previous) => ({
+      ...getDictationDraftStateForSentence(previous, sentence),
+      answer,
+      result: null,
+    }));
+  };
+
+  const handleDictationPlay = () => {
+    if (!isOriginalBlobReady) return;
+
+    setDictationDraft((previous) => {
+      const current = getDictationDraftStateForSentence(previous, sentence);
+
+      return {
+        ...current,
+        hasPlayedOnce: true,
+        replayCount: current.hasPlayedOnce
+          ? current.replayCount + 1
+          : current.replayCount,
+      };
+    });
+    playOriginal();
+  };
+
+  const handleDictationSubmit = () => {
+    setDictationDraft((previous) => {
+      const current = getDictationDraftStateForSentence(previous, sentence);
+
+      if (!current.answer.trim()) {
+        return current;
+      }
+
+      return {
+        ...current,
+        result: compareDictationAnswer(sentence.text, current.answer),
+      };
+    });
+  };
+
+  const handleDictationRetry = () => {
+    stopAll();
+    setDictationDraft(getInitialDictationDraftState(sentence));
+  };
+
   // Centralized Keyboard Handler
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isEditingText) {
+    if (practiceMode === "dictation" && isDictationSubmitShortcut(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDictationSubmit();
+      return;
+    }
+
+    if (isEditingText || isEditableKeyTarget(e.target)) {
         e.stopPropagation(); // Allow typing in textarea
         return;
     }
@@ -177,6 +284,14 @@ export default function ShadowingConsole({
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
       handleNext();
+    } else if (practiceMode === "dictation") {
+      if (e.key === "r" || e.key === "R" || e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handleDictationPlay();
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        onCapture(sentence.id);
+      }
     } else if (e.key === " " || e.code === "Space") {
       e.preventDefault();
       if (mode === "idle") {
@@ -220,26 +335,56 @@ export default function ShadowingConsole({
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-xl font-bold text-slate-800">
-              Shadowing Mode(<span style={{ color: "red" }}>抓主谓宾/Chunk</span>)
+              {practiceMode === "shadowing" ? (
+                <>Shadowing Mode(<span style={{ color: "red" }}>抓主谓宾/Chunk</span>)</>
+              ) : (
+                "Dictation Mode"
+              )}
             </h2>
             <div className="text-sm font-medium px-3 py-1 bg-slate-100 rounded-full text-slate-600">
               {currentIndex + 1} / {totalCount}
             </div>
+            <div className="flex rounded-xl bg-slate-100 p-1.5 ring-1 ring-slate-200">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={getPracticeModeButtonClassName("shadowing", practiceMode)}
+                aria-pressed={practiceMode === "shadowing"}
+                onClick={() => handlePracticeModeChange("shadowing")}
+              >
+                <Mic className="h-4 w-4" />
+                Shadowing
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={getPracticeModeButtonClassName("dictation", practiceMode)}
+                aria-pressed={practiceMode === "dictation"}
+                onClick={() => handlePracticeModeChange("dictation")}
+              >
+                <Keyboard className="h-4 w-4" />
+                Dictation
+              </Button>
+            </div>
             <SpeedSelector playbackRate={playbackRate} onRateChange={setPlaybackRate} variant="minimal" />
-            <Button
-              variant="ghost"
-              size="icon"
-              className={blindMode ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-600"}
-              onClick={() => {
-                setBlindMode(!blindMode);
-                setIsTextRevealed(false);
-              }}
-              title={blindMode ? "Show text" : "Hide text"}
-            >
-              {blindMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </Button>
+            {practiceMode === "shadowing" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={blindMode ? "bg-indigo-100 text-indigo-600" : "text-slate-400 hover:text-indigo-600"}
+                onClick={() => {
+                  setBlindMode(!blindMode);
+                  setIsTextRevealed(false);
+                }}
+                title={blindMode ? "Show text" : "Hide text"}
+              >
+                {blindMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -257,21 +402,36 @@ export default function ShadowingConsole({
         {/* Content */}
         <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
           <div className="flex-grow flex flex-col items-center justify-center w-full relative gap-8">
-            
-            {isEditingText ? (
-                <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
-                    <Textarea
-                        value={tempText}
-                        onChange={(e) => setTempText(e.target.value)}
-                        className="text-xl font-medium min-h-[120px] resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>Cancel</Button>
-                        <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
-                            <Check className="w-4 h-4 mr-2" /> Save Text
-                        </Button>
-                    </div>
+            {practiceMode === "dictation" ? (
+              <DictationPanel
+                answer={activeDictationDraft.answer}
+                result={activeDictationDraft.result}
+                replayCount={activeDictationDraft.replayCount}
+                hasPlayedOnce={activeDictationDraft.hasPlayedOnce}
+                isAudioReady={isOriginalBlobReady}
+                isListening={mode === "playing_original"}
+                sentenceText={sentence.text}
+                canGoNext={currentIndex < totalCount - 1}
+                onAnswerChange={handleDictationAnswerChange}
+                onPlay={handleDictationPlay}
+                onSubmit={handleDictationSubmit}
+                onRetry={handleDictationRetry}
+                onNext={handleNext}
+              />
+            ) : isEditingText ? (
+              <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                <Textarea
+                  value={tempText}
+                  onChange={(e) => setTempText(e.target.value)}
+                  className="text-xl font-medium min-h-[120px] resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>Cancel</Button>
+                  <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
+                    <Check className="w-4 h-4 mr-2" /> Save Text
+                  </Button>
                 </div>
+              </div>
             ) : blindMode && !isTextRevealed ? (
                 <div
                     className="relative group cursor-pointer"
@@ -298,8 +458,8 @@ export default function ShadowingConsole({
                         className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
                         />
                     </div>
-                    {/* Action Buttons - fixed to container's right edge */}
-                    <div className="absolute right-0 top-0 flex flex-col gap-1">
+                    {/* Action Buttons - fixed to container's top-right edge */}
+                    <div className={getShadowingActionButtonsClassName()}>
                         <Button
                             size="icon"
                             variant="ghost"
@@ -329,10 +489,11 @@ export default function ShadowingConsole({
                 </div>
             )}
 
-            {!isEditingText && !blindMode && <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />}
+            {practiceMode === "shadowing" && !isEditingText && !blindMode && <NotationToolbar activeTool={activeTool} onToolChange={setActiveTool} />}
           </div>
 
           {/* Visualization Area */}
+          {practiceMode === "shadowing" && (
           <div className="w-full space-y-4">
             {!isOriginalBlobReady && !originalBlob && (
               <div className="flex items-center justify-center text-slate-400 gap-2 h-32">
@@ -394,8 +555,10 @@ export default function ShadowingConsole({
               </div>
             )}
           </div>
+          )}
 
           {/* Controls */}
+          {practiceMode === "shadowing" && (
           <div className="h-16 flex items-center justify-center w-full relative">
             {mode === "idle" && (
               <Button
@@ -432,6 +595,7 @@ export default function ShadowingConsole({
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -440,7 +604,11 @@ export default function ShadowingConsole({
             Previous
           </Button>
           <div className="text-slate-400 text-sm flex items-center">
-            {mode === "reviewing" ? "Compare waveforms & audio" : "Listen -> Record -> Compare"}
+            {practiceMode === "dictation"
+              ? "Listen -> Type -> Check"
+              : mode === "reviewing"
+              ? "Compare waveforms & audio"
+              : "Listen -> Record -> Compare"}
           </div>
           <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>
             Next

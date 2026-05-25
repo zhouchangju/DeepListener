@@ -1,18 +1,39 @@
+import type { DictationComparison } from "./dictation";
+
 export type ShadowingWorkflowMode =
   | "idle"
   | "playing_original"
   | "recording"
   | "reviewing";
 
+export type ShadowingPracticeMode = "shadowing" | "dictation";
+
+interface DictationSubmitShortcutLike {
+  key: string;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+}
+
 interface ShadowingSentenceLike {
   id?: string;
   startTime: number;
   endTime: number;
+  text?: string;
+  formatting?: string | null;
+  reviewItem?: unknown;
 }
 
 interface ShadowingOriginalAudioState<T> {
   sliceKey: string;
   blob: T | null;
+}
+
+export interface DictationDraftState {
+  sentenceKey: string;
+  answer: string;
+  result: DictationComparison | null;
+  replayCount: number;
+  hasPlayedOnce: boolean;
 }
 
 export function getShadowingOverlayClassName() {
@@ -37,6 +58,67 @@ export function shouldRenderTrackNotes(shadowingMode?: boolean) {
 
 export function getShadowingAudioSliceKey(sentence: ShadowingSentenceLike) {
   return `${sentence.id ?? "unknown"}:${sentence.startTime}:${sentence.endTime}`;
+}
+
+export function getInitialDictationDraftState(
+  sentence: ShadowingSentenceLike
+): DictationDraftState {
+  return {
+    sentenceKey: getShadowingAudioSliceKey(sentence),
+    answer: "",
+    result: null,
+    replayCount: 0,
+    hasPlayedOnce: false,
+  };
+}
+
+export function getDictationDraftStateForSentence(
+  state: DictationDraftState,
+  sentence: ShadowingSentenceLike
+) {
+  const nextKey = getShadowingAudioSliceKey(sentence);
+
+  if (state.sentenceKey === nextKey) {
+    return state;
+  }
+
+  return getInitialDictationDraftState(sentence);
+}
+
+export function shouldShowDictationResult(
+  result: DictationComparison | null
+) {
+  return result !== null;
+}
+
+export function shouldEnableDictationResultPlayback(
+  result: DictationComparison | null,
+  isAudioReady: boolean
+) {
+  return result !== null && isAudioReady;
+}
+
+export function shouldShowDictationOriginalCopyButton(
+  result: DictationComparison | null
+) {
+  return result !== null;
+}
+
+export function getPracticeModeButtonClassName(
+  mode: ShadowingPracticeMode,
+  activeMode: ShadowingPracticeMode
+) {
+  if (mode === activeMode) {
+    return mode === "shadowing"
+      ? "h-9 gap-1.5 px-4 bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 hover:text-white"
+      : "h-9 gap-1.5 px-4 bg-emerald-600 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:text-white";
+  }
+
+  return "h-9 gap-1.5 px-4 bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-800";
+}
+
+export function isDictationSubmitShortcut(event: DictationSubmitShortcutLike) {
+  return event.key === "Enter" && (event.metaKey === true || event.ctrlKey === true);
 }
 
 export function getDisplayedShadowingOriginalAudio<T>(
