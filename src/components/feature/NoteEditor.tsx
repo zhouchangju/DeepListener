@@ -1,19 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Bold, Copy } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
-
-// Color options - red is first for F8 shortcut
-const COLORS = [
-    { c: "#EF4444", label: "Red" },
-    { c: "#000000", label: "Black" },
-    { c: "#3B82F6", label: "Blue" },
-    { c: "#10B981", label: "Green" },
-    { c: "#F59E0B", label: "Amber" },
-    { c: "#8B5CF6", label: "Purple" }
-];
+import { RED_FIRST_RICH_TEXT_COLORS, RichTextToolbar } from "./rich-text/RichTextToolbar";
+import { useAutosavedRichTextNote } from "./rich-text/useAutosavedRichTextNote";
 
 interface NoteEditorProps {
   initialNote?: string | null;
@@ -22,84 +12,30 @@ interface NoteEditorProps {
 }
 
 export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditorProps) {
-  const [isSaving, setIsSaving] = useState(false);
-  const editorRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedContentRef = useRef(initialNote || "");
-  const isContentLoadedRef = useRef(false);
-
-  // Load content only once on mount or when trackId changes.
-  // Never blindly rewrite identical contentEditable HTML after typing:
-  // that resets the caret to the start and looks like a keyboard bug.
-  useEffect(() => {
-    // Skip if already loaded for this track
-    if (isContentLoadedRef.current) return;
-
-    lastSavedContentRef.current = initialNote || "";
-    isContentLoadedRef.current = true;
-
-    const timer = setTimeout(() => {
-      if (editorRef.current && editorRef.current.innerHTML !== (initialNote || "")) {
-        editorRef.current.innerHTML = initialNote || "";
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [trackId, initialNote]);
-
-  // Reset load flag when trackId changes (to allow loading new content)
-  useEffect(() => {
-    isContentLoadedRef.current = false;
-  }, [trackId]);
-
-  const saveNote = useCallback(async () => {
-    if (!editorRef.current) return;
-    const currentContent = editorRef.current.innerHTML;
-
-    if (currentContent === lastSavedContentRef.current) return;
-
-    setIsSaving(true);
-    try {
+  const { editorRef, exec, getText, handleInput, isSaving, saveNote } = useAutosavedRichTextNote({
+    initialNote,
+    reloadKey: trackId,
+    saveDelayMs: 1500,
+    save: async (content) => {
       const res = await fetch(`/api/track/${trackId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: currentContent }),
+        body: JSON.stringify({ note: content }),
       });
 
       if (!res.ok) throw new Error("Failed to save");
+    },
+    onSaved,
+    onError: () => toast.error("Failed to save note"),
+  });
 
-      lastSavedContentRef.current = currentContent;
-      onSaved?.(currentContent);
-    } catch {
-      toast.error("Failed to save note");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [onSaved, trackId]);
-
-  const handleInput = useCallback(() => {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-    typingTimeoutRef.current = setTimeout(() => {
-      void saveNote();
-    }, 1500);
-  }, [saveNote]);
-
-  const exec = useCallback((command: string, value: string = "") => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-    handleInput();
-  }, [handleInput]);
-
-  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // F1, F2, F3, F4 all apply red color (for easy access)
       if (e.key === "F1" || e.key === "F2" || e.key === "F3" || e.key === "F4") {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.toString().trim() !== "") {
-          exec("foreColor", COLORS[0].c); // Red
+          exec("foreColor", RED_FIRST_RICH_TEXT_COLORS[0].c);
         }
       }
     };
@@ -109,11 +45,8 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   }, [exec]);
 
   const handleCopy = async () => {
-    if (!editorRef.current) return;
-
     try {
-      const text = editorRef.current.innerText || editorRef.current.textContent || "";
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(getText());
       toast.success("Copied to clipboard");
     } catch {
       toast.error("Failed to copy");
@@ -122,76 +55,15 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
 
   return (
     <div className="mt-8 border rounded-lg shadow-sm bg-white overflow-hidden flex flex-col h-[400px]">
-      <div className="bg-slate-50 border-b p-2 flex gap-2 items-center flex-wrap">
-        <span className="text-xs font-semibold text-slate-500 uppercase mr-2 select-none">Notes</span>
-
-        <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={() => exec("bold")}
-            title="Bold"
-        >
-          <Bold className="w-4 h-4" />
-        </Button>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        <div className="flex gap-1 items-center">
-            <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => exec("fontSize", "3")}
-                className="h-8 text-xs font-normal"
-                title="Normal Size"
-            >
-                Aa
-            </Button>
-            <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => exec("fontSize", "5")}
-                className="h-8 text-lg font-bold"
-                title="Large Size"
-            >
-                Aa
-            </Button>
-        </div>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        <div className="flex gap-1 items-center">
-            {COLORS.map(({c, label}) => (
-                <button
-                    key={c}
-                    className="w-5 h-5 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm"
-                    style={{ backgroundColor: c }}
-                    onClick={() => exec("foreColor", c)}
-                    title={label}
-                />
-            ))}
-        </div>
-
-        <div className="h-4 w-px bg-slate-300 mx-1" />
-
-        <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={handleCopy}
-            title="Copy text"
-        >
-          <Copy className="w-4 h-4" />
-        </Button>
-
-        <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
-            {isSaving ? (
-                <span className="animate-pulse">Saving...</span>
-            ) : (
-                <span>Saved</span>
-            )}
-        </div>
-      </div>
+      <RichTextToolbar
+        label="Notes"
+        variant="comfortable"
+        colors={RED_FIRST_RICH_TEXT_COLORS}
+        isSaving={isSaving}
+        showSavingStatus
+        onCommand={exec}
+        onCopy={handleCopy}
+      />
 
       <div
         ref={editorRef}
