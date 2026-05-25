@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { internalServerError, notFound } from '@/lib/api-response';
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -14,10 +16,7 @@ export async function POST(
     });
 
     if (!reviewItem) {
-      return new Response(
-        JSON.stringify({ error: 'Review item not found' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return notFound('Review item not found');
     }
 
     const updatedItem = await prisma.reviewItem.update({
@@ -27,21 +26,12 @@ export async function POST(
       },
     });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        isArchived: updatedItem.isArchived,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return NextResponse.json({
+      success: true,
+      isArchived: updatedItem.isArchived,
+    });
   } catch (error) {
     console.error('Archive toggle error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return internalServerError();
   }
 }

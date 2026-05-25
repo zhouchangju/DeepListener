@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  audioExportSchema,
+  libraryExportSchema,
+  reviewLogSchema,
   reviewGradeSchema,
   sentencePatchSchema,
   studyTimeSchema,
   trackPatchSchema,
   vaultCreateSchema,
+  vaultExportSchema,
   vaultPatchSchema,
 } from "./api-schemas";
 
@@ -59,4 +63,33 @@ test("studyTimeSchema accepts known study modes and positive heartbeat durations
   assert.equal(studyTimeSchema.safeParse({ type: "UNKNOWN", duration: 10 }).success, false);
   assert.equal(studyTimeSchema.safeParse({ type: "REVIEW", duration: 0 }).success, false);
   assert.equal(studyTimeSchema.safeParse({ type: "REVIEW", duration: 3601 }).success, false);
+});
+
+test("reviewLogSchema requires a review item id and supported rating", () => {
+  assert.equal(reviewLogSchema.safeParse({ reviewItemId: "item-1", rating: 3 }).success, true);
+  assert.equal(reviewLogSchema.safeParse({ reviewItemId: "item-1" }).success, false);
+  assert.equal(reviewLogSchema.safeParse({ reviewItemId: "", rating: 3 }).success, false);
+  assert.equal(reviewLogSchema.safeParse({ reviewItemId: "item-1", rating: 9 }).success, false);
+});
+
+test("audioExportSchema validates export type and filtered fields", () => {
+  assert.equal(audioExportSchema.safeParse({ type: "due" }).success, true);
+  assert.equal(audioExportSchema.safeParse({ type: "track", trackId: "track-1" }).success, true);
+  assert.equal(audioExportSchema.safeParse({ type: "track" }).success, false);
+  assert.equal(audioExportSchema.safeParse({ type: "filtered", difficulties: ["HARD"] }).success, true);
+  assert.equal(audioExportSchema.safeParse({ type: "filtered", difficulties: ["NOPE"] }).success, false);
+  assert.equal(
+    audioExportSchema.safeParse({ type: "filtered", dateFrom: "2026-05-20", dateTo: "2026-05-19" }).success,
+    false
+  );
+});
+
+test("vaultExportSchema and libraryExportSchema reject malformed filters", () => {
+  assert.equal(vaultExportSchema.safeParse({ tags: ["Vocab"], trackIds: ["track-1"] }).success, true);
+  assert.equal(vaultExportSchema.safeParse({ tags: "Vocab" }).success, false);
+  assert.equal(vaultExportSchema.safeParse({ dateFrom: "2026-05-20", dateTo: "2026-05-19" }).success, false);
+
+  assert.equal(libraryExportSchema.safeParse({ trackType: "Lecture", selectedTrackIds: ["track-1"] }).success, true);
+  assert.equal(libraryExportSchema.safeParse({ selectedTrackIds: [1] }).success, false);
+  assert.equal(libraryExportSchema.safeParse({ dateFrom: "bad-date" }).success, false);
 });

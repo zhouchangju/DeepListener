@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import BatchAudioPlayer from "./BatchAudioPlayer";
 import { useBatchPlayback } from "./useBatchPlayback";
 import { toast } from "sonner";
+import { downloadResponseBlob } from "@/lib/client-download";
 
 interface Track {
     id: string;
@@ -137,19 +138,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
         throw new Error(error.error || 'Export failed');
       }
 
-      const blob = await response.blob();
-      const filename = response.headers
-        .get('Content-Disposition')
-        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Library_Export.mp3';
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadResponseBlob(response, 'DeepListener_Library_Export.mp3');
       
       toast.success('Audio exported successfully');
     } catch (error) {
@@ -349,4 +338,3 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
     </div>
   );
 }
-

@@ -83,6 +83,7 @@ HTTPS_PROXY=http://127.0.0.1:7890
 说明：
 - 如果未设置 `TRANSCRIPTION_PROVIDER`，系统会回退到 `openai`
 - Deepgram 通常不依赖代理，但如果设置了 `HTTPS_PROXY`，工厂层依然会统一接管请求
+- Prisma 会按 `prisma/schema.prisma` 所在目录解析 `file:./dev.db`，所以默认数据库文件是 `prisma/dev.db`，不是仓库根目录的 `dev.db`
 
 ### 3. 数据库初始化
 ```bash

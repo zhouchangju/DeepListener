@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
+import { TRACK_STATUS_DISPLAY } from "@/lib/domain-constants";
 
 interface Track {
   id: string;
@@ -25,16 +26,6 @@ interface Track {
   trackTopic?: string | null;
   _count: { sentences: number };
 }
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  UNLEARNT: { label: "未学习", color: "text-slate-600", bg: "bg-slate-50" },
-  INTENSIVE: { label: "精听", color: "text-indigo-700", bg: "bg-indigo-50" },
-  ANALYSIS: { label: "分析", color: "text-amber-700", bg: "bg-amber-50" },
-  SHADOWING: { label: "Shadowing", color: "text-purple-700", bg: "bg-purple-50" },
-  SPEED_SHADOWING: { label: "倍速 Shadowing", color: "text-pink-700", bg: "bg-pink-50" },
-  PARAPHRASE: { label: "Paraphrase", color: "text-cyan-700", bg: "bg-cyan-50" },
-  LEARNT: { label: "已学习", color: "text-green-700", bg: "bg-green-50" },
-};
 
 interface TrackListProps {
   tracks: Track[];
@@ -72,7 +63,7 @@ export default function TrackList({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: value }),
         });
-        toast.success(`Status updated to ${STATUS_CONFIG[value]?.label || value}`);
+        toast.success(`Status updated to ${TRACK_STATUS_DISPLAY[value as keyof typeof TRACK_STATUS_DISPLAY]?.label || value}`);
         router.refresh();
       } catch {
         toast.error("Operation failed");
@@ -126,7 +117,7 @@ export default function TrackList({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tracks.map((track) => {
-          const statusConfig = STATUS_CONFIG[track.status] || STATUS_CONFIG["INTENSIVE"];
+          const statusConfig = TRACK_STATUS_DISPLAY[track.status as keyof typeof TRACK_STATUS_DISPLAY] || TRACK_STATUS_DISPLAY.INTENSIVE;
           const isSelected = selectedTrackIds.has(track.id);
 
           const cardContent = (
@@ -157,7 +148,7 @@ export default function TrackList({
 
               <CardHeader className={`pr-12 ${selectionMode ? "pl-12" : ""}`}>
                   <div className="flex flex-wrap gap-2 mb-2">
-                     <span className={`px-2 py-0.5 text-xs rounded-full font-medium border ${statusConfig.bg} ${statusConfig.color} border-transparent`}>
+                     <span className={`px-2 py-0.5 text-xs rounded-full font-medium border ${statusConfig.bgClass} ${statusConfig.textClass} border-transparent`}>
                         {statusConfig.label}
                      </span>
                     {track.trackType && track.trackType !== "Other" && (
@@ -185,13 +176,13 @@ export default function TrackList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                        {Object.entries(TRACK_STATUS_DISPLAY).map(([key, config]) => (
                           <DropdownMenuItem 
                             key={key} 
                             onClick={(e) => handleAction(e, "change-status", track, key)}
                             className={track.status === key ? "bg-accent" : ""}
                           >
-                             <div className={`w-2 h-2 rounded-full mr-2 ${config.color.replace('text-', 'bg-')}`} />
+                             <div className={`w-2 h-2 rounded-full mr-2 ${config.dotClass}`} />
                              Set to {config.label}
                           </DropdownMenuItem>
                         ))}

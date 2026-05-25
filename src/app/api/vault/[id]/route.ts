@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatZodError, vaultPatchSchema } from "@/lib/api-schemas";
+import { notFound } from "@/lib/api-response";
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const item = await prisma.reviewItem.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userNote: true,
+    },
+  });
+
+  if (!item) {
+    return notFound("Vault item not found");
+  }
+
+  return NextResponse.json(item);
+}
 
 // 删除收藏
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

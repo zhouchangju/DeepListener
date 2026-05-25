@@ -5,6 +5,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import { tmpdir } from 'os';
+import { badRequest, internalServerError } from '@/lib/api-response';
+import { formatZodError, libraryExportSchema } from '@/lib/api-schemas';
 import { resolveStoredUploadPath } from '@/lib/upload-policy';
 
 export const maxDuration = 300; // 5 minutes
@@ -99,15 +101,12 @@ export async function POST(req: NextRequest) {
   let tempDir: string | null = null;
 
   try {
-    const body = await req.json();
-    const { trackType, trackTopic, dateFrom, dateTo, isArchived, selectedTrackIds }: {
-      trackType?: string;
-      trackTopic?: string;
-      dateFrom?: string;
-      dateTo?: string;
-      isArchived?: boolean;
-      selectedTrackIds?: string[];
-    } = body;
+    const parsed = libraryExportSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return badRequest(formatZodError(parsed.error));
+    }
+
+    const { trackType, trackTopic, dateFrom, dateTo, isArchived, selectedTrackIds } = parsed.data;
 
     let where: Prisma.TrackWhereInput;
     if (selectedTrackIds && selectedTrackIds.length > 0) {
@@ -125,10 +124,7 @@ export async function POST(req: NextRequest) {
     const tracks = await gatherTracks(where);
 
     if (tracks.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No tracks to export' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return badRequest('No tracks to export');
     }
 
     // Create temporary directory
@@ -228,9 +224,6 @@ export async function POST(req: NextRequest) {
         console.error('Cleanup failed:', e);
       }
     }
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return internalServerError();
   }
 }

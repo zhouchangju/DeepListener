@@ -5,7 +5,8 @@ import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
 import { tmpdir } from 'os';
-import { DIFFICULTIES } from '@/lib/domain-constants';
+import { badRequest, internalServerError } from '@/lib/api-response';
+import { audioExportSchema, formatZodError } from '@/lib/api-schemas';
 import { resolveStoredUploadPath } from '@/lib/upload-policy';
 
 export const maxDuration = 300; // 5 minutes
@@ -211,82 +212,28 @@ export async function POST(req: NextRequest) {
   let tempDir: string | null = null;
 
   try {
-    const body = await req.json();
-    const { type, trackId, difficulties, trackIds, dateFrom, dateTo }: {
-      type: 'all' | 'due' | 'track' | 'filtered';
-      trackId?: string;
-      difficulties?: string[];
-      trackIds?: string[];
-      dateFrom?: string;
-      dateTo?: string;
-    } = body;
-
-    // Validate input
-    if (type !== 'all' && type !== 'due' && type !== 'track' && type !== 'filtered') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid export type' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    const parsed = audioExportSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return badRequest(formatZodError(parsed.error));
     }
 
-    if (type === 'track' && !trackId) {
-      return new Response(
-        JSON.stringify({ error: 'trackId is required for track export' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (difficulties !== undefined) {
-      if (!Array.isArray(difficulties) || difficulties.some((d: unknown) => !DIFFICULTIES.includes(d as typeof DIFFICULTIES[number]))) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid difficulties value' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    if (trackIds !== undefined) {
-      if (!Array.isArray(trackIds) || trackIds.some((id: unknown) => typeof id !== 'string' || (id as string).trim() === '')) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid trackIds value' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Validate date range
-    if (dateFrom !== undefined && dateTo !== undefined) {
-      const fromDate = new Date(dateFrom);
-      const toDate = new Date(dateTo);
-      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid date format. Use ISO format (YYYY-MM-DD)' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      if (fromDate > toDate) {
-        return new Response(
-          JSON.stringify({ error: 'dateFrom must be before or equal to dateTo' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    const exportRequest = parsed.data;
+    const type = exportRequest.type;
+    const trackId = exportRequest.type === 'track' ? exportRequest.trackId : undefined;
+    const difficulties = exportRequest.type === 'filtered' ? exportRequest.difficulties : undefined;
+    const trackIds = exportRequest.type === 'filtered' ? exportRequest.trackIds : undefined;
+    const dateFrom = exportRequest.type === 'filtered' ? exportRequest.dateFrom : undefined;
+    const dateTo = exportRequest.type === 'filtered' ? exportRequest.dateTo : undefined;
 
     // Gather segments
     const segments = await gatherSegments(type, trackId, difficulties, trackIds, dateFrom, dateTo);
 
     if (segments.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No sentences to export' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return badRequest('No sentences to export');
     }
 
-    if (segments.length > 500) {
-      return new Response(
-        JSON.stringify({ error: `Too many sentences to export (${segments.length}). Maximum 500 sentences.` }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (segments.length > maxSegments) {
+      return badRequest(`Too many sentences to export (${segments.length}). Maximum ${maxSegments} sentences.`);
     }
 
     // Create temporary directory for intermediate files
@@ -422,12 +369,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return internalServerError();
   }
 }

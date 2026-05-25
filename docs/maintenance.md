@@ -39,7 +39,7 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 
 ## 3. 数据与文件维护
 
-项目当前使用 SQLite，本地数据库通常由 `DATABASE_URL="file:./dev.db"` 指向仓库根目录下的 `dev.db`。
+项目当前使用 SQLite。本地数据库通常由 `DATABASE_URL="file:./dev.db"` 指向默认文件；注意 Prisma 会按 `prisma/schema.prisma` 所在目录解析相对路径，所以默认文件实际是 `prisma/dev.db`。
 
 - **Schema**：`prisma/schema.prisma`
 - **数据库查看**：`npx prisma studio`
@@ -122,6 +122,6 @@ npm run sync
 同步内容：
 
 - `public/uploads/`
-- 根目录 `dev.db`
+- `prisma/dev.db`
 
 建议提前配置 SSH Key 免密登录，再执行同步脚本。

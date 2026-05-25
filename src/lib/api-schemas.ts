@@ -6,6 +6,22 @@ export { DIFFICULTIES, REVIEW_QUALITIES, STUDY_MODES, TRACK_STATUSES };
 const nonEmptyString = z.string().trim().min(1);
 const noteHtml = z.string().max(100_000);
 const tagArray = z.array(nonEmptyString.max(80)).max(50);
+const idArray = z.array(nonEmptyString.max(200)).max(500);
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD format")
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+    message: "Invalid date",
+  });
+
+function validDateRange(value: { dateFrom?: string; dateTo?: string }) {
+  if (!value.dateFrom || !value.dateTo) return true;
+  return new Date(value.dateFrom) <= new Date(value.dateTo);
+}
+
+const dateRangeMessage = {
+  message: "dateFrom must be before or equal to dateTo",
+};
 
 export const reviewGradeSchema = z.object({
   reviewItemId: nonEmptyString,
@@ -49,6 +65,51 @@ export const studyTimeSchema = z.object({
   type: z.enum(STUDY_MODES),
   duration: z.number().int().min(1).max(3600),
 }).strict();
+
+export const reviewLogSchema = z.object({
+  reviewItemId: nonEmptyString,
+  rating: z.number().int().min(1).max(4),
+  duration: z.number().int().min(0).max(3600).optional().default(0),
+}).strict();
+
+const exportDateFields = {
+  dateFrom: dateString.optional(),
+  dateTo: dateString.optional(),
+};
+
+export const vaultExportSchema = z.object({
+  tags: tagArray.optional(),
+  difficulties: z.array(z.enum(DIFFICULTIES)).max(20).optional(),
+  trackIds: idArray.optional(),
+  ...exportDateFields,
+}).strict().refine(validDateRange, dateRangeMessage);
+
+export const libraryExportSchema = z.object({
+  trackType: nonEmptyString.max(80).optional(),
+  trackTopic: nonEmptyString.max(120).optional(),
+  isArchived: z.boolean().optional(),
+  selectedTrackIds: idArray.optional(),
+  ...exportDateFields,
+}).strict().refine(validDateRange, dateRangeMessage);
+
+export const audioExportSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("all"),
+  }).strict(),
+  z.object({
+    type: z.literal("due"),
+  }).strict(),
+  z.object({
+    type: z.literal("track"),
+    trackId: nonEmptyString,
+  }).strict(),
+  z.object({
+    type: z.literal("filtered"),
+    difficulties: z.array(z.enum(DIFFICULTIES)).max(20).optional(),
+    trackIds: idArray.optional(),
+    ...exportDateFields,
+  }).strict().refine(validDateRange, dateRangeMessage),
+]);
 
 export function formatZodError(error: z.ZodError): string {
   return error.issues

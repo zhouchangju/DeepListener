@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { badRequest, internalServerError, notFound } from "@/lib/api-response";
+import { formatZodError, vaultExportSchema } from "@/lib/api-schemas";
 
 /**
  * Export vault notes as text file grouped by tags/categories
@@ -8,7 +10,12 @@ import { prisma } from "@/lib/prisma";
  */
 export async function POST(req: NextRequest) {
   try {
-    const { tags, difficulties, trackIds, dateFrom, dateTo } = await req.json();
+    const parsed = vaultExportSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return badRequest(formatZodError(parsed.error));
+    }
+
+    const { tags, difficulties, trackIds, dateFrom, dateTo } = parsed.data;
 
     // Build query filter
     const where: {
@@ -80,10 +87,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (items.length === 0) {
-      return NextResponse.json(
-        { error: "No notes found to export" },
-        { status: 404 }
-      );
+      return notFound("No notes found to export");
     }
 
     // Group items by tags (items can have multiple tags, so we'll create categories for each)
@@ -201,10 +205,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("Export error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: message || "Export failed" },
-      { status: 500 }
-    );
+    return internalServerError();
   }
 }

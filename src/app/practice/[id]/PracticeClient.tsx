@@ -23,6 +23,7 @@ import RenameTrackModal from "@/components/feature/RenameTrackModal";
 
 import { useRouter } from "next/navigation";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
+import { downloadResponseBlob } from "@/lib/client-download";
 
 
 
@@ -139,19 +140,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         throw new Error(error.error || 'Export failed');
       }
 
-      const filename = response.headers
-        .get('Content-Disposition')
-        ?.match(/filename="(.+)"/)?.[1] || 'DeepListener_Export.mp3';
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
       toast.success('Audio exported successfully');
     } catch (error) {

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:ci": "node scripts/run-node-tests.mjs",
-    "sync": "rsync -avz --progress public/uploads/ root@124.221.194.112:/var/www/html/DeepListener/public/uploads/ && rsync -avz --progress dev.db root@124.221.194.112:/var/www/html/DeepListener/",
+    "sync": "rsync -avz --progress public/uploads/ root@124.221.194.112:/var/www/html/DeepListener/public/uploads/ && rsync -avz --progress prisma/dev.db root@124.221.194.112:/var/www/html/DeepListener/prisma/dev.db",
     "symphony": "./bin/symphony",
     "setup": "./bin/setup"
   },
