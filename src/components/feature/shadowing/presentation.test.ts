@@ -121,6 +121,13 @@ test("original waveform player is not keyed by sentence id during sentence switc
   assert.doesNotMatch(source, /key=\{sentence\.id \+ "-original"\}/);
 });
 
+test("blind reveal prompt keeps icon and label on one line", () => {
+  const source = readFileSync(new URL("../ShadowingConsole.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /inline-flex/);
+  assert.match(source, /whitespace-nowrap/);
+});
+
 test("dictation draft resets when the sentence slice changes", () => {
   const firstSentence = { id: "sentence-1", startTime: 0, endTime: 2 };
   const nextSentence = { id: "sentence-2", startTime: 2, endTime: 4 };

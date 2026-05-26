@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 
 export function getShadowingActionButtonsClassName() {
-  return "absolute right-0 top-0 z-10 flex flex-row gap-1";
+  return "flex shrink-0 flex-row gap-1";
 }
 
 function isEditableKeyTarget(target: EventTarget | null) {
@@ -434,21 +434,21 @@ export default function ShadowingConsole({
               </div>
             ) : blindMode && !isTextRevealed ? (
                 <div
-                    className="relative group cursor-pointer"
+                    className="relative group cursor-pointer w-full max-w-xl"
                     onClick={() => setIsTextRevealed(true)}
                 >
                     <div className="text-2xl font-medium text-slate-300 leading-loose text-center max-w-xl blur-sm select-none">
                         {sentence.text}
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-slate-100/90 px-4 py-2 rounded-lg text-slate-500 text-sm font-medium">
-                            <Eye className="h-4 w-4 inline mr-1" /> Click to reveal text
+                        <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100/95 px-4 py-2 text-sm font-medium text-slate-500 shadow-sm ring-1 ring-slate-200/80">
+                            <Eye className="h-4 w-4 shrink-0" /> Click to reveal text
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="relative w-full group">
-                    <div className="flex justify-center">
+                <div className="flex w-full max-w-3xl items-start justify-center gap-3 group">
+                    <div className="min-w-0 flex-1 flex justify-center">
                         <InteractiveText
                         text={sentence.text}
                         formatting={localFormatting}
@@ -458,7 +458,6 @@ export default function ShadowingConsole({
                         className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
                         />
                     </div>
-                    {/* Action Buttons - fixed to container's top-right edge */}
                     <div className={getShadowingActionButtonsClassName()}>
                         <Button
                             size="icon"

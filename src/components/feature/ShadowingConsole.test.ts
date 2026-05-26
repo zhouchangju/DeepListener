@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 
 import { getShadowingActionButtonsClassName } from "./ShadowingConsole";
 
-test("shadowing text action buttons stay visible in a top-right row", () => {
+test("shadowing text action buttons reserve layout space beside the text", () => {
   assert.equal(
     getShadowingActionButtonsClassName(),
-    "absolute right-0 top-0 z-10 flex flex-row gap-1"
+    "flex shrink-0 flex-row gap-1"
   );
 });
 
