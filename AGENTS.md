@@ -20,6 +20,17 @@ Use TypeScript with 2-space indentation and semicolons. Prefer functional React 
 ## Testing Guidelines
 The repo now includes colocated targeted tests under `src/` as `*.test.ts` and `*.test.tsx`. Every change should pass `npm run lint` and `npm run build`, and should also run the relevant targeted tests for the touched area with `node --import tsx --test <paths>`. Any Prisma change should additionally be verified with `npx prisma migrate dev`.
 
+## Codex Self-Repair Rules
+- Codex uses `AGENTS.md` as the primary project memory. Do not rely on `CLAUDE.md` for new Codex-only rules.
+- When the user corrects a repeated mistake, add a concrete entry to "Learned from Mistakes" instead of adding broad personality guidance.
+- Keep bugfix retry loops capped at 3 distinct attempts. After each attempt, run the failing command again; if all 3 fail, report what changed and what remains.
+- Do not edit `.env*`, credential files, or local secrets. Ask the user to change local environment values themselves.
+- Do not weaken lint, type, test, or build configuration to make a failing change pass. Fix the code or explain the blocker.
+- Prefer scoped verification while editing, then run the broader checks (`npm run test:ci`, `npm run build`, and source-scoped ESLint) before claiming completion for code changes.
+
+## Learned from Mistakes
+- `npm run lint` can accidentally scan generated files under `.worktrees/**/.next`; keep generated worktrees out of ESLint scope and do not treat generated build output as source.
+
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commit prefixes such as `feat:` and `fix:`. Keep messages imperative and scoped to one change, for example `fix: exclude archived items from export count`. PRs should include a short summary, affected routes or modules, manual verification steps, linked issues when applicable, and screenshots or recordings for UI changes.
 

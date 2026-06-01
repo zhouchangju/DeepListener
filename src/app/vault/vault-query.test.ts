@@ -52,7 +52,7 @@ test("buildVaultFindManyArgs bounds first paint and keeps full notes out of the 
 
   assert.equal(args.take, 75);
   assert.equal(args.skip, 75);
-  assert.equal(args.select.userNote, undefined);
+  assert.equal("userNote" in args.select, false);
   assert.equal(args.select.sentence.select.track.select.audioUrl, true);
 });
 
@@ -60,10 +60,10 @@ test("buildVaultPlaybackFindManyArgs keeps Play All complete without loading not
   const query = parseVaultSearchParams({ difficulties: "HARD", search: "alpha" });
   const args = buildVaultPlaybackFindManyArgs(query);
 
-  assert.equal(args.take, undefined);
-  assert.equal(args.skip, undefined);
-  assert.equal(args.select.userNote, undefined);
-  assert.equal(args.select.tags, undefined);
+  assert.equal("take" in args, false);
+  assert.equal("skip" in args, false);
+  assert.equal("userNote" in args.select, false);
+  assert.equal("tags" in args.select, false);
   assert.equal(args.select.sentence.select.text, true);
   assert.equal(args.select.sentence.select.track.select.audioUrl, true);
 });

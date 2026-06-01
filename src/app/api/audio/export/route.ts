@@ -18,6 +18,11 @@ interface AudioSegment {
   endTime: number;
 }
 
+interface AudioFilterSpec {
+  filter: string;
+  options: string;
+}
+
 interface FilteredReviewItemsWhereOptions {
   difficulties?: string[];
   trackIds?: string[];
@@ -69,6 +74,15 @@ export function buildDueReviewItemsWhere(now: Date = new Date()): Prisma.ReviewI
     },
     isArchived: false,
   };
+}
+
+export function getSegmentExportAudioFilters(): AudioFilterSpec[] {
+  return [
+    {
+      filter: 'aresample',
+      options: '44100',
+    },
+  ];
 }
 
 function generateFilename(): string {
@@ -254,6 +268,7 @@ export async function POST(req: NextRequest) {
           ffmpeg(seg.audioPath)
             .setStartTime(seg.startTime)
             .setDuration(duration)
+            .audioFilters(getSegmentExportAudioFilters())
             .audioBitrate('192k')
             .on('error', reject)
             .on('end', () => {

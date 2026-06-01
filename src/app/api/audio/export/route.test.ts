@@ -1,5 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { Prisma } from "@prisma/client";
+
+function assertDateTimeFilter(
+  value: Prisma.ReviewItemWhereInput["createdAt"],
+): asserts value is Prisma.DateTimeFilter<"ReviewItem"> {
+  assert.ok(value && typeof value === "object" && !(value instanceof Date));
+}
 
 test("filtered export keeps both date bounds and makes dateTo inclusive", async () => {
   const routeModule = await import("./route");
@@ -19,15 +26,16 @@ test("filtered export keeps both date bounds and makes dateTo inclusive", async 
 
   assert.deepEqual(where.difficulty, { in: ["HARD"] });
   assert.deepEqual(where.sentence, { trackId: { in: ["track-1"] } });
-  assert.ok(where.createdAt?.gte instanceof Date);
-  assert.ok(where.createdAt?.lte instanceof Date);
-  assert.equal(where.createdAt?.gte?.toISOString(), new Date("2026-03-20").toISOString());
-  assert.equal(where.createdAt?.lte?.getHours(), 23);
-  assert.equal(where.createdAt?.lte?.getMinutes(), 59);
-  assert.equal(where.createdAt?.lte?.getSeconds(), 59);
-  assert.equal(where.createdAt?.lte?.getMilliseconds(), 999);
+  assertDateTimeFilter(where.createdAt);
+  assert.ok(where.createdAt.gte instanceof Date);
+  assert.ok(where.createdAt.lte instanceof Date);
+  assert.equal(where.createdAt.gte.toISOString(), new Date("2026-03-20").toISOString());
+  assert.equal(where.createdAt.lte.getHours(), 23);
+  assert.equal(where.createdAt.lte.getMinutes(), 59);
+  assert.equal(where.createdAt.lte.getSeconds(), 59);
+  assert.equal(where.createdAt.lte.getMilliseconds(), 999);
   assert.ok(
-    where.createdAt!.gte! < where.createdAt!.lte!,
+    where.createdAt.gte < where.createdAt.lte,
     "dateFrom should not be overwritten when dateTo is also provided"
   );
 });
@@ -49,4 +57,21 @@ test("due export query uses due date as the source of truth", async () => {
     isArchived: false,
   });
   assert.equal("nextReview" in where, false);
+});
+
+test("segment export applies explicit resampling before mp3 encoding", async () => {
+  const routeModule = await import("./route");
+
+  assert.equal(
+    typeof routeModule.getSegmentExportAudioFilters,
+    "function",
+    "route should expose segment export audio filters for ffmpeg regression coverage"
+  );
+
+  assert.deepEqual(routeModule.getSegmentExportAudioFilters(), [
+    {
+      filter: "aresample",
+      options: "44100",
+    },
+  ]);
 });
