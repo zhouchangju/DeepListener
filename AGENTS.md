@@ -20,6 +20,9 @@ Use TypeScript with 2-space indentation and semicolons. Prefer functional React 
 ## Testing Guidelines
 The repo now includes colocated targeted tests under `src/` as `*.test.ts` and `*.test.tsx`. Every change should pass `npm run lint` and `npm run build`, and should also run the relevant targeted tests for the touched area with `node --import tsx --test <paths>`. Any Prisma change should additionally be verified with `npx prisma migrate dev`.
 
+## DeepListener Optimization Harness
+For refactors, performance work, migrations, deployment/basePath work, sync changes, Prisma/data changes, audio export/transcription changes, quality-gate hardening, or non-trivial workflow changes, read `docs/agent-harness/README.md` before editing. Use Contract mode by default and Adversarial mode for anything touching `prisma/dev.db`, `public/uploads/`, `.env*`, `npm run sync`, migrations, deployment, or release-critical behavior. Preserve current behavior and protected data unless the sprint contract explicitly changes them.
+
 ## Codex Self-Repair Rules
 - Codex uses `AGENTS.md` as the primary project memory. Do not rely on `CLAUDE.md` for new Codex-only rules.
 - When the user corrects a repeated mistake, add a concrete entry to "Learned from Mistakes" instead of adding broad personality guidance.
