@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
@@ -7,10 +6,11 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { badRequest, internalServerError } from '@/lib/api-response';
 import { audioExportSchema, formatZodError } from '@/lib/api-schemas';
-import { resolveStoredUploadPath } from '@/lib/upload-policy';
+import { formatIncompleteExportMessage, resolveExportSource, type ExportSourceIssue } from '@/lib/export-file-policy';
+import { buildDueReviewItemsWhere, buildFilteredReviewItemsWhere, getSegmentExportAudioFilters } from './query';
 
 export const maxDuration = 300; // 5 minutes
-export const maxSegments = 500; // Maximum segments to export
+const maxSegments = 500; // Maximum segments to export
 
 interface AudioSegment {
   audioPath: string;
@@ -18,71 +18,10 @@ interface AudioSegment {
   endTime: number;
 }
 
-interface AudioFilterSpec {
-  filter: string;
-  options: string;
-}
-
-interface FilteredReviewItemsWhereOptions {
-  difficulties?: string[];
-  trackIds?: string[];
-  dateFrom?: string;
-  dateTo?: string;
-}
-
-export function buildFilteredReviewItemsWhere({
-  difficulties,
-  trackIds,
-  dateFrom,
-  dateTo,
-}: FilteredReviewItemsWhereOptions): Prisma.ReviewItemWhereInput {
-  const where: Prisma.ReviewItemWhereInput = {
-    isArchived: false,
-  };
-
-  if (difficulties && difficulties.length > 0) {
-    where.difficulty = { in: difficulties };
-  }
-
-  if (trackIds && trackIds.length > 0) {
-    where.sentence = { trackId: { in: trackIds } };
-  }
-
-  if (dateFrom || dateTo) {
-    const createdAt: Prisma.DateTimeFilter = {};
-
-    if (dateFrom) {
-      createdAt.gte = new Date(dateFrom);
-    }
-
-    if (dateTo) {
-      const inclusiveDateTo = new Date(dateTo);
-      inclusiveDateTo.setHours(23, 59, 59, 999);
-      createdAt.lte = inclusiveDateTo;
-    }
-
-    where.createdAt = createdAt;
-  }
-
-  return where;
-}
-
-export function buildDueReviewItemsWhere(now: Date = new Date()): Prisma.ReviewItemWhereInput {
-  return {
-    due: {
-      lte: now,
-    },
-    isArchived: false,
-  };
-}
-
-export function getSegmentExportAudioFilters(): AudioFilterSpec[] {
-  return [
-    {
-      filter: 'aresample',
-      options: '44100',
-    },
-  ];
+interface GatherSegmentsResult {
+  segments: AudioSegment[];
+  issues: ExportSourceIssue[];
+  totalItems: number;
 }
 
 function generateFilename(): string {
@@ -97,7 +36,7 @@ async function gatherSegments(
   trackIds?: string[],
   dateFrom?: string,
   dateTo?: string
-): Promise<AudioSegment[]> {
+): Promise<GatherSegmentsResult> {
   let reviewItems;
 
   switch (type) {
@@ -175,7 +114,7 @@ async function gatherSegments(
   }
 
   if (reviewItems.length === 0) {
-    return [];
+    return { segments: [], issues: [], totalItems: 0 };
   }
 
   // Group by track and sort by sentence orderIndex
@@ -196,30 +135,32 @@ async function gatherSegments(
 
   // Convert to segments
   const segments: AudioSegment[] = [];
+  const issuesBySource = new Map<string, ExportSourceIssue>();
   for (const items of trackMap.values()) {
     for (const item of items) {
-      // Validate audioUrl to prevent path traversal
-      const audioUrl = item.sentence.track.audioUrl;
-      const audioPath = resolveStoredUploadPath(audioUrl);
-      if (!audioPath) {
-        console.warn(`Invalid audioUrl detected: ${audioUrl}`);
-        continue;
-      }
+      const result = resolveExportSource({
+        label: item.sentence.track.title,
+        audioUrl: item.sentence.track.audioUrl,
+      });
 
-      if (!fs.existsSync(audioPath)) {
-        console.warn(`Audio file not found: ${audioPath}`);
+      if ("issue" in result) {
+        issuesBySource.set(`${result.issue.reason}:${result.issue.audioUrl}`, result.issue);
         continue;
       }
 
       segments.push({
-        audioPath,
+        audioPath: result.audioPath,
         startTime: item.sentence.startTime,
         endTime: item.sentence.endTime,
       });
     }
   }
 
-  return segments;
+  return {
+    segments,
+    issues: [...issuesBySource.values()],
+    totalItems: reviewItems.length,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -240,7 +181,11 @@ export async function POST(req: NextRequest) {
     const dateTo = exportRequest.type === 'filtered' ? exportRequest.dateTo : undefined;
 
     // Gather segments
-    const segments = await gatherSegments(type, trackId, difficulties, trackIds, dateFrom, dateTo);
+    const { segments, issues, totalItems } = await gatherSegments(type, trackId, difficulties, trackIds, dateFrom, dateTo);
+
+    if (issues.length > 0) {
+      return badRequest(formatIncompleteExportMessage('sentences', totalItems, issues));
+    }
 
     if (segments.length === 0) {
       return badRequest('No sentences to export');

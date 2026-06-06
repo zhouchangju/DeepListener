@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import { formatZodError, trackPatchSchema } from "@/lib/api-schemas";
 import { resolveStoredUploadPath } from "@/lib/upload-policy";
+import { badRequest, internalServerError, notFound } from "@/lib/api-response";
 
 // DELETE (保持不变)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,7 +11,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = await params;
     const track = await prisma.track.findUnique({ where: { id } });
 
-    if (!track) return NextResponse.json({ error: "Track not found" }, { status: 404 });
+    if (!track) return notFound("Track not found");
 
     const filePath = resolveStoredUploadPath(track.audioUrl);
     if (filePath) {
@@ -24,8 +25,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     await prisma.track.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Track delete error:", error);
+    return internalServerError();
   }
 }
 
@@ -35,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const parsed = trackPatchSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+      return badRequest(formatZodError(parsed.error));
     }
 
     const track = await prisma.track.update({
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json(track);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Track update error:", error);
+    return internalServerError();
   }
 }

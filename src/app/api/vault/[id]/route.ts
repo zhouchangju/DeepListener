@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { formatZodError, vaultPatchSchema } from "@/lib/api-schemas";
-import { notFound } from "@/lib/api-response";
+import { badRequest, internalServerError, notFound } from "@/lib/api-response";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,8 +29,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Vault delete error:", error);
+    return internalServerError();
   }
 }
 
@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params;
     const parsed = vaultPatchSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+      return badRequest(formatZodError(parsed.error));
     }
 
     const { userNote, tags, difficulty } = parsed.data;
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json(updated);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Vault update error:", error);
+    return internalServerError();
   }
 }

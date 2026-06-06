@@ -7,7 +7,8 @@ import fs from 'fs';
 import { tmpdir } from 'os';
 import { badRequest, internalServerError } from '@/lib/api-response';
 import { formatZodError, libraryExportSchema } from '@/lib/api-schemas';
-import { resolveStoredUploadPath } from '@/lib/upload-policy';
+import { formatIncompleteExportMessage, resolveExportSource, type ExportSourceIssue } from '@/lib/export-file-policy';
+import { buildFilteredTracksWhere } from './query';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -16,85 +17,48 @@ interface AudioTrack {
   title: string;
 }
 
-interface FilteredTracksWhereOptions {
-  trackType?: string;
-  trackTopic?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  isArchived?: boolean;
-}
-
-export function buildFilteredTracksWhere({
-  trackType,
-  trackTopic,
-  dateFrom,
-  dateTo,
-  isArchived,
-}: FilteredTracksWhereOptions): Prisma.TrackWhereInput {
-  const where: Prisma.TrackWhereInput = {
-    isArchived: isArchived ?? false,
-  };
-
-  if (trackType) {
-    where.trackType = trackType;
-  }
-
-  if (trackTopic) {
-    where.trackTopic = trackTopic;
-  }
-
-  if (dateFrom || dateTo) {
-    const createdAt: Prisma.DateTimeFilter = {};
-
-    if (dateFrom) {
-      createdAt.gte = new Date(dateFrom);
-    }
-
-    if (dateTo) {
-      const inclusiveDateTo = new Date(dateTo);
-      inclusiveDateTo.setHours(23, 59, 59, 999);
-      createdAt.lte = inclusiveDateTo;
-    }
-
-    where.createdAt = createdAt;
-  }
-
-  return where;
+interface GatherTracksResult {
+  tracks: AudioTrack[];
+  issues: ExportSourceIssue[];
+  totalItems: number;
 }
 
 async function gatherTracks(
   where: Prisma.TrackWhereInput
-): Promise<AudioTrack[]> {
+): Promise<GatherTracksResult> {
   const tracks = await prisma.track.findMany({
     where,
     orderBy: { createdAt: 'asc' },
   });
 
   if (tracks.length === 0) {
-    return [];
+    return { tracks: [], issues: [], totalItems: 0 };
   }
 
   const audioTracks: AudioTrack[] = [];
+  const issuesBySource = new Map<string, ExportSourceIssue>();
   for (const track of tracks) {
-    const audioUrl = track.audioUrl;
-    const audioPath = resolveStoredUploadPath(audioUrl);
-    if (!audioPath) {
-      console.warn(`Invalid audioUrl detected: ${audioUrl}`);
-      continue;
-    }
+    const result = resolveExportSource({
+      label: track.title,
+      audioUrl: track.audioUrl,
+    });
 
-    if (!fs.existsSync(audioPath)) {
-      console.warn(`Audio file not found: ${audioPath}`);
+    if ("issue" in result) {
+      issuesBySource.set(`${result.issue.reason}:${result.issue.audioUrl}`, result.issue);
       continue;
     }
 
     audioTracks.push({
-      audioPath,
+      audioPath: result.audioPath,
       title: track.title,
     });
   }
 
-  return audioTracks;
+  return {
+    tracks: audioTracks,
+    issues: [...issuesBySource.values()],
+    totalItems: tracks.length,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -121,7 +85,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const tracks = await gatherTracks(where);
+    const { tracks, issues, totalItems } = await gatherTracks(where);
+
+    if (issues.length > 0) {
+      return badRequest(formatIncompleteExportMessage('tracks', totalItems, issues));
+    }
 
     if (tracks.length === 0) {
       return badRequest('No tracks to export');

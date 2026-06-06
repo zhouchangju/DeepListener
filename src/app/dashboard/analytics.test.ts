@@ -50,8 +50,8 @@ test("buildDashboardData preserves dashboard aggregation semantics", () => {
     { name: "Mature", value: 1 },
   ]);
   assert.deepEqual(data.overdueData, [
-    { name: "Today", value: 1 },
-    { name: "1-3d", value: 1 },
+    { name: "Today", value: 0 },
+    { name: "1-3d", value: 2 },
     { name: "4-7d", value: 1 },
     { name: "1w+", value: 1 },
   ]);

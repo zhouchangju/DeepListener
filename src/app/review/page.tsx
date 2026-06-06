@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import ReviewClient from "./ReviewClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { endOfLocalDay, startOfLocalDay } from "@/lib/local-day";
 
 export default function ReviewPage() {
   return (
@@ -18,11 +19,9 @@ export const revalidate = 0; // Disable caching, always fetch fresh data
 export const dynamic = 'force-dynamic'; // Force dynamic rendering
 
 async function ReviewContent() {
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
   const now = new Date();
+  const startOfToday = startOfLocalDay(now);
+  const endOfToday = endOfLocalDay(now);
 
   // Run initial queries in parallel
   const [todayLogs, todayReviews] = await Promise.all([

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateNextReview } from "@/lib/fsrs";
 import { formatZodError, reviewGradeSchema, type ReviewQuality } from "@/lib/api-schemas";
+import { badRequest, internalServerError, notFound } from "@/lib/api-response";
 
 function mapRatingToNumber(quality: ReviewQuality): number {
   switch (quality) {
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = reviewGradeSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+      return badRequest(formatZodError(parsed.error));
     }
 
     const { reviewItemId, quality } = parsed.data;
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!currentItem) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      return notFound("Item not found");
     }
 
     // Use FSRS algorithm to calculate next review
@@ -82,7 +83,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("Grade error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalServerError();
   }
 }

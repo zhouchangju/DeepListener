@@ -8,7 +8,7 @@ import {
   buildVaultPlaybackFindManyArgs,
   buildVaultWhere,
   parseVaultSearchParams,
-} from "./vault-query";
+} from "./vault-query-helpers";
 
 test("parseVaultSearchParams normalizes filters and clamps pagination", () => {
   const query = parseVaultSearchParams({

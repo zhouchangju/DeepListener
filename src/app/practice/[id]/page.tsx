@@ -3,7 +3,7 @@ import PracticeClient from "./PracticeClient";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
-export default async function PracticePage({ params }: { params: { id: string } }) {
+export default async function PracticePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
   const track = await prisma.track.findUnique({

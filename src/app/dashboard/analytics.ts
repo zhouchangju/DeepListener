@@ -1,4 +1,5 @@
 import { DashboardData, LeechItem, NamedValueDatum, RadarDatum, RetentionDatum, ReviewCountDatum } from "./types";
+import { addLocalDays, localDateKey, startOfLocalDay } from "@/lib/local-day";
 
 export interface DashboardTrack {
   status: string;
@@ -96,7 +97,7 @@ export function buildDailyStats(studySessions: DashboardStudySession[]): Array<[
   const sessionsByDate: Record<string, DailyStudyStats> = {};
 
   for (const session of studySessions) {
-    const dateKey = toDateKey(session.date);
+    const dateKey = localDateKey(session.date);
     sessionsByDate[dateKey] ??= { total: 0, types: {} };
     sessionsByDate[dateKey].total += session.duration;
     sessionsByDate[dateKey].types[session.type] = (sessionsByDate[dateKey].types[session.type] || 0) + session.duration;
@@ -124,16 +125,15 @@ function buildRetentionData(reviewLogs: DashboardReviewLog[], now: Date): Retent
   const dailyRetention: Record<string, { total: number; success: number }> = {};
 
   for (const log of reviewLogs) {
-    const dateKey = toDateKey(log.createdAt);
+    const dateKey = localDateKey(log.createdAt);
     dailyRetention[dateKey] ??= { total: 0, success: 0 };
     dailyRetention[dateKey].total++;
     if (log.rating > 1) dailyRetention[dateKey].success++;
   }
 
   return Array.from({ length: 14 }, (_, i) => {
-    const date = new Date(now);
-    date.setDate(date.getDate() - (13 - i));
-    const key = toDateKey(date);
+    const date = addLocalDays(now, -(13 - i));
+    const key = localDateKey(date);
     const stats = dailyRetention[key] || { total: 0, success: 0 };
 
     return {
@@ -144,11 +144,11 @@ function buildRetentionData(reviewLogs: DashboardReviewLog[], now: Date): Retent
 }
 
 function buildOverdueData(items: DashboardReviewItem[], now: Date): NamedValueDatum[] {
-  const todayStart = startOfUtcDay(now);
+  const todayStart = startOfLocalDay(now);
   const overdueBins = { "Today": 0, "1-3d": 0, "4-7d": 0, "1w+": 0 };
 
   for (const item of items) {
-    const dueDate = new Date(item.due);
+    const dueDate = startOfLocalDay(item.due);
     if (dueDate >= todayStart) continue;
 
     const diffDays = Math.floor((todayStart.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -165,7 +165,7 @@ function buildHeatmapData(studySessions: DashboardStudySession[]): Record<string
   const heatmapData: Record<string, number> = {};
 
   for (const session of studySessions) {
-    const key = toDateKey(session.date);
+    const key = localDateKey(session.date);
     heatmapData[key] = (heatmapData[key] || 0) + session.duration;
   }
 
@@ -193,7 +193,7 @@ function buildPastReviewData(reviewLogs: DashboardReviewLog[], now: Date): Revie
   const pastReviewsByDateSet: Record<string, Set<string>> = {};
 
   for (const log of reviewLogs) {
-    const dateKey = toDateKey(log.createdAt);
+    const dateKey = localDateKey(log.createdAt);
     pastReviewsByDateSet[dateKey] ??= new Set();
     pastReviewsByDateSet[dateKey].add(log.reviewItemId);
   }
@@ -204,29 +204,25 @@ function buildPastReviewData(reviewLogs: DashboardReviewLog[], now: Date): Revie
   }
 
   const past7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(now);
-    date.setUTCDate(date.getUTCDate() - (7 - i));
-    date.setUTCHours(0, 0, 0, 0);
-    return toDateKey(date);
+    const date = addLocalDays(startOfLocalDay(now), -(7 - i));
+    return localDateKey(date);
   });
 
   return past7Days.map((date) => ({ date, count: pastReviewsByDate[date] || 0 }));
 }
 
 function buildFutureReviewData(items: DashboardReviewItem[], now: Date): ReviewCountDatum[] {
-  const todayStart = startOfUtcDay(now);
-  const todayKey = toDateKey(todayStart);
+  const todayStart = startOfLocalDay(now);
+  const todayKey = localDateKey(todayStart);
   const futureReviewsByDate: Record<string, number> = {};
   const future7Days = Array.from({ length: 8 }, (_, i) => {
-    const date = new Date(now);
-    date.setUTCDate(date.getUTCDate() + i);
-    date.setUTCHours(0, 0, 0, 0);
-    return toDateKey(date);
+    const date = addLocalDays(todayStart, i);
+    return localDateKey(date);
   });
 
   for (const item of items) {
-    const dueDate = startOfUtcDay(item.due);
-    const dateKey = toDateKey(dueDate);
+    const dueDate = startOfLocalDay(item.due);
+    const dateKey = localDateKey(dueDate);
     if (dueDate < todayStart) futureReviewsByDate[todayKey] = (futureReviewsByDate[todayKey] || 0) + 1;
     else if (future7Days.includes(dateKey)) futureReviewsByDate[dateKey] = (futureReviewsByDate[dateKey] || 0) + 1;
   }
@@ -236,14 +232,4 @@ function buildFutureReviewData(items: DashboardReviewItem[], now: Date): ReviewC
 
 function countsToChartData(counts: Record<string, number>): NamedValueDatum[] {
   return Object.entries(counts).map(([name, value]) => ({ name, value }));
-}
-
-function startOfUtcDay(date: Date): Date {
-  const result = new Date(date);
-  result.setUTCHours(0, 0, 0, 0);
-  return result;
-}
-
-function toDateKey(date: Date): string {
-  return date.toISOString().split("T")[0];
 }

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Prisma } from "@prisma/client";
+import {
+  buildDueReviewItemsWhere,
+  buildFilteredReviewItemsWhere,
+  getSegmentExportAudioFilters,
+} from "./query";
 
 function assertDateTimeFilter(
   value: Prisma.ReviewItemWhereInput["createdAt"],
@@ -8,16 +13,8 @@ function assertDateTimeFilter(
   assert.ok(value && typeof value === "object" && !(value instanceof Date));
 }
 
-test("filtered export keeps both date bounds and makes dateTo inclusive", async () => {
-  const routeModule = await import("./route");
-
-  assert.equal(
-    typeof routeModule.buildFilteredReviewItemsWhere,
-    "function",
-    "route should expose buildFilteredReviewItemsWhere for filtered export queries"
-  );
-
-  const where = routeModule.buildFilteredReviewItemsWhere({
+test("filtered export keeps both date bounds and makes dateTo inclusive", () => {
+  const where = buildFilteredReviewItemsWhere({
     difficulties: ["HARD"],
     trackIds: ["track-1"],
     dateFrom: "2026-03-20",
@@ -40,17 +37,9 @@ test("filtered export keeps both date bounds and makes dateTo inclusive", async 
   );
 });
 
-test("due export query uses due date as the source of truth", async () => {
-  const routeModule = await import("./route");
-
-  assert.equal(
-    typeof routeModule.buildDueReviewItemsWhere,
-    "function",
-    "route should expose buildDueReviewItemsWhere for due export queries"
-  );
-
+test("due export query uses due date as the source of truth", () => {
   const now = new Date("2026-05-17T10:30:00.000Z");
-  const where = routeModule.buildDueReviewItemsWhere(now);
+  const where = buildDueReviewItemsWhere(now);
 
   assert.deepEqual(where, {
     due: { lte: now },
@@ -59,16 +48,8 @@ test("due export query uses due date as the source of truth", async () => {
   assert.equal("nextReview" in where, false);
 });
 
-test("segment export applies explicit resampling before mp3 encoding", async () => {
-  const routeModule = await import("./route");
-
-  assert.equal(
-    typeof routeModule.getSegmentExportAudioFilters,
-    "function",
-    "route should expose segment export audio filters for ffmpeg regression coverage"
-  );
-
-  assert.deepEqual(routeModule.getSegmentExportAudioFilters(), [
+test("segment export applies explicit resampling before mp3 encoding", () => {
+  assert.deepEqual(getSegmentExportAudioFilters(), [
     {
       filter: "aresample",
       options: "44100",

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function VaultPage({
   searchParams,
 }: {
-  searchParams?: Promise<VaultSearchParams> | VaultSearchParams;
+  searchParams?: Promise<VaultSearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
 

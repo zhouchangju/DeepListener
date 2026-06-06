@@ -3,6 +3,7 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getTranscriptionProvider } from "@/lib/transcription/factory";
 import { buildUploadTarget, validateUploadFileMetadata } from "@/lib/upload-policy";
+import { badRequest, internalServerError } from "@/lib/api-response";
 
 async function removeUploadedFile(uploadPath: string | null) {
   if (!uploadPath) return;
@@ -22,12 +23,12 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return badRequest("No file uploaded");
     }
 
     const validation = validateUploadFileMetadata(file);
     if (!validation.ok) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+      return badRequest(validation.error ?? "Invalid upload");
     }
 
     const target = buildUploadTarget({ originalName: file.name });
@@ -69,8 +70,7 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     if (fileWritten) await removeUploadedFile(uploadPath);
     console.error("Upload error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalServerError();
   }
 }
 
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest) {
     const files = formData.getAll("files") as File[];
 
     if (!files || files.length === 0) {
-      return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+      return badRequest("No files uploaded");
     }
 
     const provider = getTranscriptionProvider();
@@ -154,7 +154,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(results);
   } catch (error: unknown) {
     console.error("Batch upload error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalServerError();
   }
 }
