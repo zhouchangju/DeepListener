@@ -3,6 +3,7 @@
 > Status: this is a historical implementation note.
 > The current review queue no longer uses the `due <= now + 15 minutes` window described below.
 > For the current behavior, refer to `src/app/review/page.tsx`, `src/app/api/review/grade/route.ts`, and `docs/review-system.md`.
+> This file was moved out of the repository root on 2026-06-06 so root-level docs stay limited to active entry points.
 
 ## Overview
 Implemented short-interval relearning for Again (5 min) and Hard (15 min) ratings in the review system, replacing the previous "force to tomorrow" logic.
@@ -123,6 +124,8 @@ const rawItems = await prisma.reviewItem.findMany({
 ## Known Issues
 
 ### Pre-existing TypeScript Error
+Historical note: this section records the status at the time the note was written. Re-check `npm run build` for current build status instead of relying on this historical issue list.
+
 There's an unrelated TypeScript error in `ReviewClient.tsx:425` related to `EditVaultModal` type definitions. This does not affect the relearning functionality.
 
 **Error:** Type mismatch in `onSaved` callback (tags: string[] vs tags: {id, name}[])

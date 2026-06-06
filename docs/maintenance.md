@@ -1,5 +1,7 @@
 # DeepListener 开发维护手册
 
+Last updated: 2026-06-06
+
 ## 1. 转录 Provider 现状
 
 项目当前内置 3 个 Provider：
@@ -43,14 +45,23 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 
 - **Schema**：`prisma/schema.prisma`
 - **数据库查看**：`npx prisma studio`
-- **迁移**：修改 schema 后运行 `npx prisma migrate dev`
+- **迁移**：修改 schema 后运行 `npx prisma migrate dev`；普通 setup/CI 环境只应用现有 migrations 时使用 `npx prisma migrate deploy`
 - **音频文件**：上传内容保存在 `public/uploads/`
+- **上传策略**：`src/lib/upload-policy.ts` 负责文件名清洗、音频类型检查、250 MB 大小上限和路径逃逸防御
+
+维护原则：
+
+- 不要手工删除或覆盖 `prisma/dev.db`，除非用户明确确认。
+- 不要手工清空 `public/uploads/`，除非用户明确确认。
+- 不要编辑 `.env*`、credential 或本机私有配置。
+- 如果修改 `prisma/schema.prisma`，先说明数据风险，再运行迁移并重新生成 Prisma Client。
+- `bin/setup` 只检查 `.env` 是否存在并打印提示，不会创建、复制或追加本机 secret 文件。
 
 ## 4. 导出链路
 
 ### 音频导出
 
-`POST /api/audio/export` 支持 4 种导出模式：
+`POST /api/audio/export` 导出 Vault 句子音频，支持 4 种模式：
 
 - `all`
 - `due`
@@ -61,8 +72,27 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 
 - 按 Track 分组
 - 组内按 `Sentence.orderIndex` 排序
+- 最多导出 500 个句子片段
+- 每个片段会被重采样到 44100 Hz，并以 192 kbps 输出
 - 使用 `ffmpeg` 拼接片段并插入 2 秒静音
 - 对音频路径做 path traversal 防御
+- 如果任何被选中的句子引用缺失或非法源音频，接口返回 400，不会静默跳过并生成不完整文件
+
+### Library 整轨导出
+
+`POST /api/library/export` 导出 Library 中的完整 Track 音频，支持：
+
+- 当前 `trackType` / `trackTopic` / 上传日期筛选
+- archived / active 视图
+- 多选 Track
+
+实现要点：
+
+- 使用 `src/lib/api-schemas.ts` 中的 `libraryExportSchema` 校验输入
+- 每个 Track 重新编码为 192 kbps MP3
+- Track 之间插入 2 秒静音
+- 对存储路径做同样的 path traversal 防御
+- 如果任何被选中的 Track 引用缺失或非法源音频，接口返回 400，不会静默跳过
 
 ### 笔记导出
 
@@ -76,7 +106,39 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 
 导出的文本会按标签分组，并附带来源 Track、难度和纯文本备注。
 
-## 5. 常见问题
+## 5. Vault 查询维护
+
+Vault 当前不是一次性加载全部数据。关键实现拆分为：
+
+- `src/app/vault/vault-query-helpers.ts`：纯查询构造、select、排序、URL 参数解析和数据映射
+- `src/app/vault/vault-query.ts`：Prisma 读取和页面数据组装
+
+- 默认页大小为 50，最大页大小为 100。
+- 列表数据和 Play All 播放数据分开查询，避免把重 UI 列表字段混进播放队列。
+- URL 参数承载筛选状态：`page`、`pageSize`、`archived`、`trackId`、`trackIds`、`difficulties`、`tags`、`search`、`sort`、`dateFrom`、`dateTo`。
+- `buildVaultWhere` 负责页面列表筛选；`buildVaultExportWhere` 负责导出计数，默认只导出未归档项。
+- 排序选项当前为 `createdAt`、`due`、`stability`、`dr`。
+
+## 6. API 校验与错误响应
+
+核心 JSON route 的输入 schema 位于 `src/lib/api-schemas.ts`，包括：
+
+- `reviewGradeSchema`
+- `vaultCreateSchema`
+- `vaultPatchSchema`
+- `trackPatchSchema`
+- `sentencePatchSchema`
+- `studyTimeSchema`
+- `reviewLogSchema`
+- `vaultExportSchema`
+- `libraryExportSchema`
+- `audioExportSchema`
+
+新增或修改 route 时，优先扩展这些 schema，再在对应 route 中使用 `safeParse`。共享错误 helper 位于 `src/lib/api-response.ts`。
+
+500 响应必须使用 `internalServerError()` 这类客户端安全 helper；真实异常可以 `console.error` 到服务端日志，但不要把原始 `error.message` 直接返回给客户端。
+
+## 7. 常见问题
 
 ### Q: 为什么 Node.js 报错 `fetch failed`？
 
@@ -111,7 +173,7 @@ A: 先检查 `contentEditable` 编辑器有没有在父组件回传相同内容�
 - 排查“输入后跳到开头”时，先查 `innerHTML` 写回路径，再查键盘事件
 - 保留 `src/components/feature/contentEditable-sync.test.ts` 这个回归测试，不要删除
 
-## 6. 数据同步与备份
+## 8. 数据同步与备份
 
 为了防止本地音频文件和数据库丢失，项目保留了基于 `rsync` 的同步脚本：
 
@@ -124,4 +186,4 @@ npm run sync
 - `public/uploads/`
 - `prisma/dev.db`
 
-建议提前配置 SSH Key 免密登录，再执行同步脚本。
+执行前必须确认当前本地数据就是要备份的数据；这个脚本会写远端备份目标。建议先确认 SSH Key、远端路径和当前 `prisma/dev.db` 状态，再执行同步脚本。

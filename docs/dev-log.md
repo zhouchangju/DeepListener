@@ -1,5 +1,7 @@
 # 开发日志 (Dev Log)
 
+> Historical note: this file records development snapshots at the time they were written. Use [README.md](../README.md), [docs/README.md](./README.md), and [architecture.md](./architecture.md) for current behavior.
+
 ## 2026-03-23
 
 ### ✅ 今日成就 (Completed)

@@ -87,8 +87,10 @@ HTTPS_PROXY=http://127.0.0.1:7890
 
 ### 3. 数据库初始化
 ```bash
-npx prisma migrate dev
+npx prisma migrate deploy
 ```
+
+也可以运行 `bin/setup` 完成依赖安装、Prisma Client 生成和现有 migration 应用。该脚本不会创建或修改 `.env`；如需转录或 Symphony 凭证，请手动创建本机 `.env`。
 
 ### 4. 启动开发服务器
 ```bash
@@ -103,14 +105,22 @@ npm run lint
 npm run build
 ```
 
+`npm run build` 会通过 `scripts/next-build.mjs` 调用 Next.js，并在受限本地 Node 运行时使用已声明的 WASM fallback。不要用直接调用 `next build` 的结果替代项目构建入口。
+
 如果改动涉及 dashboard、vault、review、audio player 或 shadowing 流程，建议再补跑对应的 `node --import tsx --test ...` 定向回归测试。
 
 ## 📂 目录结构预览
 
-- `/src/lib/transcription`: 多提供商转录引擎实现。
-- `/src/app/practice`: 核心精听训练界面 (AudioPlayer, ShadowingConsole)。
-- `/src/app/review`: 间隔复习系统。
-- `/src/app/vault`: 生句库列表与管理。
+- `/src/app`: Next.js App Router 页面与 API。当前页面包括 `library`、`practice/[id]`、`review`、`vault`、`dashboard` 和 `dashboard/symphony`；根路径会重定向到 `/library`。
+- `/src/app/api`: 上传、导出、Vault、Review、Study Time、Track、Sentence、Symphony state 等 route handlers。
+- `/src/components/feature`: 精听、Shadowing、复习、富文本笔记、波形播放器等业务组件。
+- `/src/components/ui`: Button、Card、Dialog、Dropdown、Progress、Skeleton 等基础 UI primitives。
+- `/src/lib`: Prisma、API schema/response helper、上传安全策略、音频工具、FSRS、文本/HTML 工具和转录 provider。
+- `/src/lib/transcription`: `openai` / `deepgram` / `google` 多 provider 转录实现。
+- `/src/symphony`: 本地 Symphony runner / orchestrator / tracker / workspace 实现。
+- `/prisma`: schema、migrations，以及默认 SQLite 数据库 `prisma/dev.db`。
+- `/scripts`: 测试、迁移、调试、图标生成、Codex quality gate 等维护脚本。
+- `/docs`: 当前说明、维护手册、历史计划、审计资料和 agent harness。
 
 ## 🛠️ 交互指南
 
@@ -134,13 +144,16 @@ npm run build
 - 句子间隔：2 秒静音
 - 文件命名：`DeepListener_Export_YYYY-MM-DD.mp3`
 - 排序：按来源音频分组，组内按句子顺序排列
+- 完整性：如果所选句子或 Track 引用的源音频缺失或路径非法，导出会返回错误而不是生成不完整文件
 
 文本笔记导出为 `.txt`，会按标签分组，并保留难度、来源 Track、筛选条件与纯文本备注内容。
 
 ## 📚 文档资源
 
-- [Symphony 智能开发协调器](./docs/symphony.md) - 自动化任务处理与 AI 开发流程
+- [文档导航地图](./docs/README.md) - 先看这里，区分当前事实、维护手册、历史计划和审计资料
+- [当前架构](./docs/architecture.md) - 当前 routes、API、数据模型、上传/复习流和数据安全边界
+- [产品需求文档 (PRD)](./docs/requirement.md) - 已实现产品行为与模块边界
+- [维护手册](./docs/maintenance.md) - Provider、数据库、上传、导出、备份和常见问题
+- [复习系统与 FSRS 算法说明](./docs/review-system.md)
+- [Symphony 智能开发协调器](./docs/symphony.md)
 - [技术原理：解决 Node.js 代理超时](./docs/solving-node-proxy-timeout.md)
-- [维护手册：如何扩展 API](./docs/maintenance.md)
-- [产品需求文档 (PRD)](./docs/requirement.md)
-- [Lint Warning Cleanup Plan](./docs/superpowers/plans/2026-04-04-lint-warning-cleanup.md) - warning 清理分批策略与最终验证结果

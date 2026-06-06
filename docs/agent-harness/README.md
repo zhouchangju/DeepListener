@@ -48,6 +48,8 @@ cp docs/agent-harness/templates/evaluator-report.md docs/agent-harness/sessions/
 
 ## Domain Boundaries
 
+Current `next.config.ts` does not set `basePath` or `assetPrefix`. If a deployment sprint reintroduces `/DeepListener` subpath serving, verify the runtime config first and update architecture/maintenance docs with the same change.
+
 | Domain | Primary Files | Contract Rule |
 |---|---|---|
 | Shadowing | `src/components/feature/ShadowingConsole.tsx`, shadowing helpers/tests | Keep enhancements inside the existing modal/workflow unless the contract explicitly expands scope. |

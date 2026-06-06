@@ -3,6 +3,9 @@
 ## Project Overview
 DeepListener is an advanced English listening practice tool designed for high-level learners. It focuses on "atomic decoding" of speech, allowing users to drill down into specific sentences, diagnose listening errors (e.g., linking, speed, vocabulary), and practice via shadowing.
 
+## Documentation Map
+Use [docs/README.md](./docs/README.md) as the documentation entry point. It separates current implementation docs from historical plans and review archives.
+
 ## Technology Stack
 *   **Framework:** Next.js 16 (App Router)
 *   **Database:** SQLite (Prisma)

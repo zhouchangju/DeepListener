@@ -8,6 +8,10 @@ DeepListener is an advanced English listening practice platform focusing on "ato
 
 **Tech Stack:** Next.js 16 (App Router), React 19, Prisma (SQLite), WaveSurfer.js, Tailwind CSS, Recharts
 
+## Documentation Map
+
+Use `docs/README.md` as the documentation entry point. It separates current source-of-truth docs from historical plans, audits, and agent-specific context.
+
 ## Development Commands
 
 ```bash

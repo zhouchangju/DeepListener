@@ -1,5 +1,7 @@
 # DeepListener 项目待办事项 (TODO)
 
+> Lightweight backlog note. This is not the source of truth for current implementation; start from [docs/README.md](./README.md) for current docs and use issue/plan docs for active execution.
+
 ## ✅ 已完成 (Done)
 - [x] **多 Provider 支持**：Deepgram, OpenAI, Google。
 - [x] **网络代理修复**：Node.js `undici` 代理方案。

@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+- fix: harden project safety and API/export failure contracts
+  - Keep `bin/setup` from creating or editing `.env`, and apply existing Prisma migrations against `prisma/dev.db`
+  - Make Library status/archive mutations surface rejected API responses instead of showing false success
+  - Make audio and library exports fail with a 400 response when selected source audio is missing or invalid
+  - Normalize study-time, dashboard, review, and Vault due windows around local-day semantics
+  - Replace raw internal 500 error messages with the shared client-safe response helper
+  - Split pure audio/Vault query helpers so tests avoid Prisma native side effects
+  - Harden client export downloads with safer `Content-Disposition` filename parsing and link lifecycle tests
+  - Centralize Track status display/options/fallback helpers and make Library consume the shared domain boundary
+  - Extract Review keyboard shortcut mapping into a pure tested helper while preserving existing shortcut behavior
+  - Promote client mutation response parsing into a shared helper used by Library and Review flows
+  - Reuse shared client mutation response parsing for Vault delete/archive actions
+  - Reuse shared client mutation response parsing for Vault edit note load/save actions
+  - Reuse shared client mutation response parsing for track rename updates
+  - Reuse shared client mutation response parsing for autosaved track/review notes
+  - Reuse shared client mutation response parsing for Practice save-to-vault actions
+  - Reuse shared client mutation response parsing for single-file upload failures
+  - Reuse shared client mutation response parsing for batch upload top-level failures
+  - Reuse shared client mutation response parsing for Shadowing sentence text saves
+  - Reuse shared client response parsing for export download failures
+  - Make touched Shadowing sentence state resets pass the zero-warning React hooks lint gate
+  - Fix Codex quality gate command detection, route production builds through WASM fallbacks, and remove the stale alternate lockfile
+- docs: add a documentation map and refresh current implementation docs
+  - Add `docs/README.md` as the human-friendly navigation entry point
+  - Refresh architecture, PRD, and maintenance docs against the current code
+  - Move the relearning implementation note from the repository root into `docs/history/`
 
 ## [2026-02-06]
 - fix: ensure note editors always display content on mount

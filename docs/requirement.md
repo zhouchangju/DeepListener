@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD): DeepListener
 
-**Version:** 4.0 (Updated 2026-04-04)
+**Version:** 4.1 (Updated 2026-06-06)
 **Status:** This document is aligned to the current codebase implementation, not an aspirational roadmap.
 **Tech Stack:** Next.js App Router, React 19, Prisma + SQLite, Tailwind CSS, WaveSurfer.js, FFmpeg, Deepgram/OpenAI/Gemini, Symphony tooling
 
@@ -31,6 +31,8 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 当前行为：
 
+- 只接受非空音频文件，单文件大小上限为 250 MB
+- 文件名会被清洗并加 UUID 前缀，避免上传路径逃逸
 - 音频文件保存到 `public/uploads/`
 - 上传后立即调用转录 provider 生成分句结果
 - 自动创建 `Track` 和其下的 `Sentence` 记录
@@ -231,8 +233,10 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - 查看某条 Track 对应的 Vault 笔记
 - 以 Track 或 Notes 视图浏览素材
 - 按 `trackType` / `trackTopic` 过滤
+- 按上传日期过滤
 - 多选 Track
 - 对多选 Track 连续批量播放
+- 导出当前筛选结果或选中 Track 的整轨拼接音频
 
 当前 Track 状态：
 
@@ -254,7 +258,7 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 当前已实现能力：
 
-- TOEFL 倒计时（从 `NEXT_PUBLIC_TARGET_DATE` 读取，默认 `2026-05-10`）
+- TOEFL 倒计时（从 `NEXT_PUBLIC_TARGET_DATE` 读取，默认 `2026-05-16`）
 - 已学习 Track 进度
 - 总学习小时数
 - Total Tracks / Vault Sentences
@@ -380,6 +384,8 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 ## 5. 技术实现约束与解决方案
 
 - **代理支持**：Google / OpenAI 场景通过 `undici` 全局 dispatcher 兼容代理环境。
+- **API 输入校验**：核心 JSON route 通过 `src/lib/api-schemas.ts` 中的 Zod schema 校验输入，并使用共享 response helper 返回错误。
+- **上传安全性**：`src/lib/upload-policy.ts` 限制音频类型、250 MB 大小上限、清洗文件名，并保证写入路径位于 `public/uploads/`。
 - **低延迟 Shadowing**：先解码整轨音频，再按句子切 `AudioBuffer`。
 - **波形交互**：通过自定义 hook 统一键盘、滚轮、右键拖拽和平移逻辑。
 - **导出安全性**：导出路由对 `audioUrl` 做 path traversal 校验，并跳过不存在的文件。
@@ -400,4 +406,4 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 ---
 
-*Last Updated: 2026-04-04*
+*Last Updated: 2026-06-06*
