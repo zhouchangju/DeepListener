@@ -28,3 +28,52 @@ test("package exposes a shared ci test command", () => {
   assert.equal(typeof packageJson.scripts?.["test:ci"], "string");
   assert.match(packageJson.scripts?.["test:ci"] ?? "", /run-node-tests\.mjs/);
 });
+
+test("package build script uses the repo build wrapper", () => {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+
+  assert.equal(packageJson.scripts?.build, "node scripts/next-build.mjs");
+});
+
+test("repository uses npm as the single CI package manager", () => {
+  assert.equal(existsSync(path.join(process.cwd(), "package-lock.json")), true);
+  assert.equal(
+    existsSync(path.join(process.cwd(), "pnpm-lock.yaml")),
+    false,
+    "CI uses npm ci, so a stale pnpm lockfile should not be tracked",
+  );
+});
+
+test("next build has a wasm swc fallback for restricted local Node runtimes", () => {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const buildScriptPath = path.join(process.cwd(), "scripts", "next-build.mjs");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const buildScript = readFileSync(buildScriptPath, "utf8");
+
+  assert.equal(
+    packageJson.devDependencies?.["@next/swc-wasm-nodejs"],
+    packageJson.dependencies?.next,
+  );
+  assert.equal(packageJson.devDependencies?.["lightningcss-wasm"], "1.30.2");
+  assert.match(buildScript, /NEXT_TEST_WASM_DIR/);
+});
+
+test("custom eslint rules declare direct plugin dependencies", () => {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const eslintConfigPath = path.join(process.cwd(), "eslint.config.mjs");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    devDependencies?: Record<string, string>;
+  };
+  const eslintConfig = readFileSync(eslintConfigPath, "utf8");
+
+  assert.equal(packageJson.devDependencies?.["eslint-plugin-react"], "7.37.5");
+  assert.equal(packageJson.devDependencies?.["eslint-plugin-react-hooks"], "7.0.1");
+  assert.match(eslintConfig, /eslint-plugin-react/);
+  assert.match(eslintConfig, /eslint-plugin-react-hooks/);
+});

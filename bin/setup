@@ -3,44 +3,41 @@
 # Symphony Setup Script
 # Based on https://github.com/openai/symphony/blob/main/elixir/README.md
 
-set -e
+set -euo pipefail
 
 echo "--- Symphony Setup ---"
 
 echo "1. Installing Node.js dependencies..."
 npm install
 
-echo "2. Checking for .env file..."
-if [ ! -f .env ]; then
-  echo "Creating .env from .env.example (if exists)..."
-  if [ -f .env.example ]; then
-    cp .env.example .env
-  else
-    touch .env
+echo "2. Checking local environment configuration..."
+if [ -f .env ]; then
+  if ! grep -q "LINEAR_API_KEY" .env; then
+    echo "Optional: add LINEAR_API_KEY to .env if you plan to use Symphony Linear integration."
   fi
-fi
-
-if ! grep -q "LINEAR_API_KEY" .env; then
-  echo "" >> .env
-  echo "Adding LINEAR_API_KEY placeholder to .env..."
-  echo "LINEAR_API_KEY=your_linear_api_key_here" >> .env
+else
+  echo "No .env file found. Setup will not create or edit local secret files."
+  echo "Create .env manually only when you need provider credentials."
 fi
 
 echo "3. Synchronizing database schema..."
+export DATABASE_URL="${DATABASE_URL:-file:./dev.db}"
+ACTIVE_DB_PATH="prisma/dev.db"
+
+echo "Using DATABASE_URL=${DATABASE_URL}; Prisma resolves the default SQLite file at ${ACTIVE_DB_PATH}."
 npx prisma generate
 
-if [ -f dev.db ]; then
-  echo "Existing database found (dev.db). Applying pending migrations safely..."
-  # 'migrate deploy' applies migrations without ever prompting to reset the database.
-  if npx prisma migrate deploy; then
-    echo "Database schema is up to date."
-  else
-    echo "WARNING: Automatic migration deployment failed. This usually happens if your local database has drifted from the migration history."
-    echo "To fix this, you may need to run 'npx prisma migrate dev' manually, but BE CAREFUL: it may ask to RESET your database and delete all your data."
-  fi
+if [ -f "${ACTIVE_DB_PATH}" ]; then
+  echo "Existing database found (${ACTIVE_DB_PATH}). Applying pending migrations safely..."
 else
-  echo "No existing database found. Initializing a new one..."
-  npx prisma migrate dev --name init
+  echo "No existing database found at ${ACTIVE_DB_PATH}. Applying existing migrations to initialize it."
 fi
 
-echo "Setup complete! Please configure your LINEAR_API_KEY in .env before running Symphony."
+if npx prisma migrate deploy; then
+  echo "Database schema is up to date."
+else
+  echo "WARNING: Automatic migration deployment failed. This usually means your local database differs from migration history."
+  echo "Resolve the local database state manually before retrying setup."
+fi
+
+echo "Setup complete."

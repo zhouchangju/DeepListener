@@ -88,6 +88,10 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
+function projectPath(...segments) {
+  return path.join(PROJECT_ROOT, ...segments);
+}
+
 function commandFromInput(input) {
   const toolInput = input.tool_input;
   if (!toolInput || typeof toolInput !== "object") {
@@ -195,6 +199,14 @@ function runCommand(label, command, args, timeoutMs) {
   };
 }
 
+function runNodeCommand(label, args, timeoutMs) {
+  return runCommand(label, process.execPath, args, timeoutMs);
+}
+
+function isBackupSyncCommand(command) {
+  return /(^|[;&|]\s*)(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*npm\s+run\s+sync(?:\s|$)/.test(command);
+}
+
 function handlePreToolUse(input) {
   const command = commandFromInput(input);
   const touchedPaths = extractTouchedPaths(input);
@@ -221,7 +233,7 @@ function handlePreToolUse(input) {
     return;
   }
 
-  if (/\bnpm\s+run\s+sync\b/.test(command) && process.env.DEEPLISTENER_ALLOW_SYNC !== "1") {
+  if (isBackupSyncCommand(command) && process.env.DEEPLISTENER_ALLOW_SYNC !== "1") {
     denyToolUse(
       "DeepListener guard blocked `npm run sync` because it writes to the remote backup target. Set DEEPLISTENER_ALLOW_SYNC=1 only after explicit user approval.",
     );
@@ -260,10 +272,9 @@ function handlePostToolUse(input) {
   const failures = [];
 
   for (const relPath of touchedPaths) {
-    const lint = runCommand(
+    const lint = runNodeCommand(
       `eslint --fix ${relPath}`,
-      "npx",
-      ["--no-install", "eslint", "--fix", relPath],
+      [projectPath("node_modules", "eslint", "bin", "eslint.js"), "--fix", relPath],
       120_000,
     );
     if (!lint.ok) {
@@ -272,10 +283,9 @@ function handlePostToolUse(input) {
   }
 
   if (touchedPaths.some(isTypeScriptSource)) {
-    const typecheck = runCommand(
+    const typecheck = runNodeCommand(
       "tsc --noEmit",
-      "npx",
-      ["--no-install", "tsc", "--noEmit", "--pretty", "false"],
+      [projectPath("node_modules", "typescript", "bin", "tsc"), "--noEmit", "--pretty", "false"],
       180_000,
     );
     if (!typecheck.ok) {
@@ -336,20 +346,18 @@ function handleStop(input) {
   }
 
   const checks = [
-    runCommand(
+    runNodeCommand(
       "eslint src scripts --max-warnings=0",
-      "npx",
-      ["--no-install", "eslint", "src", "scripts", "--max-warnings=0"],
+      [projectPath("node_modules", "eslint", "bin", "eslint.js"), "src", "scripts", "--max-warnings=0"],
       180_000,
     ),
-    runCommand(
+    runNodeCommand(
       "tsc --noEmit",
-      "npx",
-      ["--no-install", "tsc", "--noEmit", "--pretty", "false"],
+      [projectPath("node_modules", "typescript", "bin", "tsc"), "--noEmit", "--pretty", "false"],
       180_000,
     ),
-    runCommand("npm run test:ci", "npm", ["run", "test:ci"], 180_000),
-    runCommand("npm run build", "npm", ["run", "build"], 600_000),
+    runNodeCommand("repo node test runner", [projectPath("scripts", "run-node-tests.mjs")], 180_000),
+    runNodeCommand("next build", [projectPath("scripts", "next-build.mjs")], 600_000),
   ];
 
   const failures = checks.filter((check) => !check.ok);
