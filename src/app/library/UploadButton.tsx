@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { requireOkResponse } from "@/lib/client-response";
 
 export default function UploadButton() {
   const [uploading, setUploading] = useState(false);
@@ -26,13 +27,13 @@ export default function UploadButton() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      await requireOkResponse(res, "Upload failed");
 
       const track = await res.json();
       toast.success("Ready to practice!", { id: toastId });
       router.push(`/practice/${track.id}`);
-    } catch {
-      toast.error("Upload failed. Check your OpenAI API Key.", { id: toastId });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed. Check your OpenAI API Key.", { id: toastId });
     } finally {
       setUploading(false);
     }

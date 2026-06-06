@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { requireOkResponse } from "@/lib/client-response";
 import { RichTextToolbar } from "./rich-text/RichTextToolbar";
 import { useAutosavedRichTextNote } from "./rich-text/useAutosavedRichTextNote";
 
@@ -22,10 +23,10 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
         body: JSON.stringify({ userNote: content }),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      await requireOkResponse(res, "Failed to save note");
     },
     onSaved: onNoteChange,
-    onError: () => toast.error("Failed to save note"),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to save note"),
   });
 
   const handleCopy = async () => {

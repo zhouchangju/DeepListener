@@ -8,6 +8,7 @@ import {
   getDictationDraftStateForSentence,
   getInitialDictationDraftState,
   getPracticeModeButtonClassName,
+  getShadowingAudioSliceKey,
   getShadowingOverlayClassName,
   isDictationSubmitShortcut,
   shouldRenderOriginalWavePlayer,
@@ -24,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
+import { requireOkResponse } from "@/lib/client-response";
 
 export function getShadowingActionButtonsClassName() {
   return "flex shrink-0 flex-row gap-1";
@@ -48,6 +50,20 @@ interface ShadowingConsoleProps {
   onCapture: (sentenceId: string) => void;
 }
 
+function parseSentenceFormatting(formatting?: string | null): SentenceFormatting {
+  if (!formatting) return {};
+
+  try {
+    return JSON.parse(formatting) as SentenceFormatting;
+  } catch {
+    return {};
+  }
+}
+
+function getSentenceStateKey(sentence: ShadowingConsoleProps["sentence"]) {
+  return `${getShadowingAudioSliceKey(sentence)}:${sentence.text}:${sentence.formatting ?? ""}`;
+}
+
 export default function ShadowingConsole({
   sentence,
   fullAudioBuffer,
@@ -61,10 +77,14 @@ export default function ShadowingConsole({
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { setMode } = useTimeTracking();
+  const sentenceStateKey = getSentenceStateKey(sentence);
+  const [activeSentenceStateKey, setActiveSentenceStateKey] = useState(sentenceStateKey);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [practiceMode, setPracticeMode] = useState<ShadowingPracticeMode>("shadowing");
   const [activeTool, setActiveTool] = useState<NotationType | null>(null);
-  const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>({});
+  const [localFormatting, setLocalFormatting] = useState<SentenceFormatting>(() =>
+    parseSentenceFormatting(sentence.formatting)
+  );
   const [blindMode, setBlindMode] = useState(false);
   const [isTextRevealed, setIsTextRevealed] = useState(false);
   const [dictationDraft, setDictationDraft] = useState(() =>
@@ -85,6 +105,15 @@ export default function ShadowingConsole({
     sentence
   );
 
+  if (activeSentenceStateKey !== sentenceStateKey) {
+    setActiveSentenceStateKey(sentenceStateKey);
+    setLocalFormatting(parseSentenceFormatting(sentence.formatting));
+    setTempText(sentence.text);
+    setIsEditingText(false);
+    setIsTextRevealed(false);
+    setDictationDraft(getInitialDictationDraftState(sentence));
+  }
+
   // Focus on mount
   useEffect(() => {
     if (containerRef.current) {
@@ -93,23 +122,6 @@ export default function ShadowingConsole({
     setMode("SHADOWING");
     return () => setMode("LISTENING");
   }, [setMode]);
-
-  // Load formatting when sentence changes
-  useEffect(() => {
-    if (sentence.formatting) {
-      try {
-        setLocalFormatting(JSON.parse(sentence.formatting));
-      } catch {
-        setLocalFormatting({});
-      }
-    } else {
-      setLocalFormatting({});
-    }
-    setTempText(sentence.text); // Sync temp text
-    setIsEditingText(false); // Reset edit mode
-    setIsTextRevealed(false); // Reset text reveal
-    setDictationDraft(getInitialDictationDraftState(sentence));
-  }, [sentence]);
 
   // Auto-play original audio after 0.5s when switching to next sentence
   const isFirstRender = useRef(true);
@@ -133,11 +145,15 @@ export default function ShadowingConsole({
     if (practiceMode !== "dictation" || !isOriginalBlobReady) return;
     if (activeDictationDraft.hasPlayedOnce || activeDictationDraft.result) return;
 
-    setDictationDraft({
-      ...activeDictationDraft,
-      hasPlayedOnce: true,
-    });
-    playOriginal();
+    const timer = window.setTimeout(() => {
+      setDictationDraft({
+        ...activeDictationDraft,
+        hasPlayedOnce: true,
+      });
+      playOriginal();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [practiceMode, isOriginalBlobReady, activeDictationDraft, playOriginal]);
 
   const handleSaveText = async () => {
@@ -151,14 +167,14 @@ export default function ShadowingConsole({
         }),
       });
       
-      if (!res.ok) throw new Error("Failed to update text");
+      await requireOkResponse(res, "Failed to save text");
       
       setLocalFormatting({});
       setIsEditingText(false);
       router.refresh();
       toast.success("Text updated");
-    } catch {
-      toast.error("Failed to save text");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save text");
     }
   };
 

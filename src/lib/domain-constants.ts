@@ -12,7 +12,11 @@ export const TRACK_STATUSES = [
   "LEARNT",
 ] as const;
 
-export const TRACK_STATUS_LABELS: Record<(typeof TRACK_STATUSES)[number], string> = {
+export type TrackStatus = (typeof TRACK_STATUSES)[number];
+
+export const DEFAULT_TRACK_STATUS: TrackStatus = "INTENSIVE";
+
+export const TRACK_STATUS_LABELS: Record<TrackStatus, string> = {
   UNLEARNT: "未学习",
   INTENSIVE: "精听",
   ANALYSIS: "分析",
@@ -23,7 +27,7 @@ export const TRACK_STATUS_LABELS: Record<(typeof TRACK_STATUSES)[number], string
 };
 
 export const TRACK_STATUS_DISPLAY: Record<
-  (typeof TRACK_STATUSES)[number],
+  TrackStatus,
   { label: string; textClass: string; bgClass: string; dotClass: string }
 > = {
   UNLEARNT: {
@@ -69,5 +73,20 @@ export const TRACK_STATUS_DISPLAY: Record<
     dotClass: "bg-green-700",
   },
 };
+
+export const TRACK_STATUS_OPTIONS = TRACK_STATUSES.map((status) => ({
+  value: status,
+  ...TRACK_STATUS_DISPLAY[status],
+}));
+
+export function isTrackStatus(status: string): status is TrackStatus {
+  return TRACK_STATUSES.includes(status as TrackStatus);
+}
+
+export function getTrackStatusDisplay(status: string) {
+  return isTrackStatus(status)
+    ? TRACK_STATUS_DISPLAY[status]
+    : TRACK_STATUS_DISPLAY[DEFAULT_TRACK_STATUS];
+}
 
 export const STUDY_MODES = ["LISTENING", "SHADOWING", "REVIEW"] as const;

@@ -42,3 +42,13 @@ test("review client delegates the flashcard UI to ReviewCard", () => {
   assert.match(source, /ReviewCard/);
   assert.doesNotMatch(source, /<Card className="min-h-\[300px\]/);
 });
+
+test("review client delegates mutation response parsing to the shared helper", () => {
+  const source = readFileSync(new URL("./ReviewClient.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /@\/lib\/client-response/);
+  assert.match(source, /requireOkResponse\(res,\s*"Failed to update"\)/);
+  assert.match(source, /requireOkResponse\(res,\s*'Failed to archive'\)/);
+  assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to update"\)/);
+  assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\('Failed to archive'\)/);
+});

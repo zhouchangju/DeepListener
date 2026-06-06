@@ -24,6 +24,7 @@ import RenameTrackModal from "@/components/feature/RenameTrackModal";
 import { useRouter } from "next/navigation";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
+import { requireOkResponse } from "@/lib/client-response";
 
 
 
@@ -113,13 +114,13 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      await requireOkResponse(res, "Failed to save to vault");
 
       toast.success("Added to your Vault!");
       setCapturingSentenceId(null);
       router.refresh();
-    } catch {
-      toast.error("Failed to save to vault");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save to vault");
     }
   };
 
@@ -135,10 +136,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         body: JSON.stringify({ type: 'track', trackId: track.id }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
+      await requireOkResponse(response, 'Export failed');
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 

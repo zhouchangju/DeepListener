@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Play, Archive, ArchiveRestore, X } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
+import { requireOkResponse } from "@/lib/client-response";
 import { useRouter } from "next/navigation";
 import type { VaultQueryState } from "./vault-query";
 import type { SortOption, VaultItem, VaultPlaybackItem } from "./vault-items";
@@ -72,7 +73,7 @@ export default function VaultListClient({
 
     try {
       const res = await fetch(`/api/vault/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await requireOkResponse(res, "Failed to delete");
       toast.success("Removed from vault");
       router.refresh();
     } catch {
@@ -86,7 +87,7 @@ export default function VaultListClient({
         method: 'POST',
       });
 
-      if (!res.ok) throw new Error();
+      await requireOkResponse(res, 'Failed to toggle archive');
 
       const data = await res.json();
       toast.success(data.isArchived ? 'Archived' : 'Unarchived');

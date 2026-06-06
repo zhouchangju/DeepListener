@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { requireOkResponse } from "@/lib/client-response";
 import { toast } from "sonner";
 
 interface RenameTrackModalProps {
@@ -42,13 +43,13 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
         body: JSON.stringify({ title, trackType, trackTopic }),
       });
 
-      if (!res.ok) throw new Error("Failed");
-      
+      await requireOkResponse(res, "Failed to update");
+
       toast.success("Updated successfully");
       onRenamed();
       onClose();
-    } catch {
-      toast.error("Failed to update");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update");
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import { Download, Clock, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { downloadResponseBlob, downloadTextResponse } from "@/lib/client-download";
+import { requireOkResponse } from "@/lib/client-response";
 
 interface Track {
   id: string;
@@ -77,10 +78,7 @@ export default function ExportButtons({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
+      await requireOkResponse(response, 'Export failed');
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
       toast.success('Audio exported successfully');
     } catch (error) {
@@ -104,10 +102,7 @@ export default function ExportButtons({
           dateTo: dateTo || undefined,
         }),
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
+      await requireOkResponse(response, 'Export failed');
       await downloadTextResponse(response, 'DeepListener_Notes.txt');
       toast.success('Notes exported successfully');
     } catch (error) {

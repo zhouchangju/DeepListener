@@ -14,7 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
-import { TRACK_STATUS_DISPLAY } from "@/lib/domain-constants";
+import { requireOkResponse } from "@/lib/client-response";
+import { getTrackStatusDisplay, TRACK_STATUS_OPTIONS } from "@/lib/domain-constants";
 
 interface Track {
   id: string;
@@ -58,12 +59,13 @@ export default function TrackList({
     if (action === "change-status" && value) {
       setLoadingId(track.id);
       try {
-        await fetch(`/api/track/${track.id}`, {
+        const res = await fetch(`/api/track/${track.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: value }),
         });
-        toast.success(`Status updated to ${TRACK_STATUS_DISPLAY[value as keyof typeof TRACK_STATUS_DISPLAY]?.label || value}`);
+        await requireOkResponse(res, "Operation failed");
+        toast.success(`Status updated to ${getTrackStatusDisplay(value).label}`);
         router.refresh();
       } catch {
         toast.error("Operation failed");
@@ -76,11 +78,12 @@ export default function TrackList({
     if (action === "archive") {
       setLoadingId(track.id);
       try {
-        await fetch(`/api/track/${track.id}`, { 
+        const res = await fetch(`/api/track/${track.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isArchived: !track.isArchived }),
         });
+        await requireOkResponse(res, "Operation failed");
         toast.success(track.isArchived ? "Restored!" : "Archived!");
         router.refresh();
       } catch {
@@ -94,7 +97,7 @@ export default function TrackList({
       setLoadingId(track.id);
       try {
         const res = await fetch(`/api/track/${track.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error();
+        await requireOkResponse(res, "Delete failed");
         toast.success("Track deleted permanently");
         router.refresh();
       } catch {
@@ -117,7 +120,7 @@ export default function TrackList({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tracks.map((track) => {
-          const statusConfig = TRACK_STATUS_DISPLAY[track.status as keyof typeof TRACK_STATUS_DISPLAY] || TRACK_STATUS_DISPLAY.INTENSIVE;
+          const statusConfig = getTrackStatusDisplay(track.status);
           const isSelected = selectedTrackIds.has(track.id);
 
           const cardContent = (
@@ -176,11 +179,11 @@ export default function TrackList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {Object.entries(TRACK_STATUS_DISPLAY).map(([key, config]) => (
-                          <DropdownMenuItem 
-                            key={key} 
-                            onClick={(e) => handleAction(e, "change-status", track, key)}
-                            className={track.status === key ? "bg-accent" : ""}
+                        {TRACK_STATUS_OPTIONS.map((config) => (
+                          <DropdownMenuItem
+                            key={config.value}
+                            onClick={(e) => handleAction(e, "change-status", track, config.value)}
+                            className={track.status === config.value ? "bg-accent" : ""}
                           >
                              <div className={`w-2 h-2 rounded-full mr-2 ${config.dotClass}`} />
                              Set to {config.label}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2, Check, X, FileAudio } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { requireOkResponse } from "@/lib/client-response";
 
 interface UploadProgress {
   fileName: string;
@@ -44,7 +45,7 @@ export default function BatchUploadButton() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Batch upload failed");
+      await requireOkResponse(res, "Batch upload failed. Check your connection.");
 
       const data = await res.json();
       const { success, failed } = data as {
@@ -98,10 +99,14 @@ export default function BatchUploadButton() {
           router.push(`/practice/${success[0].id}`);
         }, 2000);
       }
-    } catch {
-      toast.error("Batch upload failed. Check your connection.", { id: toastId });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Batch upload failed. Check your connection.";
+      toast.error(message, { id: toastId });
       setProgress(
-        initialProgress.map((p) => ({ ...p, status: "error", error: "Upload failed" }))
+        initialProgress.map((p) => ({ ...p, status: "error", error: message }))
       );
     } finally {
       setUploading(false);

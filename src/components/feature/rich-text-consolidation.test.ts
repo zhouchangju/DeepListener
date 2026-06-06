@@ -30,6 +30,28 @@ test("autosaving rich text editors share the autosave hook", () => {
   assert.match(reviewEditor, /useAutosavedRichTextNote/);
 });
 
+test("autosaved rich text hook forwards save errors to consumers", () => {
+  const source = readFileSync(new URL("./rich-text/useAutosavedRichTextNote.ts", import.meta.url), "utf8");
+
+  assert.match(source, /onError\?: \(error: unknown\) => void;/);
+  assert.match(source, /catch \(error\) \{\s*onError\?\.\(error\);/);
+});
+
+test("autosaved note editors delegate response parsing to the shared helper", () => {
+  const noteEditor = readFileSync(new URL("./NoteEditor.tsx", import.meta.url), "utf8");
+  const reviewEditor = readFileSync(new URL("./ReviewNoteEditor.tsx", import.meta.url), "utf8");
+
+  for (const source of [noteEditor, reviewEditor]) {
+    assert.match(source, /@\/lib\/client-response/);
+    assert.match(source, /requireOkResponse\(res,\s*"Failed to save note"\)/);
+    assert.match(
+      source,
+      /onError: \(error\) => toast\.error\(error instanceof Error \? error\.message : "Failed to save note"\)/,
+    );
+    assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to save"\)/);
+  }
+});
+
 test("manual rich text editor uses the shared contentEditable hook", () => {
   const source = readFileSync(new URL("./RichTextNoteEditor.tsx", import.meta.url), "utf8");
 

@@ -9,6 +9,7 @@ import BatchAudioPlayer from "./BatchAudioPlayer";
 import { useBatchPlayback } from "./useBatchPlayback";
 import { toast } from "sonner";
 import { downloadResponseBlob } from "@/lib/client-download";
+import { requireOkResponse } from "@/lib/client-response";
 
 interface Track {
     id: string;
@@ -133,10 +134,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
+      await requireOkResponse(response, 'Export failed');
 
       await downloadResponseBlob(response, 'DeepListener_Library_Export.mp3');
       

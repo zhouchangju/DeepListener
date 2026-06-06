@@ -26,7 +26,7 @@ interface LibraryTrack {
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: { archived?: string; batch?: string };
+  searchParams: Promise<{ archived?: string; batch?: string }>;
 }) {
   const { archived, batch } = await searchParams;
   const showArchived = archived === "true";

@@ -9,7 +9,7 @@ interface UseAutosavedRichTextNoteOptions {
   saveDelayMs: number;
   save: (content: string) => Promise<void>;
   onSaved?: (content: string) => void;
-  onError?: () => void;
+  onError?: (error: unknown) => void;
 }
 
 export function useAutosavedRichTextNote({
@@ -44,8 +44,8 @@ export function useAutosavedRichTextNote({
       await save(currentContent);
       lastSavedContentRef.current = currentContent;
       onSaved?.(currentContent);
-    } catch {
-      onError?.();
+    } catch (error) {
+      onError?.(error);
     } finally {
       setIsSaving(false);
     }

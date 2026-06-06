@@ -13,3 +13,12 @@ test("vault list uses safe helpers for optional review dates", () => {
   assert.match(helperSource, /getReviewDateTimestamp\(/);
   assert.match(helperSource, /Number\.POSITIVE_INFINITY/);
 });
+
+test("vault list delegates mutation response parsing to the shared helper", () => {
+  const clientSource = readFileSync(new URL("./VaultListClient.tsx", import.meta.url), "utf8");
+
+  assert.match(clientSource, /@\/lib\/client-response/);
+  assert.match(clientSource, /requireOkResponse\(res,\s*"Failed to delete"\)/);
+  assert.match(clientSource, /requireOkResponse\(res,\s*'Failed to toggle archive'\)/);
+  assert.doesNotMatch(clientSource, /if \(!res\.ok\) throw new Error\(\)/);
+});

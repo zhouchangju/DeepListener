@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { requireOkResponse } from "@/lib/client-response";
 import { RED_FIRST_RICH_TEXT_COLORS, RichTextToolbar } from "./rich-text/RichTextToolbar";
 import { useAutosavedRichTextNote } from "./rich-text/useAutosavedRichTextNote";
 
@@ -23,10 +24,10 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
         body: JSON.stringify({ note: content }),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
+      await requireOkResponse(res, "Failed to save note");
     },
     onSaved,
-    onError: () => toast.error("Failed to save note"),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to save note"),
   });
 
   useEffect(() => {

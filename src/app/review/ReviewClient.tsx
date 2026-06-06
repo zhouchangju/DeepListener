@@ -8,12 +8,14 @@ import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
+import { requireOkResponse } from "@/lib/client-response";
 import { useRouter } from "next/navigation";
+import { getReviewKeyboardAction, type ReviewKeyboardGrade } from "./review-keyboard";
 import { removeCurrentReviewItem } from "./review-queue";
 import { useReviewAudio } from "./useReviewAudio";
 import { ReviewCard } from "./ReviewCard";
 
-type ReviewQuality = "again" | "hard" | "good" | "easy";
+type ReviewQuality = ReviewKeyboardGrade;
 
 type ReviewItem = {
   id: string;
@@ -116,7 +118,7 @@ export default function ReviewClient({
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to update");
+      await requireOkResponse(res, "Failed to update");
 
       setReviewed((prev) => prev + 1);
       setRemaining((prev) => Math.max(0, prev - 1));
@@ -158,33 +160,25 @@ export default function ReviewClient({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isEditing) return;
+      const action = getReviewKeyboardAction({ key: e.key, isEditing });
+      if (!action) return;
 
-      if (e.key === " ") {
+      if (action.preventDefault) {
         e.preventDefault();
+      }
+
+      if (action.type === "toggle-answer") {
         setShowAnswer((prev) => !prev);
         return;
       }
 
-      if (e.key.toLowerCase() === "r") {
-        e.preventDefault();
+      if (action.type === "play-audio") {
         playAudioInEffect();
         return;
       }
 
-      switch (e.key.toLowerCase()) {
-        case "1":
-          handleGradeInEffect("again");
-          break;
-        case "2":
-          handleGradeInEffect("hard");
-          break;
-        case "3":
-          handleGradeInEffect("good");
-          break;
-        case "4":
-          handleGradeInEffect("easy");
-          break;
+      if (action.type === "grade") {
+        handleGradeInEffect(action.quality);
       }
     };
 
@@ -204,10 +198,7 @@ export default function ReviewClient({
         body: JSON.stringify({ type: 'due' }),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Export failed');
-      }
+      await requireOkResponse(response, 'Export failed');
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
@@ -228,7 +219,7 @@ export default function ReviewClient({
         method: 'POST',
       });
 
-      if (!res.ok) throw new Error('Failed to archive');
+      await requireOkResponse(res, 'Failed to archive');
 
       const data: ReviewGradeResponse = await res.json();
 

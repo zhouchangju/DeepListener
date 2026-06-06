@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { requireOkResponse } from "@/lib/client-response";
 import { toast } from "sonner";
 import DifficultySelector from "./DifficultySelector";
 import ReviewNoteEditor from "./ReviewNoteEditor";
@@ -62,7 +63,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
     setNoteLoading(true);
     fetch(`/api/vault/${item.id}`, { headers: { Accept: "application/json" } })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to load note");
+        await requireOkResponse(res, "Failed to load note");
         return await res.json() as { userNote?: string | null };
       })
       .then((data) => {
@@ -71,8 +72,8 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
           setEditorKey(prev => prev + 1);
         }
       })
-      .catch(() => {
-        if (!cancelled) toast.error("Failed to load note");
+      .catch((error) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "Failed to load note");
       })
       .finally(() => {
         if (!cancelled) setNoteLoading(false);
@@ -110,13 +111,13 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
         body: JSON.stringify({ tags: selectedTags, difficulty }),
       });
 
-      if (!res.ok) throw new Error("Failed to update");
+      await requireOkResponse(res, "Failed to update");
 
       toast.success("Saved successfully");
       onSaved({ tags: selectedTags, difficulty });
       onClose();
-    } catch {
-      toast.error("Failed to save changes");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save changes");
     } finally {
       setLoading(false);
     }
