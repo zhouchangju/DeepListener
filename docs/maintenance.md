@@ -1,6 +1,6 @@
 # DeepListener 开发维护手册
 
-Last updated: 2026-06-06
+Last updated: 2026-06-30
 
 ## 1. 转录 Provider 现状
 
@@ -138,7 +138,30 @@ Vault 当前不是一次性加载全部数据。关键实现拆分为：
 
 500 响应必须使用 `internalServerError()` 这类客户端安全 helper；真实异常可以 `console.error` 到服务端日志，但不要把原始 `error.message` 直接返回给客户端。
 
-## 7. 常见问题
+## 7. 主题与界面维护
+
+全局主题由 `src/components/theme/ThemeProvider.tsx`、`src/components/theme/ThemeToggle.tsx` 和 `src/app/globals.css` 共同维护。
+
+维护原则：
+
+- 默认行为必须继续跟随系统偏好：`defaultTheme="system"`、`enableSystem`、`attribute="class"`。
+- 右上角主题按钮必须在 client mount 后再读取 resolved theme，避免服务端 / 客户端 hydration mismatch。
+- 新增页面或组件时优先使用 semantic token：`bg-background`、`bg-card`、`text-foreground`、`text-muted-foreground`、`border-border`、`bg-muted`、`bg-accent`。
+- 如果必须使用旧 Tailwind 色阶，先确认 `.dark` 兼容桥是否已经覆盖；不要新增大面积 `bg-white` / `bg-gray-50` 而不做暗色检查。
+- 默认按钮的暗色外观来自 `--primary` / `--primary-foreground`，不要在业务组件里用一次性 class 修正全局主按钮颜色。
+- 图表、富文本、contenteditable、input/select/textarea、弹窗和 floating action button 都需要在暗色下做一次浏览器检查。
+
+建议检查路径：
+
+- `/library`
+- `/vault`
+- `/dashboard`
+- `/review`
+- `/practice/[id]`
+
+主题变更是 UI-only 变更，不应修改 Prisma schema、`prisma/dev.db`、`public/uploads/`、转录 provider、导出音频逻辑或同步脚本。
+
+## 8. 常见问题
 
 ### Q: 为什么 Node.js 报错 `fetch failed`？
 
@@ -173,7 +196,7 @@ A: 先检查 `contentEditable` 编辑器有没有在父组件回传相同内容�
 - 排查“输入后跳到开头”时，先查 `innerHTML` 写回路径，再查键盘事件
 - 保留 `src/components/feature/contentEditable-sync.test.ts` 这个回归测试，不要删除
 
-## 8. 数据同步与备份
+## 9. 数据同步与备份
 
 为了防止本地音频文件和数据库丢失，项目保留了基于 `rsync` 的同步脚本：
 

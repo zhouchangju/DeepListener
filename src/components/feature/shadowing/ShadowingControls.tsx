@@ -21,7 +21,7 @@ export default function ShadowingControls({
       {mode === "idle" && (
         <Button
           size="lg"
-          className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200"
+          className="rounded-full px-8 text-lg gap-2 shadow-lg shadow-indigo-200 dark:shadow-black/30"
           onClick={onStartFlow}
         >
           <Play className="h-5 w-5" /> Start Challenge

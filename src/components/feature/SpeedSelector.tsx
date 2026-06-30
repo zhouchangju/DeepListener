@@ -40,7 +40,7 @@ export default function SpeedSelector({
             key={speed}
             onClick={() => onRateChange(speed)}
             className={`justify-center cursor-pointer ${
-              playbackRate === speed ? "bg-slate-100 font-bold" : ""
+              playbackRate === speed ? "bg-accent font-bold" : ""
             }`}
           >
             {speed}x

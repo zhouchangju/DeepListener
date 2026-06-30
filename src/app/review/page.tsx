@@ -106,8 +106,8 @@ async function ReviewContent() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-xl border border-dashed">
-        <p className="text-gray-500">No sentences due for review. Great job!</p>
+      <div className="text-center py-20 bg-card rounded-xl border border-dashed">
+        <p className="text-muted-foreground">No sentences due for review. Great job!</p>
       </div>
     );
   }

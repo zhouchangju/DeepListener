@@ -187,18 +187,18 @@ export default function MiniWavePlayer({
   };
 
   return (
-    <div className="flex items-center gap-4 w-full bg-slate-50 p-3 rounded-lg border border-slate-100 relative group">
+    <div className="flex items-center gap-4 w-full bg-muted/60 p-3 rounded-lg border border-border relative group">
       <Button 
         size="icon" 
         variant="secondary" 
-        className="rounded-full h-10 w-10 shrink-0 bg-white shadow-sm hover:bg-slate-100"
+        className="rounded-full h-10 w-10 shrink-0 bg-background shadow-sm hover:bg-accent"
         onClick={togglePlay}
       >
-        {isPlaying ? <Pause className="h-4 w-4 text-slate-700" /> : <Play className="h-4 w-4 ml-0.5 text-slate-700" />}
+        {isPlaying ? <Pause className="h-4 w-4 text-foreground" /> : <Play className="h-4 w-4 ml-0.5 text-foreground" />}
       </Button>
       
       <div className="flex-grow flex flex-col gap-1 relative">
-        {label && <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{label}</span>}
+        {label && <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{label}</span>}
         <div ref={containerRef} className="w-full" />
         
         {/* Clear Region Button */}

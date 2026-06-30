@@ -114,7 +114,7 @@ export function getPracticeModeButtonClassName(
       : "h-9 gap-1.5 px-4 bg-emerald-600 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:text-white";
   }
 
-  return "h-9 gap-1.5 px-4 bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-800";
+  return "h-9 gap-1.5 px-4 bg-background text-muted-foreground ring-1 ring-border hover:bg-accent hover:text-foreground";
 }
 
 export function isDictationSubmitShortcut(event: DictationSubmitShortcutLike) {

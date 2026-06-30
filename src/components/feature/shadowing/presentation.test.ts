@@ -176,7 +176,7 @@ test("practice mode buttons expose a prominent active state", () => {
   );
   assert.match(
     getPracticeModeButtonClassName("shadowing", "dictation"),
-    /bg-white/
+    /bg-background/
   );
 });
 

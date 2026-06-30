@@ -18,12 +18,12 @@ export default function Loading() {
 function VaultListSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-20 rounded-lg border bg-white p-4">
+      <div className="h-20 rounded-lg border border-border bg-card p-4">
         <Skeleton className="h-4 w-32 mb-3" />
         <Skeleton className="h-8 w-full" />
       </div>
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex flex-col gap-3 p-5 border rounded-xl bg-white">
+        <div key={i} className="flex flex-col gap-3 p-5 border border-border rounded-xl bg-card">
           <div className="flex justify-between">
             <Skeleton className="h-6 w-2/3" />
             <Skeleton className="h-8 w-24" />

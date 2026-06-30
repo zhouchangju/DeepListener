@@ -50,8 +50,8 @@ function ReviewTooltip({ active, payload }: ReviewTooltipProps) {
   const data = payload[0].payload;
 
   return (
-    <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
-      <p className="text-sm font-semibold text-gray-700">{data.fullDate}</p>
+    <div className="bg-popover text-popover-foreground p-3 border border-border rounded-lg shadow-md">
+      <p className="text-sm font-semibold text-foreground">{data.fullDate}</p>
       <p className="text-sm text-indigo-600">Reviewed: {data.past}</p>
       <p className="text-sm text-emerald-600">Due: {data.future}</p>
     </div>

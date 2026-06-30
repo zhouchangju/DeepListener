@@ -39,9 +39,9 @@ export function OverviewSection({
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-100 shadow-sm">
+        <Card className="border-indigo-100 shadow-sm dark:border-indigo-400/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900">
+            <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
               <Trophy className="h-5 w-5 text-yellow-500" /> TOEFL 5.0 Progress
             </CardTitle>
             <CardDescription>Target: 100 Learnt Tracks</CardDescription>
@@ -58,9 +58,9 @@ export function OverviewSection({
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-100 shadow-sm">
+        <Card className="border-indigo-100 shadow-sm dark:border-indigo-400/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900">
+            <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
               <Clock className="h-5 w-5 text-blue-500" /> C1 Fluency Journey
             </CardTitle>
             <CardDescription>Target: 400 Hours</CardDescription>
@@ -79,16 +79,16 @@ export function OverviewSection({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-          <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>
-          <div className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <div className="bg-muted/60 p-4 rounded-xl border border-border">
+          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>
+          <div className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Headphones className="w-5 h-5 text-indigo-500" />
             {totalTracks}
           </div>
         </div>
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-          <div className="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Vault Sentences</div>
-          <div className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <div className="bg-muted/60 p-4 rounded-xl border border-border">
+          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">Vault Sentences</div>
+          <div className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Mic2 className="w-5 h-5 text-purple-500" />
             {totalSentences}
           </div>

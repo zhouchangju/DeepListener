@@ -12,7 +12,7 @@ interface MemorySectionProps {
 export function MemorySection({ stabilityData, retentionData, leeches }: MemorySectionProps) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
+      <h2 className="text-2xl font-bold flex items-center gap-2 text-foreground">
         <Brain className="w-6 h-6 text-indigo-500" /> Memory Health (FSRS)
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -50,12 +50,12 @@ export function MemorySection({ stabilityData, retentionData, leeches }: MemoryS
           <CardContent className="space-y-3">
             {leeches.length > 0 ? (
               leeches.map((l) => (
-                <div key={l.id} className="text-xs p-2 bg-rose-50 border border-rose-100 rounded text-rose-700 truncate">
+                <div key={l.id} className="text-xs p-2 bg-rose-50 border border-rose-100 rounded text-rose-700 truncate dark:bg-rose-500/15 dark:border-rose-400/25 dark:text-rose-200">
                   {l.sentence.text}
                 </div>
               ))
             ) : (
-              <div className="text-sm text-slate-400 text-center py-10">No leeches detected. Great job!</div>
+              <div className="text-sm text-muted-foreground text-center py-10">No leeches detected. Great job!</div>
             )}
           </CardContent>
         </Card>

@@ -31,7 +31,7 @@ export default function ShadowingVisualization({
   return (
     <div className="w-full space-y-4">
       {!isOriginalBlobReady && !originalBlob && (
-        <div className="flex items-center justify-center text-slate-400 gap-2 h-32">
+        <div className="flex items-center justify-center text-muted-foreground gap-2 h-32">
           <Loader2 className="h-6 w-6 animate-spin" /> Loading audio segment...
         </div>
       )}
@@ -50,11 +50,11 @@ export default function ShadowingVisualization({
               <Button
                 size="icon"
                 variant={isLooping ? "default" : "secondary"}
-                className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-white hover:bg-slate-100"}`}
+                className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-background hover:bg-accent"}`}
                 onClick={onToggleLoop}
                 title="Loop Playback"
               >
-                {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-slate-700" />}
+                {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-foreground" />}
               </Button>
             }
           />
@@ -69,7 +69,7 @@ export default function ShadowingVisualization({
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200"
+            className="gap-2 border-border text-muted-foreground hover:text-red-600 hover:border-red-200"
             onClick={onRecAgain}
           >
             <RotateCcw className="h-4 w-4" /> Restart

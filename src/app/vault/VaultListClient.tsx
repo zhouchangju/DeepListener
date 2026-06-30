@@ -115,14 +115,14 @@ export default function VaultListClient({
   return (
     <div className={`space-y-4 ${playAllActive ? 'pb-20' : ''}`}>
       {/* Archive Toggle Filter */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white rounded-lg border">
+      <div className="flex items-center justify-between px-4 py-2 bg-card rounded-lg border border-border">
         <div className="flex items-center gap-2">
           {query.showArchived ? (
-            <ArchiveRestore className="w-4 h-4 text-gray-600" />
+            <ArchiveRestore className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <Archive className="w-4 h-4 text-gray-600" />
+            <Archive className="w-4 h-4 text-muted-foreground" />
           )}
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-muted-foreground">
             {query.showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
           </span>
         </div>
@@ -148,8 +148,8 @@ export default function VaultListClient({
       </div>
 
       {activeTrackName && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
-          <span className="text-sm text-indigo-700">
+        <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg dark:bg-indigo-500/15 dark:border-indigo-400/25">
+          <span className="text-sm text-indigo-700 dark:text-indigo-200">
             Filtered by track: <strong>{activeTrackName}</strong>
           </span>
           <button
@@ -203,7 +203,7 @@ export default function VaultListClient({
       />
 
       {filteredItems.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-xl border border-dashed text-gray-400">
+        <div className="text-center py-20 bg-card rounded-xl border border-dashed text-muted-foreground">
           {query.showArchived
             ? 'No archived notes. Archive some notes to see them here!'
             : query.initialTrackId
@@ -213,8 +213,8 @@ export default function VaultListClient({
       )}
 
       {filteredCount > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white border rounded-lg">
-          <div className="text-xs text-gray-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-card border border-border rounded-lg">
+          <div className="text-xs text-muted-foreground">
             Showing {pageStart}-{pageEnd} of {filteredCount} notes
           </div>
           <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function VaultListClient({
             >
               Previous
             </Button>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               Page {query.page} of {totalPages}
             </span>
             <Button

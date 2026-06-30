@@ -1,76 +1,243 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to DeepListener are documented here.
+
+This project currently has no git tags. Version numbers are maintenance milestones reconstructed from commit history and aligned with the private app version in `package.json`.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style categories where useful.
 
 ## [Unreleased]
-- fix: harden project safety and API/export failure contracts
-  - Keep `bin/setup` from creating or editing `.env`, and apply existing Prisma migrations against `prisma/dev.db`
-  - Make Library status/archive mutations surface rejected API responses instead of showing false success
-  - Make audio and library exports fail with a 400 response when selected source audio is missing or invalid
-  - Normalize study-time, dashboard, review, and Vault due windows around local-day semantics
-  - Replace raw internal 500 error messages with the shared client-safe response helper
-  - Split pure audio/Vault query helpers so tests avoid Prisma native side effects
-  - Harden client export downloads with safer `Content-Disposition` filename parsing and link lifecycle tests
-  - Centralize Track status display/options/fallback helpers and make Library consume the shared domain boundary
-  - Extract Review keyboard shortcut mapping into a pure tested helper while preserving existing shortcut behavior
-  - Promote client mutation response parsing into a shared helper used by Library and Review flows
-  - Reuse shared client mutation response parsing for Vault delete/archive actions
-  - Reuse shared client mutation response parsing for Vault edit note load/save actions
-  - Reuse shared client mutation response parsing for track rename updates
-  - Reuse shared client mutation response parsing for autosaved track/review notes
-  - Reuse shared client mutation response parsing for Practice save-to-vault actions
-  - Reuse shared client mutation response parsing for single-file upload failures
-  - Reuse shared client mutation response parsing for batch upload top-level failures
-  - Reuse shared client mutation response parsing for Shadowing sentence text saves
-  - Reuse shared client response parsing for export download failures
-  - Make touched Shadowing sentence state resets pass the zero-warning React hooks lint gate
-  - Fix Codex quality gate command detection, route production builds through WASM fallbacks, and remove the stale alternate lockfile
-- docs: add a documentation map and refresh current implementation docs
-  - Add `docs/README.md` as the human-friendly navigation entry point
-  - Refresh architecture, PRD, and maintenance docs against the current code
-  - Move the relearning implementation note from the repository root into `docs/history/`
 
-## [2026-02-06]
-- fix: ensure note editors always display content on mount
-  - Fix NoteEditor, ReviewNoteEditor, and RichTextNoteEditor to properly load saved notes
-  - Replace forceUpdate-based approach with requestAnimationFrame for DOM readiness
-  - Remove infinite loop caused by forceUpdate in dependency arrays
-  - Add content diff checking to prevent unnecessary re-renders
-  - Add user editing detection to prevent cursor jumping and flickering
-- feat: improve note editors with copy button and proper state management
-- fix: optimize audio export to prevent memory limit exceeded
-- refactor: simplify code by removing redundant comments
-- fix: resolve Again infinite loop and fix Analytics statistics
-- fix: resolve dashboard layout imbalance and Recharts dimension warnings
-  - Reorganize dashboard layout with unified grid structure for consistent card widths
-  - Move Countdown card into DashboardContent to share grid system with progress cards
-  - Remove redundant col-span classes and simplify grid hierarchy
-  - Replace percentage-based chart heights with fixed pixel values (250px)
-  - Add delayed dimension measurement in ChartWrapper to ensure proper layout
-  - Eliminate Recharts width(-1) and height(-1) warnings completely
+- No unreleased changes yet.
 
-## [2026-01-30]
-- feat: enhance shadowing mode (loop button, progress indicator, smart interrupt)
-- perf: major optimization via DB indexing, pagination limits, and Suspense streaming
-- feat: upgrade track status workflow (Unlearnt/Intensive/Shadowing...) and analytics dashboard
-- fix: resolve critical recording state leakage in shadowing mode
-- feat: add track editing (rename/type/topic) in practice page
-- feat: implement basic review system with logging and grading API
-- feat: add track-level notes and category management
-- ui: add RenameTrackModal and enhanced NoteEditor
-- feat: add review log migration and API endpoints
+## [0.2.0] - 2026-06-30
 
-## [2026-01-27]
-- feat: add variable playback speed support (0.5x-2.0x) to all modes
+### Added
 
-## [2026-01-26]
-- feat: add 'isLearnt' track status and optimize AudioPlayer performance
+- Added system-aware light/dark theming with `next-themes`.
+- Added a top-right day/night icon toggle in the global sticky nav.
+- Added `ThemeProvider` and `ThemeToggle` under `src/components/theme/`.
+- Added dark-mode regression coverage for provider configuration, layout integration, toggle behavior, and global dark compatibility styles.
+- Added agent-harness session evidence for the dark-mode sprint under `docs/agent-harness/sessions/2026-06-30-dark-mode/`.
 
-## [2026-01-25]
-- feat: implement note difficulty levels, new error tags, performance optimizations, and bug fixes
-- refactor: modularize AudioPlayer and ShadowingConsole into hooks/components based on GEMINI.md standards
-- feat: implement archive, blind mode, shadowing v2, and mobile UI optimizations
-- feat: initial implementation of DeepListener with multi-provider STT, AudioPlayer重构, and network fixes
+### Changed
 
-## [2026-01-24]
-- Initial commit
+- Updated the global design tokens in `src/app/globals.css` so backgrounds, cards, popovers, borders, inputs, primary actions, charts, and sidebar colors work in dark mode.
+- Normalized the main Library, Vault, Dashboard, Review, Practice, AudioPlayer, Shadowing, editor, modal, and toolbar surfaces toward semantic theme classes.
+- Preserved the existing white UI as the light theme while adding a `.dark` compatibility bridge for older Tailwind utility classes.
+- Updated current architecture, PRD, maintenance, README, and docs map entries to document the theme system.
+
+### Verified
+
+- `npm run lint`
+- `npm run build`
+- `npm run test:ci`
+- Targeted theme, shadowing, library, vault, review, and rendering-policy tests
+- Browser checks for `/library`, `/vault`, `/dashboard`, and `/review` in dark and light flows
+
+## [0.1.0] - 2026-06-30
+
+### Added
+
+- Added the optimization / agent harness workflow and session evidence for safety-critical refactors.
+- Added documentation map and refreshed current architecture, PRD, and maintenance docs against live source.
+- Added engineering governance review material for long-running quality work.
+- Added dictation mode to the Shadowing console.
+
+### Changed
+
+- Split Shadowing, Review, Vault, Dashboard, and rich-text editor code into smaller tested helpers/components.
+- Centralized client response parsing and safer download handling across Library, Review, Vault, uploads, export, autosave, and Shadowing text-save flows.
+- Hardened setup and quality-gate scripts, including project build routing through `scripts/next-build.mjs`.
+- Hardened API data contracts with Zod schemas and client-safe server error responses.
+- Hardened local-day semantics for study time, dashboard, review, and Vault due windows.
+- Updated docs and evidence after audit remediation.
+
+### Fixed
+
+- Prevented false-success UI states when Library, Vault, Review, upload, export, and autosave mutations fail.
+- Made audio and library exports fail clearly when selected source audio is missing or invalid.
+- Kept Shadowing controls stable in layout after the dictation and component split work.
+- Preserved `.env*`, `prisma/dev.db`, and `public/uploads/` as protected local data boundaries in project governance.
+
+## [0.0.9] - 2026-05-17
+
+### Added
+
+- Added Library audio export with category and date filters.
+- Added AI coding quality, codebase assessment, and engineering-governance review documents.
+
+### Changed
+
+- Updated the dashboard target date and Next.js runtime.
+- Improved Shadowing UX and editor behavior around caret stability.
+
+### Fixed
+
+- Resolved caret jumping in note editors.
+- Stabilized Shadowing UX without breaking existing note shortcuts.
+
+## [0.0.8] - 2026-04-04
+
+### Added
+
+- Added Symphony local tooling, workflow configuration, and dashboard/state endpoints.
+- Added project roadmap, value, and optimization analysis documents.
+
+### Changed
+
+- Aligned PRD, architecture, and remaining docs with current implementation at that point.
+- Stabilized app workflows around the new Symphony scaffolding.
+
+## [0.0.7] - 2026-03-30
+
+### Added
+
+- Added multi-track selection and loop playback to Library.
+- Added documentation for multi-track loop playback.
+- Added repository contributor guide.
+- Added default `Vocab` tag behavior for new Vault notes.
+- Added F8 color shortcut and wider diagnosis modal behavior in note editing.
+- Added additional keyboard shortcuts and UI detail refinements.
+
+### Changed
+
+- Unified Vault filter state for display and export.
+- Improved Shadowing console action-button positioning and later stabilized its UI without breaking note shortcuts.
+
+### Fixed
+
+- Reduced Shadowing layout instability around controls and action buttons.
+
+## [0.0.6] - 2026-03-06
+
+### Added
+
+- Added URL-based Track filtering to Vault.
+- Added Play All sequential playback with a sticky floating bar.
+- Added difficulty and Track filters to Vault export buttons.
+- Added filtered audio export by difficulty and Track IDs.
+- Added View Notes links from Track cards and Practice page headers.
+- Added design and implementation plan docs for Vault Track filtering, Play All, and export enhancements.
+
+### Changed
+
+- Removed the old `take: 100` Vault export limit.
+- Narrowed export button item types and clarified filtered export data boundaries.
+
+### Fixed
+
+- Excluded archived items from export counts and Track filter chips.
+- Normalized `audioUrl` leading slash before path validation in export.
+- Added input validation for filtered export difficulties and Track IDs.
+- Fixed empty-state behavior when Vault is filtered by Track.
+- Added unmount cleanup and audio playback rejection handling for Play All.
+
+## [0.0.5] - 2026-03-03
+
+### Added
+
+- Added comprehensive learning analytics dashboard.
+
+### Changed
+
+- Improved type safety, security, and performance across the codebase.
+- Enhanced the FSRS algorithm and optimized database queries.
+
+## [0.0.4] - 2026-02-08
+
+### Added
+
+- Added Anki-style short-interval relearning for Again and Hard ratings.
+- Added architecture diagram and review-system documentation updates.
+- Improved Review page interaction design.
+
+### Changed
+
+- Enhanced FSRS-4.5 review behavior with sorting and statistics display.
+- Simplified Review header counts after due-count investigations.
+
+### Fixed
+
+- Corrected Review statistics and due-count logic.
+- Removed an old 50-item review statistics limit.
+
+## [0.0.3] - 2026-02-06
+
+### Added
+
+- Added audio export API and export buttons for Vault, Review, and Track Practice.
+- Added archived ReviewItem support, archive toggle API, Vault archive filters, and Review archive actions.
+- Added FSRS-based review/vault experience upgrades.
+- Added rich-text note editor and categorized text export.
+- Added batch audio upload.
+- Added audio export design and documentation.
+
+### Changed
+
+- Switched the Reveal Answer shortcut to Space.
+- Disabled stale Next.js cache paths that made due counts appear inaccurate after refresh.
+- Relaxed legacy lint backlog only as a temporary cleanup step recorded in history.
+
+### Fixed
+
+- Optimized audio export to avoid memory-limit failures.
+- Fixed Again infinite-loop behavior and Analytics statistics.
+- Fixed Review Statistics timezone and past-due visibility issues.
+- Fixed note editor display, flicker, cursor jumping, and modal load behavior through several iterations.
+- Ensured archived items are filtered from Review and export flows.
+- Prevented Again items from reappearing immediately after refresh.
+- Kept Shadowing Next from auto-recording unexpectedly.
+
+## [0.0.2] - 2026-02-01
+
+### Added
+
+- Added sentence formatting metadata and APIs.
+- Added `InteractiveText` and notation toolbar integration.
+- Enabled read-only notation in Player and Review pages.
+- Added comprehensive Shadowing upgrades: focus trap, regions, editable text, notes, keyboard shortcuts, and restart flow.
+- Added comprehensive study-time tracking.
+
+### Changed
+
+- Clarified Review session progress and total count.
+- Simplified dashboard code after layout stabilization.
+- Updated dev log and finalized phonetic notation documentation.
+
+### Fixed
+
+- Fixed MiniWavePlayer AbortError noise.
+- Fixed Shadowing loop delay, interrupt logic, playback-rate controls, and missing note edit data.
+- Fixed Review item tag loading for editing.
+- Fixed Recharts SSR and dimension/layout warnings.
+- Fixed dashboard layout imbalance.
+
+## [0.0.1] - 2026-01-30
+
+### Added
+
+- Added the initial DeepListener product foundation: upload, transcription, sentence-level practice, AudioPlayer, Shadowing, Vault notes, Review logging, and category/track notes.
+- Added multi-provider STT foundations and network/proxy fixes.
+- Added archive, blind mode, Shadowing v2, and mobile UI optimizations.
+- Added note difficulty levels, error tags, and performance optimizations.
+- Added `isLearnt`, `UNLEARNT`, and the multi-stage Track status workflow.
+- Added variable playback speed support from 0.5x to 2.0x.
+- Added the first analytics/dashboard workflow and streaming/page-load performance work.
+
+### Changed
+
+- Modularized AudioPlayer and ShadowingConsole into hooks and components.
+- Added database indexing and pagination limits for initial performance stabilization.
+- Updated README and changelog after the first feature wave.
+
+### Fixed
+
+- Fixed early Shadowing layout and recording-state leakage issues.
+- Ensured new uploads default to the intended Track status.
+
+## [0.0.0] - 2026-01-24
+
+### Added
+
+- Initial repository commit.

@@ -79,7 +79,7 @@ export default function DiagnosisModal({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          <div className="p-3 bg-gray-50 rounded-md text-sm italic text-gray-600 border">
+          <div className="p-3 bg-muted/60 rounded-md text-sm italic text-muted-foreground border border-border">
             &ldquo;{sentenceText}&rdquo;
           </div>
           
@@ -97,7 +97,7 @@ export default function DiagnosisModal({
           </div>
 
           <div>
-            <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
+            <div className="text-xs font-medium mb-2 text-muted-foreground">Difficulty Rating</div>
             <DifficultySelector value={difficulty} onChange={setDifficulty} />
           </div>
 

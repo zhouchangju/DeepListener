@@ -147,7 +147,7 @@ export function StudyHeatmap({ data }: { data: Record<string, number> }) {
       {/* Main Heatmap Container */}
       <div className="flex-1 w-full overflow-hidden">
         <div className="flex items-start gap-2 overflow-x-auto pb-4 scrollbar-hide">
-          <div className="flex flex-col gap-1 mt-6 sticky left-0 bg-white pr-2 z-10">
+          <div className="flex flex-col gap-1 mt-6 sticky left-0 bg-card pr-2 z-10">
             {dayLabels.map((label, i) => (
               <div key={i} className="h-3 text-[10px] text-slate-400 flex items-center leading-none uppercase font-semibold">
                 {label}
@@ -184,20 +184,20 @@ export function StudyHeatmap({ data }: { data: Record<string, number> }) {
       </div>
 
       {/* Achievement Sidebar */}
-      <div className="flex flex-row lg:flex-col gap-6 lg:border-l lg:border-slate-100 lg:pl-8 py-2 min-w-max">
+      <div className="flex flex-row lg:flex-col gap-6 lg:border-l lg:border-border lg:pl-8 py-2 min-w-max">
         <div className="space-y-1">
-          <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Active Days</div>
-          <div className="text-2xl font-black text-slate-800">{activeDays}</div>
+          <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Active Days</div>
+          <div className="text-2xl font-black text-foreground">{activeDays}</div>
         </div>
         <div className="space-y-1">
           <div className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider flex items-center gap-1">
              Current Streak 🔥
           </div>
-          <div className="text-2xl font-black text-indigo-600">{currentStreak} <span className="text-sm font-normal text-slate-400">days</span></div>
+          <div className="text-2xl font-black text-indigo-600">{currentStreak} <span className="text-sm font-normal text-muted-foreground">days</span></div>
         </div>
         <div className="space-y-1">
           <div className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">Best Streak</div>
-          <div className="text-2xl font-black text-slate-800">{maxStreak}</div>
+          <div className="text-2xl font-black text-foreground">{maxStreak}</div>
         </div>
       </div>
     </div>

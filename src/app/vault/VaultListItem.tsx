@@ -63,12 +63,12 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
 
           <div className="flex-grow">
             <div className="flex justify-between items-start">
-              <p className="text-lg font-medium leading-relaxed text-gray-800">{item.sentence.text}</p>
+              <p className="text-lg font-medium leading-relaxed text-foreground">{item.sentence.text}</p>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-400 hover:text-indigo-600"
+                  className="h-8 w-8 text-muted-foreground hover:text-indigo-600"
                   onClick={() => onEdit(item)}
                 >
                   <Edit3 className="h-4 w-4" />
@@ -76,7 +76,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-400 hover:text-amber-600"
+                  className="h-8 w-8 text-muted-foreground hover:text-amber-600"
                   onClick={() => onToggleArchive(item.id)}
                   title={item.isArchived ? "Unarchive" : "Archive"}
                 >
@@ -85,7 +85,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-400 hover:text-red-600"
+                  className="h-8 w-8 text-muted-foreground hover:text-red-600"
                   onClick={() => onDelete(item.id)}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -94,18 +94,18 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-3 bg-slate-50 px-2 py-1 rounded text-[10px] text-slate-500 border border-slate-100">
+              <div className="flex items-center gap-3 bg-muted/60 px-2 py-1 rounded text-[10px] text-muted-foreground border border-border">
                 <div className="flex items-center gap-1" title="Memory Stability">
                   <Brain className="h-3 w-3 text-indigo-400" />
                   <span>
-                    S: <span className="font-medium text-slate-700">{getIntervalDescription(item.stability ?? 0)}</span>
+                    S: <span className="font-medium text-foreground">{getIntervalDescription(item.stability ?? 0)}</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-1" title="Difficulty Rating">
                   <BarChart3 className="h-3 w-3 text-amber-400" />
                   <span>
                     D:{" "}
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-foreground">
                       {(item.dr ?? 5).toFixed(1)} ({getDifficultyLabel(item.dr ?? 5)})
                     </span>
                   </span>
@@ -113,7 +113,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                 <div className="flex items-center gap-1" title="Retrieval / Lapse">
                   <ArrowUpDown className="h-3 w-3 text-emerald-400" />
                   <span>
-                    R/L: <span className="font-medium text-slate-700">{item.retrieval ?? 0}/{item.lapse ?? 0}</span>
+                    R/L: <span className="font-medium text-foreground">{item.retrieval ?? 0}/{item.lapse ?? 0}</span>
                   </span>
                 </div>
               </div>
@@ -126,23 +126,23 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                 ))}
               </div>
 
-              <span className="text-gray-300">|</span>
+              <span className="text-muted-foreground/50">|</span>
 
               <Link href={`/practice/${item.sentence.track.id}`} className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
                 {item.sentence.track.title}
               </Link>
 
-              <span className="text-gray-300">|</span>
+              <span className="text-muted-foreground/50">|</span>
 
-              <span className="text-xs text-gray-400 flex items-center gap-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 Next: {formatReviewDateLabel(item)}
               </span>
 
               {hasNote && (
                 <>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-muted-foreground/50">|</span>
                   <button
                     className="text-xs text-indigo-600 hover:underline"
                     onClick={handleToggleNote}
@@ -155,7 +155,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
             </div>
 
             {isNoteOpen && noteHtml && (
-              <div className="mt-3 text-sm text-gray-700 bg-white/50 p-3 rounded border-l-2 border-indigo-200 prose prose-sm max-w-none">
+              <div className="mt-3 text-sm text-foreground bg-muted/50 p-3 rounded border-l-2 border-indigo-200 prose prose-sm max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(noteHtml) }} />
               </div>
             )}

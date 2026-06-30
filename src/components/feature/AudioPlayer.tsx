@@ -189,7 +189,7 @@ export default function AudioPlayer({
   };
 
   return (
-    <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+    <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-card text-card-foreground rounded-2xl shadow-xl shadow-slate-200/60 border border-border overflow-hidden dark:shadow-black/30">
       <PlayerControls
         isPlaying={playerControlsState.isPlaying}
         timeRef={timeRef}
@@ -217,11 +217,6 @@ export default function AudioPlayer({
         onShadowing={handleShadowing}
         onCapture={onCapture}
       />
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }

@@ -110,7 +110,7 @@ export default function TrackList({
 
   if (tracks.length === 0) {
     return (
-      <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl text-gray-400">
+      <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl text-muted-foreground">
         No tracks found.
       </div>
     );
@@ -125,7 +125,7 @@ export default function TrackList({
 
           const cardContent = (
             <Card className={`hover:shadow-md transition-shadow relative group ${
-              track.status === "LEARNT" ? "bg-green-50/30" : "hover:bg-slate-50"
+              track.status === "LEARNT" ? "bg-green-50/30 dark:bg-green-500/10" : "hover:bg-slate-50 dark:hover:bg-accent/60"
             } ${selectionMode ? "cursor-default" : "cursor-pointer"} ${
               isSelected ? "ring-2 ring-indigo-500" : ""
             }`}>
@@ -142,7 +142,7 @@ export default function TrackList({
                   <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
                     isSelected
                       ? "bg-indigo-500 border-indigo-500"
-                      : "bg-white border-gray-300 hover:border-indigo-400"
+                      : "bg-background border-border hover:border-indigo-400"
                   }`}>
                     {isSelected && <CheckIcon className="w-4 h-4 text-white" />}
                   </div>
@@ -155,7 +155,7 @@ export default function TrackList({
                         {statusConfig.label}
                      </span>
                     {track.trackType && track.trackType !== "Other" && (
-                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-full font-medium border border-indigo-100">
+                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-full font-medium border border-indigo-100 dark:bg-indigo-500/15 dark:border-indigo-400/25 dark:text-indigo-200">
                           {track.trackType}
                        </span>
                     )}
@@ -171,7 +171,7 @@ export default function TrackList({
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-gray-400 hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 text-muted-foreground hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           disabled={loadingId === track.id}
                         >

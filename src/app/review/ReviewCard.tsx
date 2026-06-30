@@ -41,14 +41,14 @@ export function ReviewCard({
     <Card className="min-h-[300px] flex flex-col justify-between relative">
       <div className="absolute top-4 right-4 z-10">
         <HelpCircle
-          className="h-5 w-5 text-gray-400 cursor-help hover:text-gray-600 transition-colors"
+          className="h-5 w-5 text-muted-foreground cursor-help hover:text-foreground transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             onToggleHelpTooltip();
           }}
         />
         <div
-          className={`absolute top-6 right-0 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 transition-opacity shadow-lg z-50 ${
+          className={`absolute top-6 right-0 w-64 bg-popover text-popover-foreground border border-border text-xs rounded-lg p-3 transition-opacity shadow-lg z-50 ${
             showHelpTooltip ? "opacity-100" : "opacity-0 pointer-events-none"
           } hover:opacity-100 md:group-hover:opacity-100 md:pointer-events-auto`}
           onClick={(e) => e.stopPropagation()}
@@ -56,13 +56,13 @@ export function ReviewCard({
           <div className="font-semibold mb-2">快捷键指南：</div>
           <div className="space-y-1">
             <div>
-              • 点击播放按钮或按 <kbd className="bg-gray-700 px-1 rounded">R</kbd> 重播音频
+              • 点击播放按钮或按 <kbd className="bg-muted px-1 rounded">R</kbd> 重播音频
             </div>
             <div>
-              • 按 <kbd className="bg-gray-700 px-1 rounded">Space</kbd> 显示/隐藏答案
+              • 按 <kbd className="bg-muted px-1 rounded">Space</kbd> 显示/隐藏答案
             </div>
             <div>
-              • 按 <kbd className="bg-gray-700 px-1 rounded">1-4</kbd> 评分（Again/Hard/Good/Easy）
+              • 按 <kbd className="bg-muted px-1 rounded">1-4</kbd> 评分（Again/Hard/Good/Easy）
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function ReviewCard({
                 text={current.sentence.text}
                 formatting={current.sentence.formatting}
                 mode="read"
-                className="text-lg font-medium leading-relaxed text-gray-800 text-center justify-center"
+                className="text-lg font-medium leading-relaxed text-foreground text-center justify-center"
               />
             </div>
             <div className="flex flex-wrap justify-center gap-2">
@@ -91,8 +91,8 @@ export function ReviewCard({
               ))}
             </div>
             {current.userNote && (
-              <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-200">
-                <div className="text-xs font-semibold text-gray-500 mb-1">NOTE:</div>
+              <div className="text-sm text-foreground bg-muted/60 p-3 rounded border border-border">
+                <div className="text-xs font-semibold text-muted-foreground mb-1">NOTE:</div>
                 <div
                   className="prose prose-sm max-w-none whitespace-pre-wrap"
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(current.userNote) }}
@@ -103,7 +103,7 @@ export function ReviewCard({
         )}
       </CardContent>
 
-      <CardFooter className="bg-gray-50/50 p-6 flex flex-col gap-5">
+      <CardFooter className="bg-muted/50 p-6 flex flex-col gap-5">
         <Button className="w-full h-12 text-base" onClick={onToggleAnswer}>
           <Eye className="mr-2 h-5 w-5" /> {showAnswer ? "Hide" : "Reveal"} Answer (Space)
         </Button>
@@ -116,7 +116,7 @@ export function ReviewCard({
           >
             <RotateCcw className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">Again</span>
-            <span className="text-[10px] text-gray-400">1</span>
+            <span className="text-[10px] text-muted-foreground">1</span>
           </Button>
           <Button
             variant="outline"
@@ -125,7 +125,7 @@ export function ReviewCard({
           >
             <TrendingDown className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">Hard</span>
-            <span className="text-[10px] text-gray-400">2</span>
+            <span className="text-[10px] text-muted-foreground">2</span>
           </Button>
           <Button className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3" onClick={() => onGrade("good")}>
             <Check className="h-4 w-4 mb-1" />
@@ -139,7 +139,7 @@ export function ReviewCard({
           >
             <TrendingUp className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">Easy</span>
-            <span className="text-[10px] text-gray-400">4</span>
+            <span className="text-[10px] text-muted-foreground">4</span>
           </Button>
         </div>
       </CardFooter>

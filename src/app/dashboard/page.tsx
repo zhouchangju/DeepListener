@@ -89,18 +89,18 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
 
       <div>
         <h2 className="text-xl font-bold mb-4">Daily Study Log</h2>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
             {dailyStats.length > 0 ? (
                 <div className="divide-y divide-slate-100">
                     {dailyStats.map(([date, data]) => (
-                        <div key={date} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50">
+                        <div key={date} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent">
                             <div className="flex items-center gap-4">
-                                <div className="text-sm font-bold text-slate-700 w-24">{date}</div>
+                                <div className="text-sm font-bold text-foreground w-24">{date}</div>
                                 <div className="text-lg font-bold text-indigo-600">{formatDuration(data.total)}</div>
                             </div>
-                            <div className="flex gap-3 text-xs text-slate-500">
+                            <div className="flex gap-3 text-xs text-muted-foreground">
                                 {data.types['LISTENING'] && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded">👂 {formatDuration(data.types['LISTENING'])}</span>
+                                    <span className="bg-muted px-2 py-1 rounded">👂 {formatDuration(data.types['LISTENING'])}</span>
                                 )}
                                 {data.types['SHADOWING'] && (
                                     <span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded">🎤 {formatDuration(data.types['SHADOWING'])}</span>
@@ -113,7 +113,7 @@ async function DashboardContent({ countdownDays }: { countdownDays: number }) {
                     ))}
                 </div>
             ) : (
-                <div className="p-8 text-center text-slate-400">No study sessions recorded yet. Start practicing!</div>
+                <div className="p-8 text-center text-muted-foreground">No study sessions recorded yet. Start practicing!</div>
             )}
         </div>
       </div>

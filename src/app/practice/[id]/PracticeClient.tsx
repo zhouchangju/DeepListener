@@ -155,7 +155,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         <div className="flex items-center gap-2">
            <h1 className="text-xl font-bold truncate max-w-[300px] md:max-w-md" title={track.title}>{track.title}</h1>
            <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
-             <Edit3 className="h-4 w-4 text-gray-500" />
+             <Edit3 className="h-4 w-4 text-muted-foreground" />
            </Button>
         </div>
 
@@ -171,7 +171,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
             <Button
               variant="secondary"
-              className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+              className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
               disabled={!fullAudioBuffer} // 只有加载完了才能进跟读
               onClick={() => { setShadowIndex(0); setShadowingMode(true); }}
             >

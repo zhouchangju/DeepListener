@@ -244,8 +244,8 @@ export default function ReviewClient({
 
   if (!current) {
     return (
-      <div className="text-center py-20 bg-white rounded-xl border border-dashed">
-        <p className="text-gray-500">No sentences due for review. Great job!</p>
+      <div className="text-center py-20 bg-card rounded-xl border border-dashed">
+        <p className="text-muted-foreground">No sentences due for review. Great job!</p>
       </div>
     );
   }
@@ -254,21 +254,21 @@ export default function ReviewClient({
     <div className="max-w-xl mx-auto">
       <div className="mb-4 flex flex-col gap-2">
         {/* Progress Bar - Simple & Clear */}
-        <div className="flex items-center justify-between px-3 py-2 bg-white border border-gray-100 rounded-lg">
+        <div className="flex items-center justify-between px-3 py-2 bg-card border border-border rounded-lg">
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-500">Reviewed</span>
+              <span className="text-muted-foreground">Reviewed</span>
               <span className="font-bold text-green-600">{reviewed}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-gray-500">In Queue</span>
+              <span className="text-muted-foreground">In Queue</span>
               <span className="font-bold text-blue-600">{remaining}</span>
             </div>
           </div>
 
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             <span>播放: {current.stats?.totalListens || 0}</span>
-            <span className="text-slate-300 mx-1">|</span>
+            <span className="text-muted-foreground/50 mx-1">|</span>
             <span>日均: {current.stats?.averageDailyListens?.toFixed(1) || "0.0"}</span>
           </div>
         </div>
@@ -280,10 +280,10 @@ export default function ReviewClient({
           </div>
           {showAnswer && (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={handleArchive}>
+              <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={handleArchive}>
                 <Archive className="h-3.5 w-3.5 mr-1.5" /> 归档
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-gray-400" onClick={() => setIsEditing(true)}>
+              <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={() => setIsEditing(true)}>
                 <Edit3 className="h-3.5 w-3.5 mr-1.5" /> 笔记
               </Button>
             </div>

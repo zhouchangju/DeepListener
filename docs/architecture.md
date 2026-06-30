@@ -1,6 +1,6 @@
 # DeepListener Current Architecture
 
-Last updated: 2026-06-06
+Last updated: 2026-06-30
 
 This document describes the current codebase implementation. For product behavior, see [requirement.md](./requirement.md). For day-to-day operations, see [maintenance.md](./maintenance.md).
 
@@ -15,6 +15,7 @@ flowchart LR
     PracticeUI["Practice Workbench<br/>AudioPlayer + ShadowingConsole"]
     VaultUI["Vault UI<br/>filters + pagination + play all"]
     DashboardUI["Dashboard UI<br/>tabs + charts"]
+    Theme["ThemeProvider + ThemeToggle<br/>system default + manual override"]
     TimeTracking["TimeTrackingProvider<br/>10s heartbeat"]
   end
 
@@ -37,6 +38,10 @@ flowchart LR
   end
 
   User --> Nav
+  Theme --> Nav
+  Theme --> PracticeUI
+  Theme --> VaultUI
+  Theme --> DashboardUI
   Nav --> Pages
   Pages --> PracticeUI
   Pages --> VaultUI
@@ -67,7 +72,21 @@ flowchart LR
 | `/dashboard` | Analytics tabs, progress cards, study log, retention and workload charts. | `src/app/dashboard/**` |
 | `/dashboard/symphony` | Local Symphony runtime status dashboard. | `src/app/dashboard/symphony/page.tsx` |
 
-The root layout provides the sticky navigation and wraps all pages in `TimeTrackingProvider`.
+The root layout provides the sticky navigation and wraps all pages in `ThemeProvider` and `TimeTrackingProvider`.
+
+## Appearance And Theme System
+
+DeepListener supports both light and dark appearance modes.
+
+Current implementation:
+
+- `src/components/theme/ThemeProvider.tsx` wraps `next-themes` with `attribute="class"`, `defaultTheme="system"`, and `enableSystem`.
+- `src/components/theme/ThemeToggle.tsx` exposes the top-right icon button in the sticky nav. It toggles between the resolved light and dark modes after client mount to avoid hydration mismatch.
+- `src/app/globals.css` defines semantic light/dark tokens for background, foreground, cards, popovers, borders, inputs, accents, primary actions, charts, and sidebar tokens.
+- Legacy Tailwind utility bridges under `.dark` map existing `bg-white`, `bg-gray-*`, `text-gray-*`, border, input, prose, and Recharts surfaces into dark-compatible colors while older components are being normalized.
+- The primary app routes (`/library`, `/vault`, `/dashboard`, `/review`, `/practice/[id]`) should rely on semantic tokens such as `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, and shared UI primitives wherever possible.
+
+Theme changes are UI-only. They must not touch Prisma data, uploaded audio, transcription providers, review scheduling, or backup sync behavior.
 
 ## API Surface
 

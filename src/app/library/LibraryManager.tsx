@@ -150,13 +150,13 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-slate-100 p-1 rounded-lg inline-flex">
+          <div className="bg-muted p-1 rounded-lg inline-flex">
             <button
               onClick={() => setView("tracks")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 view === "tracks"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-background text-indigo-600 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <LayoutGrid className="w-4 h-4" />
@@ -166,8 +166,8 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
               onClick={() => setView("notes")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 view === "notes"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-background text-indigo-600 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <StickyNote className="w-4 h-4" />
@@ -202,13 +202,13 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Filter className="w-4 h-4" />
                 <span className="hidden sm:inline">Filter by:</span>
             </div>
             
             <select 
-                className="text-sm border rounded-md px-2 py-1.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-indigo-500/20"
                 value={filterType || ""}
                 onChange={(e) => setFilterType(e.target.value || null)}
             >
@@ -217,7 +217,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
             </select>
 
             <select 
-                className="text-sm border rounded-md px-2 py-1.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-indigo-500/20"
                 value={filterTopic || ""}
                 onChange={(e) => setFilterTopic(e.target.value || null)}
             >
@@ -226,14 +226,14 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
             </select>
 
             {/* Date Range Filters */}
-            <div className="flex items-center gap-1.5 bg-white border rounded-md px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-background border border-input rounded-md px-2 py-1">
                 <input
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
                     className="text-xs bg-transparent border-none outline-none focus:ring-0 w-[110px]"
                 />
-                <span className="text-gray-300">~</span>
+                <span className="text-muted-foreground">~</span>
                 <input
                     type="date"
                     value={dateTo}
@@ -247,7 +247,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
                     variant="ghost" 
                     size="sm" 
                     onClick={clearFilters}
-                    className="h-8 px-2 text-slate-500 hover:text-red-600"
+                    className="h-8 px-2 text-muted-foreground hover:text-red-600"
                 >
                     <X className="w-4 h-4 mr-1" /> Clear
                 </Button>
@@ -275,7 +275,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
         {/* Selection Controls */}
         {selectionMode && view === "tracks" && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-muted-foreground">
               已选 {selectedTrackIds.size} 项
             </span>
             <Button

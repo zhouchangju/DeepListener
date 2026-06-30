@@ -66,7 +66,7 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
           <div className="grid gap-2">
             <label className="text-sm font-medium">Title</label>
             <input
-              className="w-full p-2.5 text-sm border rounded-md outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2.5 text-sm border border-input bg-background rounded-md outline-none focus:ring-2 focus:ring-indigo-500"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter title..."
@@ -83,7 +83,7 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
                         className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                             trackType === cat 
                                 ? "bg-indigo-600 text-white border-indigo-600" 
-                                : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                                : "bg-background text-muted-foreground border-border hover:border-indigo-300 hover:text-foreground"
                         }`}
                     >
                         {cat}
@@ -102,7 +102,7 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
                         className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                             trackTopic === topic 
                                 ? "bg-emerald-600 text-white border-emerald-600" 
-                                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+                                : "bg-background text-muted-foreground border-border hover:border-emerald-300 hover:text-foreground"
                         }`}
                     >
                         {topic}

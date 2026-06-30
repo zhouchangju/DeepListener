@@ -142,18 +142,18 @@ export default function BatchUploadButton() {
       {/* Progress Display */}
       {progress.length > 0 && (
         <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
-          <div className="text-sm font-medium text-gray-700 sticky top-0 bg-white py-2 border-b">
+          <div className="text-sm font-medium text-foreground sticky top-0 bg-background py-2 border-b border-border">
             Upload Progress ({progress.filter((p) => p.status === "success").length} /{" "}
             {progress.length})
           </div>
           {progress.map((item, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200"
+              className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
             >
-              <FileAudio className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <FileAudio className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="flex-grow min-w-0">
-                <div className="text-sm font-medium text-gray-700 truncate">
+                <div className="text-sm font-medium text-foreground truncate">
                   {item.fileName}
                 </div>
                 {item.error && (
@@ -162,7 +162,7 @@ export default function BatchUploadButton() {
               </div>
               <div className="flex-shrink-0">
                 {item.status === "pending" && (
-                  <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+                  <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
                 )}
                 {item.status === "uploading" && (
                   <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />

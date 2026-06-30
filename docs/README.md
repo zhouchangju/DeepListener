@@ -7,6 +7,7 @@ This map is the human-friendly entry point for project documentation. It separat
 | Need | Read |
 | --- | --- |
 | Run the app, configure providers, or understand the user workflow | [Project README](../README.md) |
+| Check release history and long-term iteration milestones | [Changelog](../CHANGELOG.md) |
 | Understand current routes, data flow, API surfaces, and safety boundaries | [Current Architecture](./architecture.md) |
 | Understand implemented product behavior and module boundaries | [Product Requirements](./requirement.md) |
 | Maintain transcription, uploads, exports, database files, or backup sync | [Maintenance Manual](./maintenance.md) |
@@ -21,6 +22,7 @@ This map is the human-friendly entry point for project documentation. It separat
 - [maintenance.md](./maintenance.md): operational notes for transcription providers, SQLite, uploads, exports, and backups.
 - [review-system.md](./review-system.md): FSRS scheduling, Again/Hard short-interval relearning, review queue semantics, and review UI behavior.
 - [symphony.md](./symphony.md): local Symphony runner/orchestrator usage and boundaries.
+- [../CHANGELOG.md](../CHANGELOG.md): versioned history reconstructed from git commits; update it when user-visible behavior, runtime contracts, or governance process changes.
 
 ## Planning And Review Archives
 

@@ -128,10 +128,10 @@ export default function ExportButtons({
   return (
     <div className="mb-6 space-y-3">
       {/* Filter row */}
-      <div className="flex flex-wrap gap-4 p-3 bg-slate-50 border rounded-lg">
+      <div className="flex flex-wrap gap-4 p-3 bg-muted/60 border border-border rounded-lg">
         {/* Difficulty filter */}
         <div>
-          <p className="text-xs text-gray-500 mb-1.5 font-medium">Difficulty</p>
+          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Difficulty</p>
           <div className="flex gap-1.5">
             {[
               { value: 'NORMAL', label: 'Normal' },
@@ -144,7 +144,7 @@ export default function ExportButtons({
                 className={`px-2.5 py-1 text-xs rounded-full border transition-all ${
                   selectedDifficulties.includes(value)
                     ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    : 'bg-background border-border text-muted-foreground hover:border-gray-300 hover:text-foreground'
                 }`}
               >
                 {label}
@@ -156,7 +156,7 @@ export default function ExportButtons({
         {/* Track filter */}
         {availableTracks.length > 0 && (
           <div className="flex-grow">
-            <p className="text-xs text-gray-500 mb-1.5 font-medium">Tracks</p>
+            <p className="text-xs text-muted-foreground mb-1.5 font-medium">Tracks</p>
             <div className="flex flex-wrap gap-1.5">
               {availableTracks.map(track => (
                 <button
@@ -165,7 +165,7 @@ export default function ExportButtons({
                   className={`px-2.5 py-1 text-xs rounded-full border transition-all max-w-[160px] truncate ${
                     selectedTrackIds.includes(track.id)
                       ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                      : 'bg-background border-border text-muted-foreground hover:border-gray-300 hover:text-foreground'
                   }`}
                   title={track.title}
                 >
@@ -178,25 +178,25 @@ export default function ExportButtons({
 
         {/* Date range filter */}
         <div>
-          <p className="text-xs text-gray-500 mb-1.5 font-medium">Date Range</p>
+          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Date Range</p>
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <span className="text-gray-400">~</span>
+            <span className="text-muted-foreground">~</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="px-2 py-1 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {(dateFrom || dateTo) && (
               <button
                 onClick={clearDateFilter}
-                className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                className="text-xs text-muted-foreground hover:text-red-600 transition-colors"
                 title="Clear date filter"
               >
                 ✕
@@ -210,7 +210,7 @@ export default function ExportButtons({
           <div className="flex items-end">
             <button
               onClick={clearAllFilters}
-              className="px-3 py-1 text-xs text-gray-600 hover:text-red-600 border border-gray-200 rounded-md hover:border-red-200 transition-all"
+              className="px-3 py-1 text-xs text-muted-foreground hover:text-red-600 border border-border rounded-md hover:border-red-200 transition-all"
             >
               Clear All
             </button>

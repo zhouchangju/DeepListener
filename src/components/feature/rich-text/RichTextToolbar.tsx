@@ -47,12 +47,12 @@ export function RichTextToolbar({
   const normalSizeClassName = isComfortable ? "h-8 text-xs font-normal" : "h-7 text-xs font-normal px-2";
   const largeSizeClassName = isComfortable ? "h-8 text-lg font-bold" : "h-7 text-base font-bold px-2";
   const colorButtonClassName = isComfortable
-    ? "w-5 h-5 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm"
-    : "w-4 h-4 rounded-full border border-gray-200 hover:scale-110 transition-transform shadow-sm";
+    ? "w-5 h-5 rounded-full border border-border hover:scale-110 transition-transform shadow-sm"
+    : "w-4 h-4 rounded-full border border-border hover:scale-110 transition-transform shadow-sm";
 
   return (
-    <div className="bg-slate-50 border-b p-2 flex gap-2 items-center flex-wrap">
-      <span className="text-xs font-semibold text-slate-500 uppercase mr-2 select-none">{label}</span>
+    <div className="bg-muted/60 border-b border-border p-2 flex gap-2 items-center flex-wrap">
+      <span className="text-xs font-semibold text-muted-foreground uppercase mr-2 select-none">{label}</span>
 
       <Button
         size="icon"
@@ -64,7 +64,7 @@ export function RichTextToolbar({
         <Bold className={iconClassName} />
       </Button>
 
-      <div className="h-4 w-px bg-slate-300 mx-1" />
+      <div className="h-4 w-px bg-border mx-1" />
 
       <div className="flex gap-1 items-center">
         <Button
@@ -87,7 +87,7 @@ export function RichTextToolbar({
         </Button>
       </div>
 
-      <div className="h-4 w-px bg-slate-300 mx-1" />
+      <div className="h-4 w-px bg-border mx-1" />
 
       <div className="flex gap-1 items-center">
         {colors.map(({ c, label: colorLabel }) => (
@@ -103,7 +103,7 @@ export function RichTextToolbar({
 
       {onCopy && (
         <>
-          <div className="h-4 w-px bg-slate-300 mx-1" />
+          <div className="h-4 w-px bg-border mx-1" />
           <Button size="icon" variant="ghost" className={iconButtonClassName} onClick={onCopy} title="Copy text">
             <Copy className={iconClassName} />
           </Button>
@@ -111,7 +111,7 @@ export function RichTextToolbar({
       )}
 
       {showSavingStatus && (
-        <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {isSaving ? <span className="animate-pulse">Saving...</span> : <span>Saved</span>}
         </div>
       )}

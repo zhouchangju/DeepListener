@@ -55,7 +55,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   };
 
   return (
-    <div className="mt-8 border rounded-lg shadow-sm bg-white overflow-hidden flex flex-col h-[400px]">
+    <div className="mt-8 border border-border rounded-lg shadow-sm bg-card overflow-hidden flex flex-col h-[400px]">
       <RichTextToolbar
         label="Notes"
         variant="comfortable"
@@ -68,7 +68,7 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
 
       <div
         ref={editorRef}
-        className="flex-1 p-4 outline-none prose prose-sm max-w-none overflow-y-auto"
+        className="flex-1 p-4 outline-none prose prose-sm max-w-none overflow-y-auto text-foreground"
         contentEditable
         onInput={handleInput}
         onBlur={saveNote}

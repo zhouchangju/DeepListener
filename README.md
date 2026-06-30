@@ -30,6 +30,9 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 - **智能复习 (Vault)**：
     - **间隔复习**：基于 FSRS-4.5，并对 `Again` / `Hard` 做 5 分钟 / 15 分钟短间隔重学。
     - **导出能力**：支持导出全部、到期、单个 Track 或过滤后的句子音频，也支持按标签 / 难度 / Track / 日期导出笔记。
+- **界面主题**：
+    - **系统跟随**：默认跟随操作系统浅色 / 深色偏好。
+    - **手动切换**：右上角日夜图标可在白天和黑夜风格之间切换，并保留用户选择。
 
 ## 🚀 快速开始
 
@@ -114,6 +117,7 @@ npm run build
 - `/src/app`: Next.js App Router 页面与 API。当前页面包括 `library`、`practice/[id]`、`review`、`vault`、`dashboard` 和 `dashboard/symphony`；根路径会重定向到 `/library`。
 - `/src/app/api`: 上传、导出、Vault、Review、Study Time、Track、Sentence、Symphony state 等 route handlers。
 - `/src/components/feature`: 精听、Shadowing、复习、富文本笔记、波形播放器等业务组件。
+- `/src/components/theme`: 全局主题 Provider 和右上角日夜切换按钮。
 - `/src/components/ui`: Button、Card、Dialog、Dropdown、Progress、Skeleton 等基础 UI primitives。
 - `/src/lib`: Prisma、API schema/response helper、上传安全策略、音频工具、FSRS、文本/HTML 工具和转录 provider。
 - `/src/lib/transcription`: `openai` / `deepgram` / `google` 多 provider 转录实现。
@@ -151,6 +155,7 @@ npm run build
 ## 📚 文档资源
 
 - [文档导航地图](./docs/README.md) - 先看这里，区分当前事实、维护手册、历史计划和审计资料
+- [更新日志](./CHANGELOG.md) - 长期迭代版本记录，按 commit 历史归档主要阶段
 - [当前架构](./docs/architecture.md) - 当前 routes、API、数据模型、上传/复习流和数据安全边界
 - [产品需求文档 (PRD)](./docs/requirement.md) - 已实现产品行为与模块边界
 - [维护手册](./docs/maintenance.md) - Provider、数据库、上传、导出、备份和常见问题

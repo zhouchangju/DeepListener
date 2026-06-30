@@ -39,7 +39,7 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
   };
 
   return (
-    <div className="border rounded-lg shadow-sm bg-white overflow-hidden">
+    <div className="border border-border rounded-lg shadow-sm bg-card overflow-hidden">
       <RichTextToolbar
         label="Note"
         isSaving={isSaving}
@@ -50,7 +50,7 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
 
       <div
         ref={editorRef}
-        className="p-3 outline-none prose prose-sm max-w-none min-h-[100px]"
+        className="p-3 outline-none prose prose-sm max-w-none min-h-[100px] text-foreground"
         contentEditable
         onInput={handleInput}
         onBlur={saveNote}

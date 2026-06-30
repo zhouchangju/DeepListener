@@ -69,13 +69,13 @@ export default function DictationPanel({
 
   return (
     <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">
+      <div className="rounded-xl border border-border bg-muted/60 p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
             <Volume2 className="h-4 w-4 text-indigo-500" />
             <span>{isListening ? "Listening..." : "Dictation"}</span>
           </div>
-          <div className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
+          <div className="rounded-full bg-card px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
             Replays: {replayCount}
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function DictationPanel({
               onChange={(event) => onAnswerChange(event.target.value)}
               disabled={!hasPlayedOnce || !isAudioReady}
               placeholder={isAudioReady ? "Write what you heard..." : "Preparing audio..."}
-              className="min-h-[150px] resize-none border-slate-200 bg-white text-lg leading-relaxed text-slate-800 placeholder:text-slate-400"
+              className="min-h-[150px] resize-none border-input bg-background text-lg leading-relaxed text-foreground placeholder:text-muted-foreground"
             />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -131,7 +131,7 @@ export default function DictationPanel({
               >
                 {result.isExactAfterNormalization ? "Perfect" : `${result.accuracy}%`}
               </div>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted-foreground">
                 Missing {result.missingWords.length} | Extra {result.extraWords.length}
               </span>
             </div>
@@ -146,7 +146,7 @@ export default function DictationPanel({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="absolute right-2 top-2 h-7 w-7 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
+                      className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600"
                       onClick={handleCopyOriginal}
                       title="Copy original text"
                     >
@@ -158,8 +158,8 @@ export default function DictationPanel({
               <ResultBlock label="Your Answer" text={answer} />
             </div>
 
-            <div className="rounded-lg bg-white p-4 ring-1 ring-slate-200">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="rounded-lg bg-card p-4 ring-1 ring-border">
+              <div className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Word Diff
               </div>
               <div className="flex flex-wrap gap-2 text-sm leading-7">
@@ -212,11 +212,11 @@ function ResultBlock({
   RightAction?: ReactNode;
 }) {
   return (
-    <div className={`relative rounded-lg bg-white p-3 ring-1 ring-slate-200 ${RightAction ? "pr-12" : ""}`}>
-      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+    <div className={`relative rounded-lg bg-card p-3 ring-1 ring-border ${RightAction ? "pr-12" : ""}`}>
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className="text-sm leading-relaxed text-slate-700">{text}</div>
+      <div className="text-sm leading-relaxed text-foreground">{text}</div>
       {RightAction}
     </div>
   );

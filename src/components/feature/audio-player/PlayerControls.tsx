@@ -29,7 +29,7 @@ export const PlayerControls = memo(function PlayerControls({
   onToggleDebug,
 }: PlayerControlsProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 bg-slate-50 border-b border-slate-200 gap-4">
+    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 bg-muted/60 border-b border-border gap-4">
       <div className="flex items-center gap-4 w-full sm:w-auto">
         <Button
           variant="default"
@@ -40,12 +40,12 @@ export const PlayerControls = memo(function PlayerControls({
           {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
         </Button>
         <div className="flex flex-col overflow-hidden" onClick={onToggleDebug}>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-help">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider cursor-help">
             Position
           </span>
-          <span className="text-xl sm:text-2xl font-mono text-slate-700 truncate">
+          <span className="text-xl sm:text-2xl font-mono text-foreground truncate">
             <span ref={timeRef}>00:00</span>
-            <span className="text-slate-300 text-lg">
+            <span className="text-muted-foreground text-lg">
               {" "}
               / {new Date(duration * 1000).toISOString().substring(14, 19)}
             </span>
@@ -58,7 +58,7 @@ export const PlayerControls = memo(function PlayerControls({
           variant={loopMode ? "default" : "outline"}
           size="sm"
           className={`h-9 rounded-full px-4 ${
-            loopMode ? "bg-indigo-600 border-transparent text-white" : "text-slate-600"
+            loopMode ? "bg-indigo-600 border-transparent text-white hover:bg-indigo-700" : "text-muted-foreground"
           }`}
           onClick={onToggleLoop}
         >
@@ -69,7 +69,7 @@ export const PlayerControls = memo(function PlayerControls({
           variant="ghost"
           size="sm"
           onClick={onClearRegions}
-          className="h-9 rounded-full text-slate-400 hover:text-red-500"
+          className="h-9 rounded-full text-muted-foreground hover:text-red-500"
         >
           <Eraser className="h-4 w-4 mr-2" /> Clear
         </Button>

@@ -20,13 +20,13 @@ export const NotationToolbar = ({ activeTool, onToolChange }: NotationToolbarPro
   ];
 
   return (
-    <div className="flex items-center gap-2 p-2 bg-white rounded-full border shadow-sm self-center">
+    <div className="flex items-center gap-2 p-2 bg-card rounded-full border border-border shadow-sm self-center">
       <Button
         variant="ghost"
         size="sm"
         className={cn(
           "rounded-full px-3 h-8 text-xs gap-1.5",
-          activeTool === null && "bg-slate-100 text-slate-900 shadow-inner"
+          activeTool === null && "bg-muted text-foreground shadow-inner"
         )}
         onClick={() => onToolChange(null)}
       >
@@ -34,7 +34,7 @@ export const NotationToolbar = ({ activeTool, onToolChange }: NotationToolbarPro
         Select
       </Button>
       
-      <div className="w-px h-4 bg-slate-200 mx-1" />
+      <div className="w-px h-4 bg-border mx-1" />
 
       {tools.map((tool) => {
         const isActive = activeTool === tool.type;
@@ -47,7 +47,7 @@ export const NotationToolbar = ({ activeTool, onToolChange }: NotationToolbarPro
             size="sm"
             className={cn(
               "rounded-full px-3 h-8 text-xs gap-1.5 transition-all",
-              isActive ? tool.color + " shadow-sm" : "text-slate-500 hover:text-slate-900"
+              isActive ? tool.color + " shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => onToolChange(tool.type)}
           >

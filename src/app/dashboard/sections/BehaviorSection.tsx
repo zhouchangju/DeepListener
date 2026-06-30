@@ -13,7 +13,7 @@ interface BehaviorSectionProps {
 export function BehaviorSection({ heatmapData, radarData, tagData }: BehaviorSectionProps) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
+      <h2 className="text-2xl font-bold flex items-center gap-2 text-foreground">
         <Trophy className="w-6 h-6 text-amber-500" /> Behavior & Content
       </h2>
 
@@ -48,7 +48,7 @@ export function BehaviorSection({ heatmapData, radarData, tagData }: BehaviorSec
             {tagData.length > 0 ? (
               <ErrorTagChart data={tagData} />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                 No error tags logged yet.
               </div>
             )}

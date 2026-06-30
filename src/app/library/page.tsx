@@ -38,9 +38,9 @@ export default async function LibraryPage({
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
             {showArchived ? "Archived Tracks" : "Your Library"}
-            {showArchived && <span className="text-xs md:text-sm font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded">Archive</span>}
+            {showArchived && <span className="text-xs md:text-sm font-normal text-muted-foreground bg-muted px-2 py-1 rounded">Archive</span>}
           </h1>
-          <p className="text-sm md:text-base text-gray-500 mt-1">
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             {showArchived ? "Tracks hidden from main view." : "Upload audio files to start practicing."}
           </p>
         </div>

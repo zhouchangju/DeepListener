@@ -133,9 +133,9 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
         {item && (
           <div className="grid gap-4 py-4">
             {/* Original Text Section */}
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <div className="bg-muted/60 border border-border rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Original Text
                 </div>
                 <Button
@@ -157,10 +157,10 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
                   )}
                 </Button>
               </div>
-              <p className="text-sm text-slate-800 leading-relaxed">
+              <p className="text-sm text-foreground leading-relaxed">
                 {item.sentence?.text}
               </p>
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-muted-foreground">
                 From: {item.sentence?.track?.title || "Unknown Track"}
               </div>
             </div>
@@ -180,13 +180,13 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
             </div>
 
             <div>
-              <div className="text-xs font-medium mb-2 text-slate-500">Difficulty Rating</div>
+              <div className="text-xs font-medium mb-2 text-muted-foreground">Difficulty Rating</div>
               <DifficultySelector value={difficulty} onChange={setDifficulty} />
             </div>
 
             <div className="text-sm font-medium mt-2">Personal Note</div>
             {noteLoading ? (
-              <div className="rounded-lg border bg-slate-50 p-3 text-sm text-slate-500">
+              <div className="rounded-lg border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
                 Loading note...
               </div>
             ) : (

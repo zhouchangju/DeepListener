@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD): DeepListener
 
-**Version:** 4.1 (Updated 2026-06-06)
+**Version:** 4.2 (Updated 2026-06-30)
 **Status:** This document is aligned to the current codebase implementation, not an aspirational roadmap.
 **Tech Stack:** Next.js App Router, React 19, Prisma + SQLite, Tailwind CSS, WaveSurfer.js, FFmpeg, Deepgram/OpenAI/Gemini, Symphony tooling
 
@@ -18,6 +18,7 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - 在“没听懂”的瞬间完成归因记录，而不是事后补笔记。
 - 把难句沉淀到 Vault，并进入可操作的 SRS 复习流。
 - 把听、跟读、复习时间记录成可量化的数据，用 dashboard 做回看。
+- 让长时间训练界面支持系统跟随的浅色 / 深色主题，降低夜间使用负担。
 - 为开发侧提供 Symphony 自动化任务协调能力。
 
 ## 3. 当前已实现模块 (Implemented Modules)
@@ -281,7 +282,28 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 - 旧版 PRD 完全没有覆盖 dashboard 和 study-time 统计模块，这已经与当前实现严重不一致。
 
-### 模块 I: Symphony 开发协调器
+### 模块 I: 全局主题与界面外观
+
+当前实现入口：
+
+- `src/components/theme/ThemeProvider.tsx`
+- `src/components/theme/ThemeToggle.tsx`
+- `src/app/layout.tsx`
+- `src/app/globals.css`
+
+当前已实现能力：
+
+- 默认跟随操作系统浅色 / 深色偏好
+- 右上角导航栏提供图标按钮，在白天和黑夜风格之间手动切换
+- 用户手动选择会在刷新后保持
+- 顶层布局、主页面背景、卡片、弹窗、按钮、表单、图表 tooltip、富文本和常见旧版浅色 utility 在暗色下保持可读
+- 暗色模式覆盖 Library、Vault、Dashboard、Review、Practice、AudioPlayer、Shadowing、笔记编辑器和常用弹窗
+
+说明：
+
+- 当前白色风格就是既有界面默认风格；暗色风格通过主题变量和兼容桥补齐，不改变训练流程或数据行为。
+
+### 模块 J: Symphony 开发协调器
 
 当前实现入口：
 
@@ -388,8 +410,9 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - **上传安全性**：`src/lib/upload-policy.ts` 限制音频类型、250 MB 大小上限、清洗文件名，并保证写入路径位于 `public/uploads/`。
 - **低延迟 Shadowing**：先解码整轨音频，再按句子切 `AudioBuffer`。
 - **波形交互**：通过自定义 hook 统一键盘、滚轮、右键拖拽和平移逻辑。
-- **导出安全性**：导出路由对 `audioUrl` 做 path traversal 校验，并跳过不存在的文件。
+- **导出安全性**：导出路由对 `audioUrl` 做 path traversal 校验；如果被选中的源音频缺失或非法，返回错误而不是静默生成不完整文件。
 - **时间统计**：只在真实活跃或音频播放时累计学习时间，避免纯挂机污染统计。
+- **主题系统**：使用 `next-themes` 的 class 模式，默认跟随系统偏好；页面和组件优先使用 semantic token，避免新增硬编码浅色背景。
 - **React 19 兼容性**：当前关键交互模块已按最新 lint 规则整理，避免 effect 中同步级联 setState 和不稳定依赖。
 
 ## 6. 与旧版 PRD 的主要偏差
@@ -402,8 +425,9 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - 没写 Library 的多选和批量播放能力
 - 把数据库设计写成过时的极简示意
 - 把 Deepgram 写成固定默认，而当前代码是环境变量驱动、默认回退 OpenAI
+- 完全遗漏全局主题系统和黑夜模式
 - 完全遗漏 Symphony 模块
 
 ---
 
-*Last Updated: 2026-06-06*
+*Last Updated: 2026-06-30*

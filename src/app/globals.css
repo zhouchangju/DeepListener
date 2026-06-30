@@ -46,6 +46,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -81,24 +82,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --background: oklch(0.15 0.025 264);
+  --foreground: oklch(0.96 0.018 250);
+  --card: oklch(0.2 0.028 264);
+  --card-foreground: oklch(0.96 0.018 250);
+  --popover: oklch(0.18 0.03 264);
+  --popover-foreground: oklch(0.96 0.018 250);
+  --primary: oklch(0.56 0.18 264);
+  --primary-foreground: oklch(0.98 0.012 255);
+  --secondary: oklch(0.27 0.035 264);
+  --secondary-foreground: oklch(0.94 0.018 250);
+  --muted: oklch(0.26 0.035 264);
+  --muted-foreground: oklch(0.72 0.032 255);
+  --accent: oklch(0.31 0.055 264);
+  --accent-foreground: oklch(0.96 0.018 250);
+  --destructive: oklch(0.68 0.19 24);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.16 264);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -120,5 +122,198 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+    border-radius: 10px;
+  }
+
+  .dark .bg-white {
+    background-color: var(--card);
+  }
+
+  .dark .bg-white\/50 {
+    background-color: color-mix(in oklab, var(--card) 68%, transparent);
+  }
+
+  .dark .bg-gray-50,
+  .dark .bg-gray-100,
+  .dark .bg-slate-50,
+  .dark .bg-slate-100 {
+    background-color: var(--muted);
+  }
+
+  .dark .bg-gray-50\/50,
+  .dark .bg-slate-50\/30,
+  .dark .bg-slate-50\/50,
+  .dark .bg-slate-50\/80,
+  .dark .bg-slate-100\/95 {
+    background-color: color-mix(in oklab, var(--muted) 72%, transparent);
+  }
+
+  .dark .bg-indigo-50,
+  .dark .bg-indigo-100 {
+    background-color: oklch(0.3 0.085 264 / 0.85);
+  }
+
+  .dark .bg-blue-50,
+  .dark .bg-blue-100 {
+    background-color: oklch(0.31 0.08 245 / 0.85);
+  }
+
+  .dark .bg-emerald-50,
+  .dark .bg-emerald-100,
+  .dark .bg-green-50,
+  .dark .bg-green-100,
+  .dark .bg-green-50\/30 {
+    background-color: oklch(0.3 0.075 155 / 0.82);
+  }
+
+  .dark .bg-amber-50,
+  .dark .bg-amber-100,
+  .dark .bg-orange-50,
+  .dark .bg-orange-100,
+  .dark .bg-amber-50\/30 {
+    background-color: oklch(0.32 0.08 75 / 0.82);
+  }
+
+  .dark .bg-red-50,
+  .dark .bg-red-100,
+  .dark .bg-rose-50 {
+    background-color: oklch(0.3 0.075 25 / 0.85);
+  }
+
+  .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-slate-900,
+  .dark .text-slate-800 {
+    color: var(--foreground);
+  }
+
+  .dark .text-gray-700,
+  .dark .text-gray-600,
+  .dark .text-slate-700,
+  .dark .text-slate-600 {
+    color: color-mix(in oklab, var(--foreground) 82%, transparent);
+  }
+
+  .dark .text-gray-500,
+  .dark .text-gray-400,
+  .dark .text-gray-300,
+  .dark .text-slate-500,
+  .dark .text-slate-400,
+  .dark .text-slate-300 {
+    color: var(--muted-foreground);
+  }
+
+  .dark .text-indigo-900,
+  .dark .text-indigo-800,
+  .dark .text-indigo-700,
+  .dark .text-indigo-600,
+  .dark .text-indigo-500 {
+    color: oklch(0.8 0.12 264);
+  }
+
+  .dark .text-blue-600 {
+    color: oklch(0.78 0.12 245);
+  }
+
+  .dark .text-emerald-700,
+  .dark .text-emerald-600,
+  .dark .text-green-700,
+  .dark .text-green-600 {
+    color: oklch(0.78 0.12 155);
+  }
+
+  .dark .text-amber-700,
+  .dark .text-amber-600,
+  .dark .text-orange-700,
+  .dark .text-orange-600 {
+    color: oklch(0.83 0.13 75);
+  }
+
+  .dark .text-red-700,
+  .dark .text-red-600,
+  .dark .text-rose-700,
+  .dark .text-rose-600 {
+    color: oklch(0.76 0.14 25);
+  }
+
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300,
+  .dark .border-slate-100,
+  .dark .border-slate-200,
+  .dark .border-indigo-100,
+  .dark .border-indigo-200,
+  .dark .border-amber-100,
+  .dark .border-amber-200,
+  .dark .border-red-100,
+  .dark .border-red-200,
+  .dark .border-rose-100,
+  .dark .border-rose-200,
+  .dark .divide-slate-100 > :not(:last-child) {
+    border-color: var(--border);
+  }
+
+  .dark .ring-slate-200,
+  .dark .ring-slate-200\/80 {
+    --tw-ring-color: var(--border);
+  }
+
+  .dark .shadow-indigo-200,
+  .dark .shadow-emerald-200 {
+    --tw-shadow-color: oklch(0.12 0.035 264 / 0.55);
+  }
+
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-slate-100:hover,
+  .dark .hover\:bg-gray-50:hover {
+    background-color: var(--accent);
+  }
+
+  .dark input,
+  .dark select,
+  .dark textarea,
+  .dark [contenteditable="true"] {
+    color: var(--foreground);
+    background-color: var(--background);
+    border-color: var(--input);
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder,
+  .dark [data-placeholder]:empty::before {
+    color: var(--muted-foreground);
+  }
+
+  .dark .prose {
+    color: var(--foreground);
+  }
+
+  .dark .prose :where(strong, b, h1, h2, h3, h4) {
+    color: var(--foreground);
+  }
+
+  .dark .recharts-default-tooltip {
+    background-color: var(--popover) !important;
+    border-color: var(--border) !important;
+    color: var(--popover-foreground) !important;
+  }
+
+  .dark .recharts-tooltip-label,
+  .dark .recharts-legend-item-text {
+    color: var(--foreground) !important;
   }
 }

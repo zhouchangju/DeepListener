@@ -13,7 +13,7 @@ interface WorkloadSectionProps {
 export function WorkloadSection({ pastData, futureData, overdueData }: WorkloadSectionProps) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-800">
+      <h2 className="text-2xl font-bold flex items-center gap-2 text-foreground">
         <Activity className="w-6 h-6 text-emerald-500" /> Review Workload
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -24,11 +24,11 @@ export function WorkloadSection({ pastData, futureData, overdueData }: WorkloadS
               <div className="flex items-center gap-4 text-sm font-normal">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-indigo-500 rounded"></div>
-                  <span className="text-gray-600">Completed</span>
+                  <span className="text-muted-foreground">Completed</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-emerald-500 rounded"></div>
-                  <span className="text-gray-600">Scheduled</span>
+                  <span className="text-muted-foreground">Scheduled</span>
                 </div>
               </div>
             </CardTitle>

@@ -62,10 +62,10 @@ const SentenceItem = memo(function SentenceItem({
       onClick={onClick}
       className={`group flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-4 rounded-xl transition-all cursor-pointer border-2 mb-2 ${
         isActive
-          ? "bg-indigo-50/50 border-indigo-100 shadow-sm"
+          ? "bg-indigo-50/50 border-indigo-100 shadow-sm dark:bg-indigo-500/12 dark:border-indigo-400/30"
           : isSaved
-          ? "bg-amber-50/30 border-amber-100/50"
-          : "bg-transparent border-transparent hover:bg-slate-50"
+          ? "bg-amber-50/30 border-amber-100/50 dark:bg-amber-500/10 dark:border-amber-400/25"
+          : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-accent/60"
       }`}
     >
       <div
@@ -74,18 +74,18 @@ const SentenceItem = memo(function SentenceItem({
             ? "bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]"
             : isSaved
             ? "bg-amber-400"
-            : "bg-slate-200"
+            : "bg-muted"
         }`}
       />
 
       <div className="flex-grow w-full">
         <div
           className={`text-[15px] sm:text-[16px] leading-relaxed transition-all duration-300 ${
-            isBlurred ? "blur-sm select-none text-slate-300" : "text-slate-700"
+            isBlurred ? "blur-sm select-none text-muted-foreground/60" : "text-foreground"
           }`}
         >
           <div className="flex items-start gap-2">
-            <span className="text-[10px] font-bold text-slate-400 mt-1 shrink-0 bg-slate-100 px-1.5 py-0.5 rounded min-w-[24px] text-center">
+            <span className="text-[10px] font-bold text-muted-foreground mt-1 shrink-0 bg-muted px-1.5 py-0.5 rounded min-w-[24px] text-center">
               {i + 1}
             </span>
             <div className="flex-grow">
@@ -108,7 +108,7 @@ const SentenceItem = memo(function SentenceItem({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
+            className="h-9 px-3 gap-1.5 border-border flex-1"
             onClick={onShadowing}
           >
             <Mic2 className="h-4 w-4 text-indigo-500" />
@@ -116,10 +116,10 @@ const SentenceItem = memo(function SentenceItem({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 px-3 gap-1.5 border-slate-200 flex-1"
+            className="h-9 px-3 gap-1.5 border-border flex-1"
             onClick={onCopy}
           >
-            <Copy className="h-4 w-4 text-slate-500" />
+            <Copy className="h-4 w-4 text-muted-foreground" />
           </Button>
           <Button
             variant="outline"
@@ -127,7 +127,7 @@ const SentenceItem = memo(function SentenceItem({
             className={`h-9 px-3 gap-1.5 flex-1 ${
               isSaved
                 ? "bg-amber-50 text-amber-600 border-amber-200"
-                : "border-slate-200 text-slate-500"
+                : "border-border text-muted-foreground"
             }`}
             onClick={onCapture}
           >
@@ -145,7 +145,7 @@ const SentenceItem = memo(function SentenceItem({
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+          className="h-9 w-9 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 p-0"
           title="Shadowing"
           onClick={onShadowing}
         >
@@ -154,7 +154,7 @@ const SentenceItem = memo(function SentenceItem({
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-0"
+          className="h-9 w-9 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 p-0"
           title="Copy Text"
           onClick={onCopy}
         >
@@ -166,7 +166,7 @@ const SentenceItem = memo(function SentenceItem({
           className={`h-9 w-9 p-0 ${
             isSaved
               ? "text-amber-500 hover:text-amber-600"
-              : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+              : "text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50"
           }`}
           title={isSaved ? "Already Saved" : "Capture to Vault"}
           onClick={onCapture}
@@ -200,7 +200,7 @@ export const SentenceList = memo(function SentenceList({
   };
 
   return (
-    <div className="bg-white border-t border-slate-100">
+    <div className="bg-card border-t border-border">
       <div
         ref={listContainerRef}
         onScroll={onScroll}

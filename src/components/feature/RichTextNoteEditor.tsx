@@ -27,12 +27,12 @@ export default function RichTextNoteEditor({
   const { editorRef, exec, handleInput } = useRichTextEditor({ initialNote, onChange, reloadKey });
 
   return (
-    <div className={`border rounded-lg shadow-sm bg-white overflow-hidden ${className}`}>
+    <div className={`border border-border rounded-lg shadow-sm bg-card overflow-hidden ${className}`}>
       <RichTextToolbar label="Note" onCommand={exec} />
 
       <div
         ref={editorRef}
-        className="p-3 outline-none prose prose-sm max-w-none min-h-[100px]"
+        className="p-3 outline-none prose prose-sm max-w-none min-h-[100px] text-foreground"
         contentEditable
         onInput={handleInput}
         suppressContentEditableWarning

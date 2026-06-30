@@ -217,7 +217,7 @@ export default function ShadowingConsole({
 
   return (
     <div className={getShadowingOverlayClassName()} tabIndex={-1} ref={containerRef} onKeyDown={handleKeyDown}>
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
+      <div className="w-full max-w-3xl bg-card text-card-foreground rounded-2xl shadow-2xl shadow-black/30 overflow-hidden flex flex-col min-h-[500px] border border-border">
         <ShadowingHeader
           practiceMode={practiceMode}
           currentIndex={currentIndex}
@@ -262,9 +262,9 @@ export default function ShadowingConsole({
               </div>
             ) : blindMode && !isTextRevealed ? (
               <div className="relative group cursor-pointer w-full max-w-xl" onClick={() => setIsTextRevealed(true)}>
-                <div className="text-2xl font-medium text-slate-300 leading-loose text-center max-w-xl blur-sm select-none">{sentence.text}</div>
+                <div className="text-2xl font-medium text-muted-foreground/60 leading-loose text-center max-w-xl blur-sm select-none">{sentence.text}</div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-100/95 px-4 py-2 text-sm font-medium text-slate-500 shadow-sm ring-1 ring-slate-200/80">
+                  <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-muted/95 px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-border">
                     Click to reveal text
                   </div>
                 </div>
@@ -278,19 +278,19 @@ export default function ShadowingConsole({
                     mode="edit"
                     activeTool={activeTool}
                     onChange={setLocalFormatting}
-                    className="text-2xl font-medium text-slate-700 leading-loose text-center max-w-xl"
+                    className="text-2xl font-medium text-foreground leading-loose text-center max-w-xl"
                   />
                 </div>
                 <div className={getShadowingActionButtonsClassName()}>
                   <Button size="icon" variant="ghost" className="h-12 w-12" onClick={() => setIsEditingText(true)} title="Edit Text">
-                    <Edit3 className="w-6 h-6 text-slate-400 hover:text-indigo-600" />
+                    <Edit3 className="w-6 h-6 text-muted-foreground hover:text-indigo-600" />
                   </Button>
                   <Button
                     size="icon" variant="ghost" className="h-12 w-12"
                     onClick={async () => { try { await navigator.clipboard.writeText(sentence.text); toast.success("Copied to clipboard"); } catch { toast.error("Failed to copy"); } }}
                     title="Copy text"
                   >
-                    <Copy className="w-6 h-6 text-slate-400 hover:text-indigo-600" />
+                    <Copy className="w-6 h-6 text-muted-foreground hover:text-indigo-600" />
                   </Button>
                 </div>
               </div>
@@ -317,9 +317,9 @@ export default function ShadowingConsole({
           )}
         </div>
 
-        <div className="bg-slate-50 p-4 flex justify-between border-t">
+        <div className="bg-muted/60 p-4 flex justify-between border-t border-border">
           <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0}>Previous</Button>
-          <div className="text-slate-400 text-sm flex items-center">
+          <div className="text-muted-foreground text-sm flex items-center">
             {practiceMode === "dictation" ? "Listen -> Type -> Check" : mode === "reviewing" ? "Compare waveforms & audio" : "Listen -> Record -> Compare"}
           </div>
           <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>Next</Button>
