@@ -33,3 +33,17 @@ test("shadowing text save keeps parsed server errors visible in the toast", () =
     /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : "Failed to save text"\);/,
   );
 });
+
+test("shadowing keyboard shortcuts keep direct access to the active sentence text", () => {
+  const source = readFileSync(new URL("./ShadowingConsole.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /sentenceText: sentence\.text/);
+});
+
+test("shadowing user playback stays keyed by sentence when split into visualization", () => {
+  const consoleSource = readFileSync(new URL("./ShadowingConsole.tsx", import.meta.url), "utf8");
+  const visualizationSource = readFileSync(new URL("./shadowing/ShadowingVisualization.tsx", import.meta.url), "utf8");
+
+  assert.match(consoleSource, /sentenceId=\{sentence\.id\}/);
+  assert.match(visualizationSource, /key=\{`\$\{sentenceId\}-user`\}/);
+});

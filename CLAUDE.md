@@ -201,7 +201,11 @@ interface BatchPlaybackState {
 - **Native HTML5 Audio:** Used for simple sequential playback (Vault "Play All", Library batch loop) - no waveform, gap-based auto-advancement
 - **Important:** WaveSurfer instances initialized with `shadowDOM: false` to allow global event capture (right-click drag to pan)
 
-## Code Quality Standards (from GEMINI.md)
+## Code Quality Standards
+
+### Agent Guidelines
+
+Karpathy-inspired agent guidelines are in [AGENTS.md](./AGENTS.md#karpathy-inspired-agent-guidelines). Follow them for all code changes.
 
 ### OOP Principles
 1. **OCP (Open-Closed):** Open for extension, closed for modification. Use composition and dependency injection.
