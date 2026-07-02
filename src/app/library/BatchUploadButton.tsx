@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, Check, X, FileAudio } from "lucide-react";
+import { Loader2, Check, X, FileAudio } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { requireOkResponse } from "@/lib/client-response";
+import UploadDropDialog from "./UploadDropDialog";
 
 interface UploadProgress {
   fileName: string;
@@ -18,8 +19,7 @@ export default function BatchUploadButton() {
   const [progress, setProgress] = useState<UploadProgress[]>([]);
   const router = useRouter();
 
-  const handleBatchUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
     // Initialize progress
@@ -115,29 +115,15 @@ export default function BatchUploadButton() {
 
   return (
     <div className="w-full space-y-4">
-      <div className="relative w-full">
-        <input
-          type="file"
-          id="batch-audio-upload"
-          className="hidden"
-          accept="audio/*"
-          multiple
-          onChange={handleBatchUpload}
-          disabled={uploading}
-        />
-        <label htmlFor="batch-audio-upload" className="block w-full">
-          <Button asChild disabled={uploading} className="w-full" variant="default">
-            <span>
-              {uploading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="mr-2 h-4 w-4" />
-              )}
-              {uploading ? "Processing..." : "Batch Upload Audio"}
-            </span>
-          </Button>
-        </label>
-      </div>
+      <UploadDropDialog
+        triggerLabel="Batch Upload Audio"
+        uploadingLabel="Processing..."
+        title="Batch upload audio"
+        description="Drop local audio files here, or keep using the folder picker."
+        multiple
+        uploading={uploading}
+        processFiles={handleFiles}
+      />
 
       {/* Progress Display */}
       {progress.length > 0 && (

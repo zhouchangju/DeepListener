@@ -18,3 +18,13 @@ test("single upload button keeps parsed server errors visible in the toast", () 
     /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : "Upload failed\. Check your OpenAI API Key\.", \{ id: toastId \}\);/,
   );
 });
+
+test("single upload opens a drop dialog while preserving single-file upload handling", () => {
+  const source = readFileSync(new URL("./UploadButton.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /UploadDropDialog/);
+  assert.match(source, /const handleFiles = async \(files: File\[\]\)/);
+  assert.match(source, /const file = files\[0\];/);
+  assert.match(source, /processFiles=\{handleFiles\}/);
+  assert.doesNotMatch(source, /multiple=\{true\}/);
+});

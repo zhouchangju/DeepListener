@@ -1,18 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Upload, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { requireOkResponse } from "@/lib/client-response";
+import UploadDropDialog from "./UploadDropDialog";
 
 export default function UploadButton() {
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFiles = async (files: File[]) => {
+    const file = files[0];
     if (!file) return;
 
     setUploading(true);
@@ -40,27 +39,13 @@ export default function UploadButton() {
   };
 
   return (
-    <div className="relative w-full">
-      <input
-        type="file"
-        id="audio-upload"
-        className="hidden"
-        accept="audio/*"
-        onChange={handleUpload}
-        disabled={uploading}
-      />
-      <label htmlFor="audio-upload" className="block w-full">
-        <Button asChild disabled={uploading} className="w-full">
-          <span>
-            {uploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="mr-2 h-4 w-4" />
-            )}
-            {uploading ? "Transcribing..." : "Upload Audio"}
-          </span>
-        </Button>
-      </label>
-    </div>
+    <UploadDropDialog
+      triggerLabel="Upload Audio"
+      uploadingLabel="Transcribing..."
+      title="Upload audio"
+      description="Drop a local audio file here, or keep using the folder picker."
+      uploading={uploading}
+      processFiles={handleFiles}
+    />
   );
 }

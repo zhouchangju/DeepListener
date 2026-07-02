@@ -19,3 +19,12 @@ test("batch upload button keeps parsed server errors visible in toast and item d
   );
   assert.match(source, /error: message/);
 });
+
+test("batch upload opens a drop dialog while preserving multi-file upload handling", () => {
+  const source = readFileSync(new URL("./BatchUploadButton.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /UploadDropDialog/);
+  assert.match(source, /const handleFiles = async \(files: File\[\]\)/);
+  assert.match(source, /processFiles=\{handleFiles\}/);
+  assert.match(source, /multiple/);
+});
