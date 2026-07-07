@@ -16,6 +16,7 @@ interface UseWaveSurferProps {
   timelineRef: RefObject<HTMLDivElement | null>;
   audioUrl: string;
   zoomLevel: number;
+  loopMode: boolean;
   playbackRate: number;
   onTimeUpdate: (time: number) => void;
   onReady: () => void;
@@ -28,6 +29,7 @@ export function useWaveSurfer({
   timelineRef,
   audioUrl,
   zoomLevel,
+  loopMode,
   playbackRate,
   onTimeUpdate,
   onReady,
@@ -147,6 +149,18 @@ export function useWaveSurfer({
       wavesurferRef.current.setPlaybackRate(playbackRate);
     }
   }, [playbackRate, isReady]);
+
+  // Sync full-track loop mode with the underlying media element.
+  useEffect(() => {
+    const media = wavesurferRef.current?.getMediaElement();
+    if (!media || !isReady) return;
+
+    media.loop = loopMode;
+
+    return () => {
+      media.loop = false;
+    };
+  }, [loopMode, isReady]);
 
   return { wavesurferRef, regionsRef, isPlaying, isReady };
 }

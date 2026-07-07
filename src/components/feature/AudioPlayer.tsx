@@ -104,6 +104,7 @@ export default function AudioPlayer({
     timelineRef,
     audioUrl,
     zoomLevel,
+    loopMode,
     playbackRate,
     onTimeUpdate: (time) => {
       // Direct DOM update (High performance)
