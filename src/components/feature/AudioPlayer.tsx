@@ -8,6 +8,8 @@ import { getPlayerControlsState } from "./audio-player/presentation";
 import { SentenceList } from "./audio-player/SentenceList";
 import { PlayerControls } from "./audio-player/PlayerControls";
 import { WaveformArea } from "./audio-player/WaveformArea";
+import { VideoSubtitleBar } from "./video-subtitles/VideoSubtitleBar";
+import { getActiveSubtitle } from "./video-subtitles/presentation";
 
 interface ReviewItem {
   tags?: { name: string }[];
@@ -85,6 +87,10 @@ export default function AudioPlayer({
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [isReady, setIsReady] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [subtitlesVisible, setSubtitlesVisible] = useState(false);
+  const [activeSubtitle, setActiveSubtitle] = useState<string | null>(() =>
+    getActiveSubtitle(sentences, 0),
+  );
 
   // 🟢 OPTIMIZATION 2: Auto-scroll logic
   const { listContainerRef, onListScroll, scrollToItem } = useAutoScroll();
@@ -119,6 +125,16 @@ export default function AudioPlayer({
     [sentences, activeSentenceIndex, scrollToItem]
   );
 
+  const syncSubtitleToTime = useCallback(
+    (time: number) => {
+      const nextSubtitle = getActiveSubtitle(sentences, time);
+      setActiveSubtitle((currentSubtitle) =>
+        currentSubtitle === nextSubtitle ? currentSubtitle : nextSubtitle,
+      );
+    },
+    [sentences],
+  );
+
   // WaveSurfer Hook
   const { wavesurferRef, regionsRef, isPlaying: waveSurferIsPlaying } = useWaveSurfer({
     containerRef,
@@ -136,6 +152,7 @@ export default function AudioPlayer({
         timeRef.current.innerText = new Date(time * 1000).toISOString().substring(14, 19);
       }
       syncListToTime(time, false);
+      syncSubtitleToTime(time);
     },
     onReady: () => setIsReady(true),
     onRegionUpdateEnd: (region) => {
@@ -143,12 +160,14 @@ export default function AudioPlayer({
         wavesurferRef.current?.setTime(region.start);
         if (timeRef.current) timeRef.current.innerText = new Date(region.start * 1000).toISOString().substring(14, 19);
         syncListToTime(region.start, true);
+        syncSubtitleToTime(region.start);
         playMediaSafely(wavesurferRef.current?.play());
       }, 10);
     },
     onInteraction: (time) => {
       if (timeRef.current) timeRef.current.innerText = new Date(time * 1000).toISOString().substring(14, 19);
       syncListToTime(time, true);
+      syncSubtitleToTime(time);
     },
   });
 
@@ -162,6 +181,12 @@ export default function AudioPlayer({
   const handlePlayPause = () => playMediaSafely(wavesurferRef.current?.playPause());
   const handleToggleLoop = () => setLoopMode((prev) => !prev);
   const handleClearRegions = () => regionsRef.current?.clearRegions();
+  const handleSubtitleVisibilityChange = (visible: boolean) => {
+    if (visible) {
+      syncSubtitleToTime(videoRef.current?.currentTime ?? 0);
+    }
+    setSubtitlesVisible(visible);
+  };
 
   useAudioInteractions({
     containerRef,
@@ -216,15 +241,22 @@ export default function AudioPlayer({
   return (
     <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-card text-card-foreground rounded-2xl shadow-xl shadow-slate-200/60 border border-border overflow-hidden dark:shadow-black/30">
       {videoUrl && (
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          controls
-          preload="metadata"
-          className="w-full max-h-[56vh] bg-black object-contain"
-        >
-          Your browser does not support local video playback.
-        </video>
+        <>
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            controls
+            preload="metadata"
+            className="w-full max-h-[56vh] bg-black object-contain"
+          >
+            Your browser does not support local video playback.
+          </video>
+          <VideoSubtitleBar
+            visible={subtitlesVisible}
+            subtitle={activeSubtitle}
+            onVisibleChange={handleSubtitleVisibilityChange}
+          />
+        </>
       )}
       <PlayerControls
         isPlaying={playerControlsState.isPlaying}
