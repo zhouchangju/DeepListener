@@ -197,7 +197,7 @@ Upload safety is centralized in `src/lib/upload-policy.ts`:
 - Stored paths are sanitized and constrained to their media directory: audio under `public/uploads/`, original video under `public/videos/`.
 - Export routes resolve stored upload paths defensively to prevent path traversal.
 
-For video Tracks, `<video>` is the playback master. WaveSurfer renders peaks from the derived audio buffer while binding transport controls to that same video element, avoiding a second audible player. Existing Vault, Review, Shadowing, batch playback, and export paths continue to consume `Track.audioUrl`.
+For video Tracks, `<video>` is the playback master. WaveSurfer renders peaks from the derived audio buffer while binding transport controls to that same video element, avoiding a second audible player. `AudioPlayer` also maps this shared clock to normalized `Sentence` timing and passes only the active sentence text to a video-only `VideoSubtitleBar`. The subtitle bar is local presentation state: it starts hidden on every mount, is never persisted, renders blank during real transcript gaps, and does not alter the audio-first Review, Vault, Shadowing, batch playback, or export paths that continue to consume `Track.audioUrl`.
 
 Original videos deliberately live outside `public/uploads/`, so the existing sync scripts transfer derived audio and database state without copying `public/videos/`.
 

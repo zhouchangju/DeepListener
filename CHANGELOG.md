@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 - Added FFmpeg-derived MP3 audio, embedded-subtitle preference with transcription fallback, and synchronized video/waveform/sentence practice.
 - Added streaming single-file media upload with actual-byte limits and local-only `public/videos/` storage.
 - Added video import, subtitle parsing, shared-media playback, sync-boundary, database-backup, and upload-structure regression tests.
+- Added an optional, default-off subtitle bar below video playback that follows the shared media clock and displays the current transcript sentence.
 
 ### Changed
 
@@ -25,8 +26,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 
 - `npm run lint`
 - `npm run build`
-- `npm run test:ci` (181 tests)
+- `npm run test:ci` (188 tests)
 - Real MP4 streaming import, embedded-subtitle extraction, browser timeline seek, and dual-file cleanup
+- Default-off subtitle toggle, current-sentence updates at 0.5s and 6.5s, and reset-to-hidden after reload on a real local video Track
 
 ## [0.2.0] - 2026-06-30
 

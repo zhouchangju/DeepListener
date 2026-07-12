@@ -165,6 +165,7 @@ npm run build
 - 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM。
 - 单文件导入采用流式传输，视频上限 1 GB；大 Lesson 应使用单文件入口，不要使用 Batch。
 - 如果视频有内嵌字幕，系统会尝试直接生成时间轴；没有或无法解析时，使用当前配置的转录 Provider。
+- 视频下方提供 **Show subtitles / Hide subtitles** 开关；每次进入页面默认关闭，开启后只显示与当前播放位置对齐的一句转录文本。
 - 原视频保存在 `public/videos/`，派生 MP3 保存在 `public/uploads/`。
 - 删除视频 Track 时，原视频和派生 MP3 会一起清理。
 
