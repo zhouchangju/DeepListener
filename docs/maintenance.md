@@ -1,6 +1,6 @@
 # DeepListener 开发维护手册
 
-Last updated: 2026-06-30
+Last updated: 2026-07-12
 
 ## 1. 转录 Provider 现状
 
@@ -46,15 +46,19 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 - **Schema**：`prisma/schema.prisma`
 - **数据库查看**：`npx prisma studio`
 - **迁移**：修改 schema 后运行 `npx prisma migrate dev`；普通 setup/CI 环境只应用现有 migrations 时使用 `npx prisma migrate deploy`
-- **音频文件**：上传内容保存在 `public/uploads/`
-- **上传策略**：`src/lib/upload-policy.ts` 负责文件名清洗、音频类型检查、250 MB 大小上限和路径逃逸防御
+- **音频文件**：原始音频和视频派生 MP3 保存在 `public/uploads/`
+- **原始视频**：本地 MP4/WebM 保存在 `public/videos/`，不进入 Git 或现有远程同步
+- **上传策略**：`src/lib/upload-policy.ts` 负责文件名清洗、媒体类型检查、音频 250 MB / 视频 1 GB 上限和路径逃逸防御
+- **大文件路径**：单文件 Import Media 直接流式写入 `.part` 文件并原子重命名；Batch 仍使用 multipart，只用于较小文件
 
 维护原则：
 
 - 不要手工删除或覆盖 `prisma/dev.db`，除非用户明确确认。
 - 不要手工清空 `public/uploads/`，除非用户明确确认。
+- 不要手工删除、覆盖或提交 `public/videos/` 下的用户视频。
 - 不要编辑 `.env*`、credential 或本机私有配置。
 - 如果修改 `prisma/schema.prisma`，先说明数据风险，再运行迁移并重新生成 Prisma Client。
+- 如果迁移历史显示“数据库中存在、仓库目录缺失”的旧 migration，不要通过 reset 修复。先备份数据库并用 `prisma migrate diff` 核对实时 schema，再采取定向修复。
 - `bin/setup` 只检查 `.env` 是否存在并打印提示，不会创建、复制或追加本机 secret 文件。
 
 ## 4. 导出链路
@@ -208,5 +212,7 @@ npm run sync
 
 - `public/uploads/`
 - `prisma/dev.db`
+
+`public/videos/` 不在同步范围内。视频 Track 的派生 MP3、字幕时间轴和数据库元数据会同步，原视频需要使用者自行备份。
 
 执行前必须确认当前本地数据就是要备份的数据；这个脚本会写远端备份目标。建议先确认 SSH Key、远端路径和当前 `prisma/dev.db` 状态，再执行同步脚本。

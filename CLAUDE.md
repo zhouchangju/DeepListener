@@ -241,10 +241,12 @@ After Prisma schema changes, always restart Next.js dev server - the generated C
 
 3. **Server Components + Client Hydration:** Data fetching on server (fast, SEO-friendly), interactivity on client (audio controls, recording).
 
-4. **Dual-Track Architecture:**
+4. **Time-Aligned Media Architecture:**
    - Track metadata in SQLite (searchable, filterable)
-   - Audio files in `public/uploads/` (served as static assets)
+   - Original audio and video-derived MP3 in `public/uploads/`
+   - Original local video in `public/videos/` (served locally, excluded from Git and remote sync)
    - Transcription stored as JSON string in Track.transcription
+   - Video is the Practice playback clock; Vault, Review, Shadowing, and export remain audio-first through Track.audioUrl
 
 5. **Shadowing Zero-Delay:**
    - Pre-decode entire audio to AudioBuffer on load

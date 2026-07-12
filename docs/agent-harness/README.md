@@ -9,7 +9,7 @@ Use this for refactors, performance work, migrations, UI workflow changes, deplo
 DeepListener is a zero-data-loss project by default.
 
 - Do not delete, overwrite, migrate, or sync `prisma/dev.db` without explicit user confirmation.
-- Do not delete, overwrite, or sync `public/uploads/` without explicit user confirmation.
+- Do not delete, overwrite, or sync `public/uploads/` or `public/videos/` without explicit user confirmation.
 - Do not edit `.env*`, secrets, credential files, or local-only config.
 - Do not weaken lint, test, type, build, deploy, or data-safety rules to make a change pass.
 - Treat `npm run sync` as high risk because it can overwrite remote uploads and database state.
@@ -66,7 +66,8 @@ Current `next.config.ts` does not set `basePath` or `assetPrefix`. If a deployme
 |---|---|
 | `prisma/dev.db` | Active local SQLite data. Do not delete, overwrite, migrate, or sync without explicit confirmation. |
 | `dev.db` | Check whether it is legacy or active before touching. |
-| `public/uploads/` | User audio uploads. Do not delete, overwrite, or sync without explicit confirmation. |
+| `public/uploads/` | User audio uploads and video-derived audio. Do not delete, overwrite, or sync without explicit confirmation. |
+| `public/videos/` | Original local videos. Do not delete, overwrite, commit, or sync without explicit confirmation. |
 | `.env*` | Secrets/local config. Do not edit. Ask the user to change values. |
 
 Note: `DATABASE_URL="file:./dev.db"` resolves relative to `prisma/schema.prisma`, so the active SQLite file is usually `prisma/dev.db`.

@@ -1,6 +1,6 @@
 # DeepListener Current Architecture
 
-Last updated: 2026-06-30
+Last updated: 2026-07-12
 
 This document describes the current codebase implementation. For product behavior, see [requirement.md](./requirement.md). For day-to-day operations, see [maintenance.md](./maintenance.md).
 
@@ -12,7 +12,7 @@ flowchart LR
 
   subgraph Browser["Browser"]
     Nav["Sticky Nav<br/>Library / Vault / Analytics / Review"]
-    PracticeUI["Practice Workbench<br/>AudioPlayer + ShadowingConsole"]
+    PracticeUI["Practice Workbench<br/>audio/video + waveform + ShadowingConsole"]
     VaultUI["Vault UI<br/>filters + pagination + play all"]
     DashboardUI["Dashboard UI<br/>tabs + charts"]
     Theme["ThemeProvider + ThemeToggle<br/>system default + manual override"]
@@ -28,7 +28,8 @@ flowchart LR
   subgraph Data["Local Data"]
     Prisma["Prisma Client"]
     SQLite["SQLite<br/>prisma/dev.db by default"]
-    Uploads["public/uploads/"]
+    Uploads["public/uploads/<br/>audio + derived audio"]
+    Videos["public/videos/<br/>local-only originals"]
   end
 
   subgraph External["External Tools And Providers"]
@@ -54,6 +55,7 @@ flowchart LR
   Api --> Prisma
   Prisma --> SQLite
   Api --> Uploads
+  Api --> Videos
   Uploads --> PracticeUI
   Api --> STT
   Api --> FFmpeg
@@ -66,7 +68,7 @@ flowchart LR
 | --- | --- | --- |
 | `/` | Redirects to `/library`; there is no separate landing page. | `src/app/page.tsx` |
 | `/library` | Upload, archive, filter, note, select, batch-play, and export tracks. | `src/app/library/**` |
-| `/practice/[id]` | Sentence-level waveform practice, blind mode, diagnosis capture, track notes, shadowing. | `src/app/practice/[id]/**`, `src/components/feature/AudioPlayer.tsx` |
+| `/practice/[id]` | Sentence-level audio/video practice, waveform, blind mode, diagnosis capture, generic track notes, shadowing. | `src/app/practice/[id]/**`, `src/components/feature/AudioPlayer.tsx` |
 | `/review` | Due-item SRS review queue with FSRS grading and short-interval relearning. | `src/app/review/**` |
 | `/vault` | Captured sentence management with filters, pagination, edit modal, play all, archive, delete, text/audio export. | `src/app/vault/**` |
 | `/dashboard` | Analytics tabs, progress cards, study log, retention and workload charts. | `src/app/dashboard/**` |
@@ -92,7 +94,7 @@ Theme changes are UI-only. They must not touch Prisma data, uploaded audio, tran
 
 | API | Methods | Notes |
 | --- | --- | --- |
-| `/api/upload` | `POST`, `PUT` | Single and batch upload. Validates audio metadata, writes to `public/uploads/`, transcribes, then creates `Track` and `Sentence` rows. |
+| `/api/upload` | `POST`, `PUT` | Single and batch local-media import. Audio is stored directly; MP4/WebM is stored under local-only `public/videos/`, with an MP3 derivative under `public/uploads/`. Embedded subtitles are preferred when usable; otherwise the audio is transcribed. |
 | `/api/track/[id]` | `PATCH`, `DELETE` | Updates track metadata/status/archive fields or permanently deletes a track. |
 | `/api/sentence/[id]` | `PATCH` | Updates sentence text and formatting metadata. |
 | `/api/vault` | `POST` | Upserts a `ReviewItem` for a sentence and connects diagnostic tags. |
@@ -123,6 +125,8 @@ erDiagram
     string id
     string title
     string audioUrl
+    string mediaType
+    string videoUrl
     string transcription
     string status
     boolean isArchived
@@ -188,10 +192,14 @@ sequenceDiagram
 
 Upload safety is centralized in `src/lib/upload-policy.ts`:
 
-- Accepted files must be non-empty audio files.
-- Maximum upload size is 250 MB.
-- Stored paths are sanitized and must stay under `public/uploads/`.
+- Accepted files must be non-empty audio, MP4, or WebM files.
+- Audio is limited to 250 MB; video is limited to 1 GB.
+- Stored paths are sanitized and constrained to their media directory: audio under `public/uploads/`, original video under `public/videos/`.
 - Export routes resolve stored upload paths defensively to prevent path traversal.
+
+For video Tracks, `<video>` is the playback master. WaveSurfer renders peaks from the derived audio buffer while binding transport controls to that same video element, avoiding a second audible player. Existing Vault, Review, Shadowing, batch playback, and export paths continue to consume `Track.audioUrl`.
+
+Original videos deliberately live outside `public/uploads/`, so the existing sync scripts transfer derived audio and database state without copying `public/videos/`.
 
 ## Review And Vault Flow
 

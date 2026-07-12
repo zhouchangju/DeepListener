@@ -8,7 +8,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 
 ## [Unreleased]
 
-- No unreleased changes yet.
+### Added
+
+- Added generic local MP4/WebM import without course-specific metadata or automatic lesson splitting.
+- Added FFmpeg-derived MP3 audio, embedded-subtitle preference with transcription fallback, and synchronized video/waveform/sentence practice.
+- Added streaming single-file media upload with actual-byte limits and local-only `public/videos/` storage.
+- Added video import, subtitle parsing, shared-media playback, sync-boundary, database-backup, and upload-structure regression tests.
+
+### Changed
+
+- Kept Vault, Review, Shadowing, Library playback, and exports audio-first by retaining a derived `audioUrl` for video Tracks.
+- Excluded original videos from Git and remote sync while keeping derived audio and SQLite metadata in the existing backup flow.
+- Updated the media deletion path to remove both the original video and its derived audio.
+
+### Verified
+
+- `npm run lint`
+- `npm run build`
+- `npm run test:ci` (181 tests)
+- Real MP4 streaming import, embedded-subtitle extraction, browser timeline seek, and dual-file cleanup
 
 ## [0.2.0] - 2026-06-30
 

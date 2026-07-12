@@ -4,6 +4,12 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 
 ## 🌟 核心特性
 
+- **通用音频 / 视频精听**：
+    - 支持导入本地音频、MP4 和 WebM；一个文件对应一个 Track，不引入 Course / Lesson 等课程领域概念。
+    - 视频会提取派生 MP3；若视频带有可解析的内嵌字幕则优先使用，否则转录派生音轨。
+    - Practice 中视频是唯一播放时钟，波形、字幕、句子跳转、变速和循环共享同一时间轴。
+    - Vault、Review、Shadowing 和导出继续使用音频，保持听力训练主线。
+
 - **多模型转录引擎**：
     - **环境变量驱动**：通过 `TRANSCRIPTION_PROVIDER` 选择 `openai` / `deepgram` / `google`；未设置时回退到 `openai`。
     - **Deepgram**：结合单词级时间戳与本地重组分句逻辑，解决超长难句问题。
@@ -23,7 +29,7 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 - **素材管理 (Library)**：
     - **归档系统**：支持素材软删除 (Archive) 和物理删除 (Delete)。
     - **筛选与笔记**：支持按 `trackType` / `trackTopic` 过滤，并维护 Track 级别笔记。
-    - **重命名**：支持修改自动生成的音频标题。
+    - **重命名**：支持修改自动生成的媒体标题。
     - **批量循环播放**：支持多选 Track 后按顺序循环播放。
     - **移动端适配**：全站响应式设计，支持手机端操作。
 - **归因诊断系统**：强制记录听不懂的原因（连读、生词、语速等）。
@@ -38,7 +44,7 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 
 ### 前置要求
 
-**FFmpeg (必需)**：音频导出功能需要安装 FFmpeg。
+**FFmpeg (必需)**：视频音轨提取、内嵌字幕探测和音频导出需要安装 FFmpeg/ffprobe。
 
 ```bash
 # macOS
@@ -120,6 +126,8 @@ npm run build
 - `/src/components/theme`: 全局主题 Provider 和右上角日夜切换按钮。
 - `/src/components/ui`: Button、Card、Dialog、Dropdown、Progress、Skeleton 等基础 UI primitives。
 - `/src/lib`: Prisma、API schema/response helper、上传安全策略、音频工具、FSRS、文本/HTML 工具和转录 provider。
+- `/public/uploads`: 原始音频及视频派生音轨；进入现有远程同步。
+- `/public/videos`: 本地原视频；属于用户数据，不提交 Git，也不进入现有远程同步。
 - `/src/lib/transcription`: `openai` / `deepgram` / `google` 多 provider 转录实现。
 - `/src/symphony`: 本地 Symphony runner / orchestrator / tracker / workspace 实现。
 - `/prisma`: schema、migrations，以及默认 SQLite 数据库 `prisma/dev.db`。
@@ -151,6 +159,14 @@ npm run build
 - 完整性：如果所选句子或 Track 引用的源音频缺失或路径非法，导出会返回错误而不是生成不完整文件
 
 文本笔记导出为 `.txt`，会按标签分组，并保留难度、来源 Track、筛选条件与纯文本备注内容。
+
+### 导入视频
+
+- 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM。
+- 单文件导入采用流式传输，视频上限 1 GB；大 Lesson 应使用单文件入口，不要使用 Batch。
+- 如果视频有内嵌字幕，系统会尝试直接生成时间轴；没有或无法解析时，使用当前配置的转录 Provider。
+- 原视频保存在 `public/videos/`，派生 MP3 保存在 `public/uploads/`。
+- 删除视频 Track 时，原视频和派生 MP3 会一起清理。
 
 ## 📚 文档资源
 

@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-DeepListener is a Next.js App Router project. Route entry points live in `src/app` (`library`, `practice/[id]`, `review`, `vault`, `dashboard`) and API handlers live under `src/app/api`. Reusable UI is split between `src/components/ui` for primitives and `src/components/feature` for listening workflows such as `AudioPlayer` and `ShadowingConsole`. Shared logic lives in `src/lib`, with transcription providers in `src/lib/transcription`. Prisma schema lives in `prisma/`; with the default `DATABASE_URL="file:./dev.db"`, Prisma resolves the SQLite file as `prisma/dev.db`. Static assets live in `public/`, and project notes live in `docs/`.
+DeepListener is a Next.js App Router project. Route entry points live in `src/app` (`library`, `practice/[id]`, `review`, `vault`, `dashboard`) and API handlers live under `src/app/api`. Reusable UI is split between `src/components/ui` for primitives and `src/components/feature` for listening workflows such as `AudioPlayer` and `ShadowingConsole`. Shared logic lives in `src/lib`, with transcription providers in `src/lib/transcription`. Prisma schema lives in `prisma/`; with the default `DATABASE_URL="file:./dev.db"`, Prisma resolves the SQLite file as `prisma/dev.db`. Original audio and video-derived MP3 files live in `public/uploads/`; original local videos live in `public/videos/` and are intentionally excluded from remote sync. Project notes live in `docs/`.
 
 For detailed architecture, environment config, and code organization, see [CLAUDE.md](./CLAUDE.md).
 
@@ -13,6 +13,7 @@ For detailed architecture, environment config, and code organization, see [CLAUD
 - `node --import tsx --test <paths>`: run targeted tests for touched routes, hooks, or components.
 - `npx prisma migrate dev`: apply schema changes to the local SQLite database.
 - `npx prisma studio`: inspect the local SQLite database resolved from `DATABASE_URL` (default: `prisma/dev.db`).
+- `ffmpeg -version` / `ffprobe -version`: verify the media tools required for video audio extraction, embedded-subtitle detection, and export.
 - `npm run sync`: rsync uploads and the local database to the remote backup target; use carefully. Prefer `npm run sync:safe` for interactive confirmation.
 - `npm run setup` / `npm run symphony`: initialize and run the local Symphony orchestration scaffold.
 
@@ -23,7 +24,7 @@ Use TypeScript with 2-space indentation and semicolons. Prefer functional React 
 The repo now includes colocated targeted tests under `src/` as `*.test.ts` and `*.test.tsx`. Every change should pass `npm run lint` and `npm run build`, and should also run the relevant targeted tests for the touched area with `node --import tsx --test <paths>`. Any Prisma change should additionally be verified with `npx prisma migrate dev`.
 
 ## DeepListener Optimization Harness
-For refactors, performance work, migrations, deployment/basePath work, sync changes, Prisma/data changes, audio export/transcription changes, quality-gate hardening, or non-trivial workflow changes, read `docs/agent-harness/README.md` before editing. Use Contract mode by default and Adversarial mode for anything touching `prisma/dev.db`, `public/uploads/`, `.env*`, `npm run sync`, migrations, deployment, or release-critical behavior. Preserve current behavior and protected data unless the sprint contract explicitly changes them.
+For refactors, performance work, migrations, deployment/basePath work, sync changes, Prisma/data changes, media import/export/transcription changes, quality-gate hardening, or non-trivial workflow changes, read `docs/agent-harness/README.md` before editing. Use Contract mode by default and Adversarial mode for anything touching `prisma/dev.db`, `public/uploads/`, `public/videos/`, `.env*`, `npm run sync`, migrations, deployment, or release-critical behavior. Preserve current behavior and protected data unless the sprint contract explicitly changes them.
 
 ## Karpathy-Inspired Agent Guidelines
 Apply the Karpathy guideline set from `multica-ai/andrej-karpathy-skills` when writing, reviewing, or refactoring code in this repo.
@@ -43,9 +44,12 @@ Apply the Karpathy guideline set from `multica-ai/andrej-karpathy-skills` when w
 
 ## Learned from Mistakes
 - `npm run lint` can accidentally scan generated files under `.worktrees/**/.next`; keep generated worktrees out of ESLint scope and do not treat generated build output as source.
+- Original videos under `public/videos/` are user data and local-only. Never add them to Git or remote sync; only commit `public/videos/.gitkeep`.
+- Large videos should use the single-file `Import Media` path, which streams the raw request body. Batch media import still uses multipart parsing and is intended for smaller files.
+- If Prisma reports an old migration that exists in the live database but is missing from `prisma/migrations/`, do not reset the database. Back up `prisma/dev.db`, compare the live schema, and use a targeted migration or repair path.
 
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commit prefixes such as `feat:` and `fix:`. Keep messages imperative and scoped to one change, for example `fix: exclude archived items from export count`. PRs should include a short summary, affected routes or modules, manual verification steps, linked issues when applicable, and screenshots or recordings for UI changes.
 
 ## Security & Configuration Tips
-Keep API keys and proxy settings in `.env`; do not commit secrets or replace local values in examples. This repo assumes SQLite locally via `DATABASE_URL="file:./dev.db"`, which resolves to `prisma/dev.db` because the URL is relative to `prisma/schema.prisma`. Optional transcription credentials include `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `LINEAR_API_KEY`. Audio export depends on `ffmpeg` being installed and available on `PATH`.
+Keep API keys and proxy settings in `.env`; do not commit secrets or replace local values in examples. This repo assumes SQLite locally via `DATABASE_URL="file:./dev.db"`, which resolves to `prisma/dev.db` because the URL is relative to `prisma/schema.prisma`. Optional transcription credentials include `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, and `LINEAR_API_KEY`. Media import and audio export depend on `ffmpeg`/`ffprobe` being installed and available on `PATH`.

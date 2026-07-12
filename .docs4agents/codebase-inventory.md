@@ -18,7 +18,7 @@ Compact project map for agent context. Source of truth: current code, not histor
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/upload` | Audio upload and transcription |
+| `POST /api/upload` | Streaming single-file audio/video import, audio extraction, subtitle/transcription processing |
 | `GET/PUT/DELETE /api/track/[id]` | Track CRUD |
 | `PUT /api/sentence/[id]` | Sentence text/formatting updates |
 | `POST /api/review/grade` | FSRS algorithm grading |
@@ -71,7 +71,9 @@ badge, button, card, dialog, dropdown-menu, progress, skeleton, sonner, textarea
 | `local-day.ts` | Local day boundary utilities |
 | `sanitize-html.ts` | HTML sanitization |
 | `text-utils.ts` | Text processing utilities |
-| `upload-policy.ts` | Upload validation policy |
+| `upload-policy.ts` | Audio/video validation, size, storage, and path policy |
+| `media-processing.ts` | FFmpeg audio extraction and embedded-subtitle handling |
+| `subtitle-utils.ts` | SRT parsing into timestamped sentence segments |
 | `utils.ts` | General utilities |
 | `transcription/` | Provider factory (deepgram, openai, google) |
 

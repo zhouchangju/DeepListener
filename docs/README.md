@@ -10,7 +10,7 @@ This map is the human-friendly entry point for project documentation. It separat
 | Check release history and long-term iteration milestones | [Changelog](../CHANGELOG.md) |
 | Understand current routes, data flow, API surfaces, and safety boundaries | [Current Architecture](./architecture.md) |
 | Understand implemented product behavior and module boundaries | [Product Requirements](./requirement.md) |
-| Maintain transcription, uploads, exports, database files, or backup sync | [Maintenance Manual](./maintenance.md) |
+| Maintain transcription, audio/video imports, exports, database files, or backup sync | [Maintenance Manual](./maintenance.md) |
 | Work on the SRS queue or FSRS behavior | [Review System](./review-system.md) |
 | Work on Symphony automation | [Symphony Guide](./symphony.md) |
 | Run optimization/refactor work without risking local data | [Agent Harness](./agent-harness/README.md) |

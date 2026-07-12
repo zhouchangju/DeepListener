@@ -1,16 +1,16 @@
 # Product Requirements Document (PRD): DeepListener
 
-**Version:** 4.2 (Updated 2026-06-30)
+**Version:** 4.3 (Updated 2026-07-12)
 **Status:** This document is aligned to the current codebase implementation, not an aspirational roadmap.
 **Tech Stack:** Next.js App Router, React 19, Prisma + SQLite, Tailwind CSS, WaveSurfer.js, FFmpeg, Deepgram/OpenAI/Gemini, Symphony tooling
 
 ## 1. 产品定位 (Product Positioning)
 
-DeepListener 是一个面向高阶英语学习者的听力训练与复习系统。它不是泛化的播放器，而是围绕“句子级精听”和“复盘闭环”设计的训练台，核心目标是让用户把听不懂的材料拆成可诊断、可跟读、可复习、可统计的最小单元。
+DeepListener 是一个面向高阶英语学习者的听力训练与复习系统。它不是课程管理工具或泛化播放器，而是围绕“句子级精听”和“复盘闭环”设计的训练台。音频和本地视频只是媒体载体，核心目标是让用户把听不懂的材料拆成可诊断、可跟读、可复习、可统计的最小单元。
 
 当前代码中的训练闭环是：
 
-**上传音频 -> 自动转录切句 -> 精听/盲听 -> 诊断并加入 Vault -> Shadowing 跟读 -> SRS 复习 -> Dashboard 复盘**
+**导入本地音频/视频 -> 获取字幕或自动转录切句 -> 精听/盲听 -> 诊断并加入 Vault -> Shadowing 跟读 -> SRS 复习 -> Dashboard 复盘**
 
 ## 2. 当前已实现的产品目标
 
@@ -23,7 +23,7 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 ## 3. 当前已实现模块 (Implemented Modules)
 
-### 模块 A: 上传与转录 (Upload + Transcription)
+### 模块 A: 媒体导入与转录 (Media Import + Transcription)
 
 当前实现入口：
 
@@ -32,12 +32,14 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 当前行为：
 
-- 只接受非空音频文件，单文件大小上限为 250 MB
+- 接受非空音频，以及本地 MP4/WebM 视频；音频上限 250 MB，视频上限 1 GB
 - 文件名会被清洗并加 UUID 前缀，避免上传路径逃逸
-- 音频文件保存到 `public/uploads/`
-- 上传后立即调用转录 provider 生成分句结果
+- 音频与视频派生音轨保存到 `public/uploads/`；原视频保存到 `public/videos/`
+- 视频通过 FFmpeg 提取 MP3 音轨。若存在可解析的内嵌字幕则优先使用，否则对派生音轨调用转录 provider
 - 自动创建 `Track` 和其下的 `Sentence` 记录
 - 句子按转录顺序写入 `orderIndex`
+- 工具不采集 Course、Module 或 Lesson 等领域字段；一个导入文件就是一个 Track，不自动拆分
+- Track 笔记和 Vault 笔记保持通用，不区分课程笔记
 
 当前 provider 选择逻辑：
 
@@ -49,7 +51,7 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 - 旧版 PRD 里把 Deepgram 写成固定默认实现，这和当前代码不一致；当前实现是“环境变量驱动，默认回退 OpenAI”。
 
-### 模块 B: 波形精听台 (Practice Workbench)
+### 模块 B: 媒体精听台 (Practice Workbench)
 
 当前实现入口：
 
@@ -59,6 +61,7 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 当前已实现能力：
 
 - WaveSurfer 波形播放
+- 视频 Track 在波形上方显示视频；视频元素是播放主时钟，波形和字幕共用同一时间轴
 - 句子列表与播放时间同步
 - 点击句子跳转并播放
 - 文本盲听模式：全局模糊句子，点击单句揭晓
@@ -137,6 +140,9 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - `Escape`: 退出 Shadowing
 
 说明：
+
+- Vault、Review、Shadowing 和导出继续使用 `audioUrl`，视频只在 Practice 工作台显示。
+- 原视频不进入现有远程同步；数据库、笔记和 `public/uploads/` 下的派生音轨维持现有同步边界。
 
 - 旧版 PRD 把工作流概括成 “Play Original -> Auto Record -> Auto Replay Recording”，这已经过于简化。当前代码里还包含循环、重录、文本隐藏、句子导航、文本编辑和格式标注。
 

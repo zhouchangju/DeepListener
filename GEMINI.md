@@ -1,7 +1,7 @@
 # DeepListener Context
 
 ## Project Overview
-DeepListener is an advanced English listening practice tool designed for high-level learners. It focuses on "atomic decoding" of speech, allowing users to drill down into specific sentences, diagnose listening errors (e.g., linking, speed, vocabulary), and practice via shadowing.
+DeepListener is an advanced English listening practice tool designed for high-level learners. It focuses on "atomic decoding" of speech across local audio, MP4, and WebM media, allowing users to drill down into specific sentences, diagnose listening errors (e.g., linking, speed, vocabulary), and practice via shadowing. It is content-agnostic rather than a course-management system.
 
 ## Documentation Map
 Use [docs/README.md](./docs/README.md) as the documentation entry point. It separates current implementation docs from historical plans and review archives.
@@ -9,7 +9,7 @@ Use [docs/README.md](./docs/README.md) as the documentation entry point. It sepa
 ## Technology Stack
 *   **Framework:** Next.js 16 (App Router)
 *   **Database:** SQLite (Prisma)
-*   **Audio:** WaveSurfer.js, Web Audio API
+*   **Media:** Native video, WaveSurfer.js, Web Audio API, FFmpeg/ffprobe
 *   **AI:** OpenAI (fallback default), Deepgram, Google Gemini
 
 ## Code Quality Standards (Core Guidelines)
@@ -47,6 +47,8 @@ Use [docs/README.md](./docs/README.md) as the documentation entry point. It sepa
 ## Architecture Details
 *   `src/lib/transcription`: Provider 工厂模式；`TRANSCRIPTION_PROVIDER` 未设置时回退到 `openai`。
 *   `src/components/feature`: 包含 AudioPlayer 和 ShadowingConsole。
+*   `src/lib/media-processing.ts`: 视频音轨提取与内嵌字幕处理；原视频在 `public/videos/`，派生音频在 `public/uploads/`。
+*   Video Track 在 Practice 中显示视频，但 Vault、Review、Shadowing 和导出继续使用 `audioUrl`。
 *   `src/lib/fsrs.ts`: 基于 FSRS-4.5 的复习调度逻辑，详见 [docs/review-system.md](./docs/review-system.md)。
 *   `undici`: 负责全局 fetch 代理拦截。
 
