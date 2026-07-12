@@ -15,6 +15,9 @@ interface UseWaveSurferProps {
   containerRef: RefObject<HTMLDivElement | null>;
   timelineRef: RefObject<HTMLDivElement | null>;
   audioUrl: string;
+  mediaRef?: RefObject<HTMLMediaElement | null>;
+  peaks?: Array<Float32Array | number[]>;
+  mediaDuration?: number;
   zoomLevel: number;
   loopMode: boolean;
   playbackRate: number;
@@ -28,6 +31,9 @@ export function useWaveSurfer({
   containerRef,
   timelineRef,
   audioUrl,
+  mediaRef,
+  peaks,
+  mediaDuration,
   zoomLevel,
   loopMode,
   playbackRate,
@@ -71,9 +77,13 @@ export function useWaveSurfer({
     const container = containerRef.current;
     const timeline = timelineRef.current;
     if (!container || !timeline) return;
+    if (mediaRef && !peaks) return;
 
     const ws = WaveSurfer.create({
       container,
+      media: mediaRef?.current ?? undefined,
+      peaks,
+      duration: mediaDuration,
       waveColor: "#cbd5e1",
       progressColor: "#4f46e5",
       cursorColor: "#f43f5e",
@@ -113,10 +123,11 @@ export function useWaveSurfer({
     ws.on("timeupdate", handleTimeUpdate);
     ws.on("interaction", handleInteraction);
 
-    // Load Audio
-    ws.load(audioUrl).catch((e) => {
-      if (e.name !== "AbortError") console.error("WaveSurfer load error:", e);
-    });
+    if (!mediaRef?.current) {
+      ws.load(audioUrl).catch((e) => {
+        if (e.name !== "AbortError") console.error("WaveSurfer load error:", e);
+      });
+    }
 
     wavesurferRef.current = ws;
 
@@ -134,7 +145,7 @@ export function useWaveSurfer({
         }
       }, 0);
     };
-  }, [audioUrl, containerRef, timelineRef]);
+  }, [audioUrl, containerRef, timelineRef, mediaRef, peaks, mediaDuration]);
 
   // Sync zoom level
   useEffect(() => {

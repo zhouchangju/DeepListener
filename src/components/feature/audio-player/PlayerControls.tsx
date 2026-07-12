@@ -34,6 +34,7 @@ export const PlayerControls = memo(function PlayerControls({
         <Button
           variant="default"
           size="icon"
+          aria-label={isPlaying ? "Pause" : "Play"}
           className="bg-indigo-600 hover:bg-indigo-700 h-12 w-12 rounded-full shrink-0"
           onClick={onTogglePlay}
         >

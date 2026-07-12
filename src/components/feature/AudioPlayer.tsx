@@ -26,14 +26,26 @@ interface Sentence {
 
 interface AudioPlayerProps {
   audioUrl: string;
+  videoUrl?: string | null;
+  audioBuffer?: AudioBuffer | null;
   sentences: Sentence[];
   onCapture: (sentenceId: string) => void;
   onShadowing: (index: number) => void;
   blindMode?: boolean;
 }
 
+function playMediaSafely(playback: Promise<void> | undefined) {
+  if (!playback) return;
+  void playback.catch((error: unknown) => {
+    if (error instanceof DOMException && ["AbortError", "NotAllowedError"].includes(error.name)) return;
+    console.error("Media playback failed", error);
+  });
+}
+
 export default function AudioPlayer({
   audioUrl,
+  videoUrl,
+  audioBuffer,
   sentences: rawSentences,
   onCapture,
   onShadowing,
@@ -52,7 +64,16 @@ export default function AudioPlayer({
     });
   }, [rawSentences]);
 
+  const waveformPeaks = useMemo(() => {
+    if (!videoUrl || !audioBuffer) return undefined;
+    return Array.from(
+      { length: audioBuffer.numberOfChannels },
+      (_, channel) => audioBuffer.getChannelData(channel),
+    );
+  }, [audioBuffer, videoUrl]);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLSpanElement>(null);
 
@@ -103,6 +124,9 @@ export default function AudioPlayer({
     containerRef,
     timelineRef,
     audioUrl,
+    mediaRef: videoUrl ? videoRef : undefined,
+    peaks: waveformPeaks,
+    mediaDuration: videoUrl ? audioBuffer?.duration : undefined,
     zoomLevel,
     loopMode,
     playbackRate,
@@ -119,7 +143,7 @@ export default function AudioPlayer({
         wavesurferRef.current?.setTime(region.start);
         if (timeRef.current) timeRef.current.innerText = new Date(region.start * 1000).toISOString().substring(14, 19);
         syncListToTime(region.start, true);
-        wavesurferRef.current?.play();
+        playMediaSafely(wavesurferRef.current?.play());
       }, 10);
     },
     onInteraction: (time) => {
@@ -135,7 +159,7 @@ export default function AudioPlayer({
   });
 
   // Callbacks
-  const handlePlayPause = () => wavesurferRef.current?.playPause();
+  const handlePlayPause = () => playMediaSafely(wavesurferRef.current?.playPause());
   const handleToggleLoop = () => setLoopMode((prev) => !prev);
   const handleClearRegions = () => regionsRef.current?.clearRegions();
 
@@ -176,7 +200,7 @@ export default function AudioPlayer({
       });
     }
     wavesurferRef.current?.setTime(s.startTime);
-    wavesurferRef.current?.play();
+    playMediaSafely(wavesurferRef.current?.play());
     regionsRef.current?.clearRegions();
   };
 
@@ -191,6 +215,17 @@ export default function AudioPlayer({
 
   return (
     <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-card text-card-foreground rounded-2xl shadow-xl shadow-slate-200/60 border border-border overflow-hidden dark:shadow-black/30">
+      {videoUrl && (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          controls
+          preload="metadata"
+          className="w-full max-h-[56vh] bg-black object-contain"
+        >
+          Your browser does not support local video playback.
+        </video>
+      )}
       <PlayerControls
         isPlaying={playerControlsState.isPlaying}
         timeRef={timeRef}

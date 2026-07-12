@@ -45,6 +45,7 @@ interface Track {
   id: string;
   title: string;
   audioUrl: string;
+  videoUrl?: string | null;
   note?: string | null;
   trackType?: string | null;
   trackTopic?: string | null;
@@ -193,6 +194,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
       {shouldRenderBackgroundAudioPlayer(shadowingMode) && (
         <AudioPlayer 
           audioUrl={track.audioUrl} 
+          videoUrl={track.videoUrl}
+          audioBuffer={fullAudioBuffer}
           sentences={track.sentences} 
           onCapture={handleCapture}
           blindMode={blindMode}

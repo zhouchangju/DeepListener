@@ -51,3 +51,8 @@ test("audio player uses WaveSurfer playback state for controls", () => {
   assert.doesNotMatch(source, /regionsRef\.current\.clearRegions\(\)/);
   assert.match(source, /regionsRef\.current\?\.clearRegions\(\)/);
 });
+
+test("the primary transport control has an accessible play or pause name", () => {
+  const source = readFileSync(new URL("./PlayerControls.tsx", import.meta.url), "utf8");
+  assert.match(source, /aria-label=\{isPlaying \? "Pause" : "Play"\}/);
+});

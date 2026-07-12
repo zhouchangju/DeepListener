@@ -18,3 +18,13 @@ test("practice client keeps parsed save-to-vault server errors visible in the to
     /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : "Failed to save to vault"\);/,
   );
 });
+
+test("practice passes optional video through while keeping audio for downstream listening tools", () => {
+  const source = readFileSync(new URL("./[id]/PracticeClient.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /videoUrl\?: string \| null/);
+  assert.match(source, /audioUrl=\{track\.audioUrl\}/);
+  assert.match(source, /videoUrl=\{track\.videoUrl\}/);
+  assert.match(source, /fetchAndDecodeAudio\(track\.audioUrl\)/);
+  assert.doesNotMatch(source, /CourseNote|course note|课程笔记/i);
+});
