@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import {
   buildUploadTarget,
+  getUploadMediaKind,
   resolveStoredUploadPath,
   sanitizeUploadFilename,
   validateUploadFileMetadata,
@@ -25,6 +26,30 @@ test("validateUploadFileMetadata accepts common audio files and rejects unsafe u
   assert.equal(validateUploadFileMetadata({ name: "empty.mp3", type: "audio/mpeg", size: 0 }).ok, false);
   assert.equal(validateUploadFileMetadata({ name: "malware.exe", type: "application/x-msdownload", size: 1024 }).ok, false);
   assert.equal(validateUploadFileMetadata({ name: "huge.mp3", type: "audio/mpeg", size: 251 * 1024 * 1024 }).ok, false);
+});
+
+test("validateUploadFileMetadata accepts local MP4 and WebM videos with a separate size limit", () => {
+  assert.deepEqual(validateUploadFileMetadata({ name: "lecture.mp4", type: "video/mp4", size: 300 * 1024 * 1024 }), {
+    ok: true,
+  });
+  assert.deepEqual(validateUploadFileMetadata({ name: "movie.webm", type: "application/octet-stream", size: 1024 }), {
+    ok: true,
+  });
+  assert.equal(validateUploadFileMetadata({ name: "huge.mp4", type: "video/mp4", size: 1025 * 1024 * 1024 }).ok, false);
+  assert.equal(getUploadMediaKind({ name: "lecture.mp4", type: "video/mp4", size: 1 }), "VIDEO");
+  assert.equal(getUploadMediaKind({ name: "lesson.mp3", type: "audio/mpeg", size: 1 }), "AUDIO");
+});
+
+test("buildUploadTarget stores original videos outside the remotely synced uploads directory", () => {
+  const target = buildUploadTarget({
+    originalName: "lesson.mp4",
+    uniqueId: "fixed-id",
+    rootDir: "/repo",
+    mediaKind: "VIDEO",
+  });
+
+  assert.equal(target.mediaUrl, "/videos/fixed-id-lesson.mp4");
+  assert.equal(target.uploadPath, path.join("/repo", "public", "videos", "fixed-id-lesson.mp4"));
 });
 
 test("buildUploadTarget keeps uploads inside public/uploads", () => {

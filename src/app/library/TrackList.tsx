@@ -92,7 +92,7 @@ export default function TrackList({
         setLoadingId(null);
       }
     } else if (action === "delete") {
-      if (!confirm("⚠️ PERMANENT DELETE WARNING ⚠️\n\nThis will remove the audio file and ALL your notes/reviews for this track.\nThis action CANNOT be undone.\n\nAre you sure?")) return;
+      if (!confirm("⚠️ PERMANENT DELETE WARNING ⚠️\n\nThis will remove the media files and ALL your notes/reviews for this track.\nThis action CANNOT be undone.\n\nAre you sure?")) return;
       
       setLoadingId(track.id);
       try {

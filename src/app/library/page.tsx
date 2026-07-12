@@ -41,7 +41,7 @@ export default async function LibraryPage({
             {showArchived && <span className="text-xs md:text-sm font-normal text-muted-foreground bg-muted px-2 py-1 rounded">Archive</span>}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">
-            {showArchived ? "Tracks hidden from main view." : "Upload audio files to start practicing."}
+            {showArchived ? "Tracks hidden from main view." : "Import local audio or video to start listening practice."}
           </p>
         </div>
         

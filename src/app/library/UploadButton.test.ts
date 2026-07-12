@@ -28,3 +28,19 @@ test("single upload opens a drop dialog while preserving single-file upload hand
   assert.match(source, /processFiles=\{handleFiles\}/);
   assert.doesNotMatch(source, /multiple=\{true\}/);
 });
+
+test("single upload presents a generic media workflow", () => {
+  const source = readFileSync(new URL("./UploadButton.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /triggerLabel="Import Media"/);
+  assert.match(source, /title="Import local media"/);
+  assert.doesNotMatch(source, /Course|Module|Lesson|course note/i);
+});
+
+test("single media import streams the file body instead of building a large multipart buffer", () => {
+  const source = readFileSync(new URL("./UploadButton.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /body: file/);
+  assert.match(source, /"X-DeepListener-File-Name": encodeURIComponent\(file\.name\)/);
+  assert.doesNotMatch(source, /formData\.append\("file", file\)/);
+});

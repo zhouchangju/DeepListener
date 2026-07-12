@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import { formatZodError, trackPatchSchema } from "@/lib/api-schemas";
-import { resolveStoredUploadPath } from "@/lib/upload-policy";
+import { resolveStoredUploadPath, resolveStoredVideoPath } from "@/lib/upload-policy";
 import { badRequest, internalServerError, notFound } from "@/lib/api-response";
 
 // DELETE (保持不变)
@@ -19,6 +19,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         await unlink(filePath);
       } catch (e) {
         console.warn("Failed to delete audio file:", e);
+      }
+    }
+
+    const videoPath = track.videoUrl ? resolveStoredVideoPath(track.videoUrl) : null;
+    if (videoPath) {
+      try {
+        await unlink(videoPath);
+      } catch (e) {
+        console.warn("Failed to delete video file:", e);
       }
     }
 

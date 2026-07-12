@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent, type ChangeEvent } from "react";
-import { FileAudio, Loader2, Upload } from "lucide-react";
+import { FileVideo2, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -90,7 +90,7 @@ export default function UploadDropDialog({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept="audio/*"
+          accept="audio/*,video/mp4,video/webm"
           multiple={multiple}
           onChange={handleInputChange}
           disabled={uploading}
@@ -104,12 +104,12 @@ export default function UploadDropDialog({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <FileAudio className="mb-4 h-10 w-10 text-muted-foreground" />
+          <FileVideo2 className="mb-4 h-10 w-10 text-muted-foreground" />
           <div className="text-sm font-medium text-foreground">
-            {multiple ? "Drag audio files here" : "Drag an audio file here"}
+            {multiple ? "Drag media files here" : "Drag a media file here"}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {multiple ? "Drop one or more local audio files" : "Drop one local audio file"}
+            {multiple ? "Drop one or more local audio or video files" : "Drop one local audio or video file"}
           </div>
           <Button
             type="button"

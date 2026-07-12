@@ -36,8 +36,11 @@ yarn-error.log*
 # project specific
 /public/uploads/*
 !/public/uploads/.gitkeep
+/public/videos/*
+!/public/videos/.gitkeep
 *.db
 *.db-journal
+/prisma/*.db.*.backup
 *.log
 
 # vercel

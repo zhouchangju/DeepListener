@@ -31,7 +31,7 @@ export default function BatchUploadButton() {
     setUploading(true);
 
     const toastId = toast.loading(
-      `Processing ${files.length} audio file${files.length > 1 ? "s" : ""}...`
+      `Processing ${files.length} media file${files.length > 1 ? "s" : ""}...`
     );
 
     const formData = new FormData();
@@ -49,7 +49,7 @@ export default function BatchUploadButton() {
 
       const data = await res.json();
       const { success, failed } = data as {
-        success: Array<{ id: string; title: string; audioUrl: string }>;
+        success: Array<{ id: string; title: string; audioUrl: string; fileName: string }>;
         failed: Array<{ fileName: string; error: string }>;
       };
 
@@ -58,16 +58,16 @@ export default function BatchUploadButton() {
 
       success.forEach((item) => {
         const idx = updatedProgress.findIndex(
-          (p) => p.fileName === item.title + ".mp3" || p.fileName === item.title
+          (p) => p.fileName === item.fileName
         );
         if (idx !== -1) {
-          updatedProgress[idx] = { fileName: item.title, status: "success" };
+          updatedProgress[idx] = { fileName: item.fileName, status: "success" };
         }
       });
 
       failed.forEach((item) => {
         const idx = updatedProgress.findIndex(
-          (p) => p.fileName === item.fileName || p.fileName === item.fileName
+          (p) => p.fileName === item.fileName
         );
         if (idx !== -1) {
           updatedProgress[idx] = {
@@ -116,10 +116,10 @@ export default function BatchUploadButton() {
   return (
     <div className="w-full space-y-4">
       <UploadDropDialog
-        triggerLabel="Batch Upload Audio"
+        triggerLabel="Batch Import Media"
         uploadingLabel="Processing..."
-        title="Batch upload audio"
-        description="Drop local audio files here, or keep using the folder picker."
+        title="Batch import local media"
+        description="Drop local audio, MP4, or WebM files here."
         multiple
         uploading={uploading}
         processFiles={handleFiles}

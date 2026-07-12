@@ -15,15 +15,17 @@ export default function UploadButton() {
     if (!file) return;
 
     setUploading(true);
-    const toastId = toast.loading("Processing audio with Whisper...");
-
-    const formData = new FormData();
-    formData.append("file", file);
+    const toastId = toast.loading("Processing media and preparing the listening track...");
 
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-DeepListener-File-Name": encodeURIComponent(file.name),
+          "X-DeepListener-File-Size": String(file.size),
+        },
+        body: file,
       });
 
       await requireOkResponse(res, "Upload failed");
@@ -40,10 +42,10 @@ export default function UploadButton() {
 
   return (
     <UploadDropDialog
-      triggerLabel="Upload Audio"
-      uploadingLabel="Transcribing..."
-      title="Upload audio"
-      description="Drop a local audio file here, or keep using the folder picker."
+      triggerLabel="Import Media"
+      uploadingLabel="Processing..."
+      title="Import local media"
+      description="Drop a local audio, MP4, or WebM file here. Video stays local while its audio is prepared for listening practice."
       uploading={uploading}
       processFiles={handleFiles}
     />

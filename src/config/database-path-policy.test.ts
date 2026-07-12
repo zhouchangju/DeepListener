@@ -16,3 +16,8 @@ test("project docs explain that file:./dev.db resolves under prisma", () => {
   assert.match(read("../../AGENTS.md"), /prisma\/dev\.db/);
   assert.match(read("../../docs/maintenance.md"), /prisma\/dev\.db/);
 });
+
+test("local SQLite safety backups stay untracked", () => {
+  const gitignore = readFileSync(new URL("../../.gitignore", import.meta.url), "utf8");
+  assert.match(gitignore, /prisma\/\*\.db\.\*\.backup/);
+});

@@ -24,6 +24,7 @@ REMOTE_BASE="/var/www/html/DeepListener"
 
 echo "=== DeepListener Safe Sync ==="
 echo "Source: public/uploads/ + prisma/dev.db"
+echo "Original videos in public/videos are not synced."
 echo "Target: ${REMOTE}:${REMOTE_BASE}/"
 echo ""
 

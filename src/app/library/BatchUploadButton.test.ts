@@ -28,3 +28,11 @@ test("batch upload opens a drop dialog while preserving multi-file upload handli
   assert.match(source, /processFiles=\{handleFiles\}/);
   assert.match(source, /multiple/);
 });
+
+test("batch media import matches progress by the original file name", () => {
+  const source = readFileSync(new URL("./BatchUploadButton.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /success: Array<\{ id: string; title: string; audioUrl: string; fileName: string \}>/);
+  assert.match(source, /p\.fileName === item\.fileName/);
+  assert.doesNotMatch(source, /item\.title \+ "\.mp3"/);
+});

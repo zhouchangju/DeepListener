@@ -11,6 +11,8 @@ model Track {
   id            String          @id @default(uuid())
   title         String
   audioUrl      String
+  mediaType     String          @default("AUDIO")
+  videoUrl      String?
   transcription String
   note          String?
   trackType     String?
