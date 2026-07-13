@@ -2,6 +2,31 @@
 
 DeepListener 是一个专为高阶英语学习者设计的“原子级”听力解码工具，旨在通过数据驱动的精听训练，彻底突破听力瓶颈。
 
+- **Self-hosted & local-first:** your media, your database, and your provider keys stay on your own machine.
+- **Bring your own media:** DeepListener ships no copyrighted sample media; you import audio/video you have the rights to use (see [SECURITY.md](SECURITY.md#media-and-content-boundary)).
+- **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable; degrades gracefully.
+- License: [MIT](LICENSE).
+
+## Quick Start
+
+```bash
+npm install
+cp .env.example .env        # fill in your provider key to use transcription
+npx prisma migrate deploy   # initialize the SQLite schema
+npm run dev                 # open http://localhost:3000
+```
+
+You can verify the build and tests **without** any private config:
+
+```bash
+npm run lint
+npm run build
+npm run test:ci
+```
+
+> Transcription features need at least one provider key in `.env`. The app, build, and test suite
+> otherwise run without secrets.
+
 ## 🌟 核心特性
 
 - **通用音频 / 视频精听**：
@@ -126,8 +151,8 @@ npm run build
 - `/src/components/theme`: 全局主题 Provider 和右上角日夜切换按钮。
 - `/src/components/ui`: Button、Card、Dialog、Dropdown、Progress、Skeleton 等基础 UI primitives。
 - `/src/lib`: Prisma、API schema/response helper、上传安全策略、音频工具、FSRS、文本/HTML 工具和转录 provider。
-- `/public/uploads`: 原始音频及视频派生音轨；进入现有远程同步。
-- `/public/videos`: 本地原视频；属于用户数据，不提交 Git，也不进入现有远程同步。
+- `/public/uploads`: 原始音频及视频派生音轨；属于用户数据，不提交 Git。
+- `/public/videos`: 本地原视频；属于用户数据，不提交 Git。
 - `/src/lib/transcription`: `openai` / `deepgram` / `google` 多 provider 转录实现。
 - `/src/symphony`: 本地 Symphony runner / orchestrator / tracker / workspace 实现。
 - `/prisma`: schema、migrations，以及默认 SQLite 数据库 `prisma/dev.db`。
@@ -179,3 +204,18 @@ npm run build
 - [复习系统与 FSRS 算法说明](./docs/review-system.md)
 - [Symphony 智能开发协调器](./docs/symphony.md)
 - [技术原理：解决 Node.js 代理超时](./docs/solving-node-proxy-timeout.md)
+
+## Support
+
+DeepListener 是**单人维护、尽力而为（best-effort）**的自托管项目，没有 SLA，也没有 LTS 分支；只有最新 `main` 和最新 tag 会收到修复。
+
+- Bug 与功能请求：开 GitHub issue，附上版本/commit 与复现步骤。
+- 安全报告：见 [SECURITY.md](SECURITY.md) —— **不要**用公开 issue 报告安全问题。
+- 贡献：见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+初次上手依赖 FFmpeg、SQLite 以及至少一个转录 provider 的 API key；请在本地 `.env` 中配置（参考 `.env.example`）。远程同步脚本（`npm run sync` / `npm run sync:safe`）从环境变量 `SYNC_REMOTE` / `SYNC_REMOTE_BASE` 读取目标，仓库不内置任何部署主机。
+
+## License
+
+[MIT](LICENSE) © zhouchangju。第三方依赖与外部运行时（FFmpeg）的归属见 [NOTICE](NOTICE)。
+
