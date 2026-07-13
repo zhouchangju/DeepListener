@@ -19,3 +19,12 @@ test("wave surfer full-track loop mode is applied to the media element", () => {
   assert.match(hookSource, /media\.loop\s*=\s*false/);
   assert.match(playerSource, /useWaveSurfer\(\{[\s\S]*loopMode,[\s\S]*playbackRate,/);
 });
+
+test("wave surfer zoom waits for decoded waveform data", () => {
+  const source = readFileSync(new URL("./useWaveSurfer.ts", import.meta.url), "utf8");
+
+  assert.match(
+    source,
+    /if \(wavesurfer && isReady && wavesurfer\.getDecodedData\(\)\) \{\s*wavesurfer\.zoom\(zoomLevel\);/,
+  );
+});

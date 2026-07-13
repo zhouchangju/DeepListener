@@ -149,8 +149,9 @@ export function useWaveSurfer({
 
   // Sync zoom level
   useEffect(() => {
-    if (wavesurferRef.current && isReady) {
-      wavesurferRef.current.zoom(zoomLevel);
+    const wavesurfer = wavesurferRef.current;
+    if (wavesurfer && isReady && wavesurfer.getDecodedData()) {
+      wavesurfer.zoom(zoomLevel);
     }
   }, [zoomLevel, isReady]);
 
