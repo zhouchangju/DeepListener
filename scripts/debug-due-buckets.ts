@@ -37,7 +37,7 @@ async function main() {
   });
 
   const buckets: Record<string, number> = {};
-  pastItems.forEach(item => {
+  pastItems.forEach((item: { due: Date }) => {
     const day = item.due.toISOString().split('T')[0];
     buckets[day] = (buckets[day] || 0) + 1;
   });
