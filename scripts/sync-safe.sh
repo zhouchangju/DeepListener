@@ -1,11 +1,17 @@
-#!/bin/bash
-# Safe sync wrapper for DeepListener
-# Adds confirmation prompt and dry-run support before syncing to remote.
+#!/usr/bin/env bash
+# Safe sync wrapper for DeepListener.
+# Adds confirmation prompt and dry-run support before syncing to a remote.
+#
+# The remote target is read from environment variables (no hard-coded host):
+#   SYNC_REMOTE       e.g. user@your-server.example.com   (required)
+#   SYNC_REMOTE_BASE  e.g. /var/www/DeepListener          (required)
 #
 # Usage:
 #   ./scripts/sync-safe.sh           # Interactive confirmation
 #   ./scripts/sync-safe.sh --dry-run # Preview only, no changes
 #   ./scripts/sync-safe.sh --yes     # Skip confirmation (for CI)
+#
+# Original videos under public/videos/ are intentionally never synced.
 
 set -euo pipefail
 
@@ -19,8 +25,14 @@ for arg in "$@"; do
   esac
 done
 
-REMOTE="root@124.221.194.112"
-REMOTE_BASE="/var/www/html/DeepListener"
+REMOTE="${SYNC_REMOTE:-}"
+REMOTE_BASE="${SYNC_REMOTE_BASE:-}"
+
+if [ -z "$REMOTE" ] || [ -z "$REMOTE_BASE" ]; then
+  echo "sync:safe: SYNC_REMOTE and SYNC_REMOTE_BASE must be set." >&2
+  echo "           Set them in your local .env (see .env.example) or export them." >&2
+  exit 1
+fi
 
 echo "=== DeepListener Safe Sync ==="
 echo "Source: public/uploads/ + prisma/dev.db"

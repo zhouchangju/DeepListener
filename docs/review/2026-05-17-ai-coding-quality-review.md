@@ -158,7 +158,7 @@ API 又没有严格枚举校验。例如 `src/app/api/track/[id]/route.ts:39-45`
 
 ### 7. 运维脚本暴露部署细节
 
-`package.json:11` 的 `sync` 脚本直接写了 `root@124.221.194.112:/var/www/html/DeepListener/...`。这不一定是密钥泄露，但它把部署账号、IP 和路径暴露在版本化脚本中，还鼓励用 root 做 rsync。工程纪律一般。
+`package.json` 的 `sync` 脚本曾经直接写了硬编码的 `root@<server-ip>:/var/www/html/DeepListener/...`。这不一定是密钥泄露，但它把部署账号、主机和路径暴露在版本化脚本中，还鼓励用 root 做 rsync。工程纪律一般。（注：该问题已于后续整改中参数化为读取 `SYNC_REMOTE` / `SYNC_REMOTE_BASE` 环境变量，真实主机不再出现在仓库中。）
 
 ### 8. 包管理信号混乱
 
