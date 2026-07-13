@@ -3,10 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 test("sync backs up the SQLite file that Prisma actually uses", () => {
-  const packageJson = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  // The sync logic lives in scripts/sync-uploads-and-db.sh (invoked from the
+  // package.json "sync" script). The invariant is that it syncs prisma/dev.db
+  // and does not sync the repo-root dev.db as a standalone file.
+  const syncScript = readFileSync(new URL("../../scripts/sync-uploads-and-db.sh", import.meta.url), "utf8");
 
-  assert.match(packageJson.scripts.sync, /prisma\/dev\.db/);
-  assert.doesNotMatch(packageJson.scripts.sync, /(^|[^\w/])dev\.db\s/);
+  assert.match(syncScript, /prisma\/dev\.db/);
+  // The script must not treat the repo-root dev.db as the sync source.
+  assert.doesNotMatch(syncScript, /(^|[^\w/])dev\.db\s/);
 });
 
 test("project docs explain that file:./dev.db resolves under prisma", () => {
