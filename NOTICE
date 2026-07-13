@@ -1,0 +1,62 @@
+DeepListener
+Copyright (c) 2026 zhouchangju
+
+Licensed under the MIT License (see LICENSE).
+
+This project depends on the following third-party packages, each distributed
+under its own license (all OSI-approved and compatible with MIT). This is a
+non-exhaustive summary of the most significant dependencies; the authoritative
+license for each package lives in its own node_modules/<package>/LICENSE.
+
+Runtime dependencies (key items):
+- next — MIT
+- react / react-dom — MIT
+- @prisma/client — Apache-2.0
+- prisma (CLI, dev) — Apache-2.0
+- openai — Apache-2.0
+- @deepgram/sdk — MIT
+- @google/generative-ai — Apache-2.0
+- wavesurfer.js — BSD-3-Clause
+- fluent-ffmpeg / @types/fluent-ffmpeg — MIT
+- ts-fsrs (Free Spaced Repetition Scheduler) — MIT
+- recharts — MIT
+- radix-ui packages — MIT
+- undici — MIT
+- https-proxy-agent — MIT
+- dotenv — BSD-2-Clause
+- uuid — MIT
+- class-variance-authority — Apache-2.0
+- clsx — MIT
+- tailwind-merge — MIT
+- tailwindcss / @tailwindcss/postcss / tailwindcss-animate / tw-animate-css — MIT
+- lucide-react — ISC
+- next-themes — MIT
+- sonner — MIT
+- zod — MIT
+
+Development dependencies (key items):
+- typescript — Apache-2.0
+- eslint / eslint-config-next / eslint-plugin-react / eslint-plugin-react-hooks — MIT
+- tsx — MIT
+- @types/node / @types/react / @types/react-dom / @types/uuid — MIT
+- js-yaml — MIT
+- @next/swc-wasm-nodejs — distributed as part of Next.js (MIT)
+- lightningcss-wasm — MPL-2.0
+
+External runtime requirements (not vendored, must be installed separately):
+- FFmpeg / ffprobe — required for video audio extraction, subtitle probing, and
+  audio export. FFmpeg is licensed under LGPL or GPL depending on build; install
+  it from your platform package manager. DeepListener invokes it as an external
+  binary and does not redistribute FFmpeg.
+
+Algorithm attribution:
+- The spaced-repetition scheduler is the Free Spaced Repetition Scheduler
+  (FSRS), used via the MIT-licensed `ts-fsrs` library. DeepListener does not
+  redistribute the algorithm source; it calls the library through its public API.
+
+External services (referenced by code, configured by the operator):
+- Transcription providers (OpenAI, Deepgram, Google Generative AI) are called
+  with API keys the operator provides. DeepListener does not bundle provider
+  credentials or redistribute provider content.
+- Linear (optional, used by the Symphony orchestrator) is called only if the
+  operator provides a LINEAR_API_KEY.
