@@ -18,7 +18,7 @@
  * - VERY_HARD -> dr: 10
  */
 
-import { PrismaClient, type ReviewLog } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -73,8 +73,8 @@ async function migrate() {
       orderBy: { createdAt: 'asc' },
     });
 
-    const retrieval = logs.filter((log: ReviewLog) => log.rating >= 3).length;
-    const lapse = logs.filter((log: ReviewLog) => log.rating < 3).length;
+    const retrieval = logs.filter((log: { rating: number }) => log.rating >= 3).length;
+    const lapse = logs.filter((log: { rating: number }) => log.rating < 3).length;
 
     // Update the item
     await prisma.reviewItem.update({
