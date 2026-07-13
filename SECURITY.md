@@ -56,9 +56,17 @@ DeepListener lets operators **import their own audio and video** for personal li
 
 ## Deployment Topology
 
-No host, account, or deployment path is hard-coded in the repository. The optional `npm run sync` /
-`npm run sync:safe` scripts read `SYNC_REMOTE` and `SYNC_REMOTE_BASE` from the operator's environment
-(see `.env.example`). Do not hard-code real deployment targets in committed files.
+No host, account, or deployment path is hard-coded in the current repository tree. The optional
+`npm run sync` / `npm run sync:safe` scripts read `SYNC_REMOTE` and `SYNC_REMOTE_BASE` from the
+operator's environment (see `.env.example`). Do not hard-code real deployment targets in committed
+files.
+
+> History note: earlier commits contained a hard-coded server host in `package.json` and sync scripts.
+> That value has been removed from the current tree and the scripts now read it from environment
+> variables. A server IP/host still exists in Git history (an irreducible property of commit history
+> unless rewritten). It is a deployment endpoint, **not** a credential. Operators who used that
+> endpoint should apply firewall/access-control hardening before publishing, and treat the historical
+> exposure as a reason to restrict the host to key-based SSH and a known set of clients.
 
 ## What Is Out of Scope
 
