@@ -12,6 +12,7 @@ DeepListener 是一个专为高阶英语学习者设计的“原子级”听力�
 ```bash
 npm install
 cp .env.example .env        # fill in your provider key to use transcription
+npx prisma generate         # generate the Prisma client (required before build)
 npx prisma migrate deploy   # initialize the SQLite schema
 npm run dev                 # open http://localhost:3000
 ```
@@ -19,13 +20,15 @@ npm run dev                 # open http://localhost:3000
 You can verify the build and tests **without** any private config:
 
 ```bash
+npx prisma generate         # required once after install; produces the Prisma namespace types
 npm run lint
 npm run build
 npm run test:ci
 ```
 
 > Transcription features need at least one provider key in `.env`. The app, build, and test suite
-> otherwise run without secrets.
+> otherwise run without secrets. The `prisma generate` step is required because the source uses
+> generated Prisma namespace types (e.g. `Prisma.ReviewItemWhereInput`); CI runs it automatically.
 
 ## 🌟 核心特性
 

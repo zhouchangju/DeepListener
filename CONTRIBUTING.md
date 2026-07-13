@@ -31,6 +31,7 @@ npm run dev                # start the Next.js dev server
 Pre-commit verification:
 
 ```bash
+npx prisma generate         # required once after install; produces Prisma namespace types
 npm run lint
 npm run build              # uses scripts/next-build.mjs (WASM fallback aware)
 npm run test:ci            # node --import tsx --test based tests
