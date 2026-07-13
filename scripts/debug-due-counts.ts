@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type ReviewItem } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -60,7 +60,7 @@ async function main() {
       take: 5
     });
     console.log('\nSamples of "due only" items:');
-    samples.forEach(s => {
+    samples.forEach((s: ReviewItem) => {
       console.log(`ID: ${s.id}, due: ${s.due.toISOString()}, nextReview: ${s.nextReview.toISOString()}`);
     });
   }
@@ -75,7 +75,7 @@ async function main() {
       take: 5
     });
     console.log('\nSamples of "nextReview only" items:');
-    samples.forEach(s => {
+    samples.forEach((s: ReviewItem) => {
       console.log(`ID: ${s.id}, due: ${s.due.toISOString()}, nextReview: ${s.nextReview.toISOString()}`);
     });
   }

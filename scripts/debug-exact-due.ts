@@ -16,7 +16,7 @@ async function main() {
   });
 
   console.log('Top 20 most recently due items:');
-  dueItems.forEach(item => {
+  dueItems.forEach((item: { due: Date }) => {
     console.log(item.due.toISOString());
   });
 
