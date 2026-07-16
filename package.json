@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:ci": "node scripts/run-node-tests.mjs",
+    "verify": "npm run lint && npm run test:ci && npm run build",
+    "verify:quick": "npm run lint && npm run test:ci",
     "sync": "bash scripts/sync-uploads-and-db.sh",
     "sync:safe": "bash scripts/sync-safe.sh",
     "symphony": "./bin/symphony",

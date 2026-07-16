@@ -10,7 +10,10 @@ For detailed architecture, environment config, and code organization, see [CLAUD
 - `npm run dev`: start the local Next.js dev server.
 - `npm run build`: create a production build; use this before major merges.
 - `npm run lint`: run ESLint across the repo.
-- `node --import tsx --test <paths>`: run targeted tests for touched routes, hooks, or components.
+- `npm run verify`: the single loop arbiter — runs `lint` + `test:ci` + `build`. This is what CI runs after `prisma generate`, so it is the exact same gate locally and remotely. Treat a change as done only when this is green.
+- `npm run verify:quick`: lint + tests only, for fast inner-loop iterations before committing to a full build.
+- `node --import tsx --test <paths>`: run targeted tests for touched routes, hooks, or components. Use this for scoped verification before the full `verify`.
+- `npx prisma generate`: regenerate the Prisma client. Required once after install or after any `schema.prisma` change before `test:ci`/`build` will pass.
 - `npx prisma migrate dev`: apply schema changes to the local SQLite database.
 - `npx prisma studio`: inspect the local SQLite database resolved from `DATABASE_URL` (default: `prisma/dev.db`).
 - `ffmpeg -version` / `ffprobe -version`: verify the media tools required for video audio extraction, embedded-subtitle detection, and export.
@@ -40,7 +43,10 @@ Apply the Karpathy guideline set from `multica-ai/andrej-karpathy-skills` when w
 - Keep bugfix retry loops capped at 3 distinct attempts. After each attempt, run the failing command again; if all 3 fail, report what changed and what remains.
 - Do not edit `.env*`, credential files, or local secrets. Ask the user to change local environment values themselves.
 - Do not weaken lint, type, test, or build configuration to make a failing change pass. Fix the code or explain the blocker.
-- Prefer scoped verification while editing, then run the broader checks (`npm run test:ci`, `npm run build`, and source-scoped ESLint) before claiming completion for code changes.
+- Prefer scoped verification while editing, then run the broader checks (`npm run verify`, falling back to `verify:quick` for a fast lint+test pass) before claiming completion for code changes.
+
+## CI Contract (do not refactor without intent)
+CI runs lint, test:ci, and build as three explicit steps rather than via `npm run verify`. This is intentional and is guarded by `src/lib/ci-workflow.test.ts`, which asserts those three command strings appear verbatim in `.github/workflows/ci.yml`. The contract makes the remote gate readable at a glance. Locally, `npm run verify` is the exact equivalent — use it. If you ever want to collapse CI into one step, update the contract test in the same change.
 
 ## Learned from Mistakes
 - `npm run lint` can accidentally scan generated files under `.worktrees/**/.next`; keep generated worktrees out of ESLint scope and do not treat generated build output as source.
