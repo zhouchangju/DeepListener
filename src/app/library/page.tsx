@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import UploadButton from "./UploadButton";
 import BatchUploadButton from "./BatchUploadButton";
 import LibraryManager from "./LibraryManager";
@@ -31,17 +32,18 @@ export default async function LibraryPage({
   const { archived, batch } = await searchParams;
   const showArchived = archived === "true";
   const showBatchUpload = batch === "true";
+  const t = await getTranslations("library");
 
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            {showArchived ? "Archived Tracks" : "Your Library"}
-            {showArchived && <span className="text-xs md:text-sm font-normal text-muted-foreground bg-muted px-2 py-1 rounded">Archive</span>}
+            {showArchived ? t("pageArchivedTitle") : t("pageActiveTitle")}
+            {showArchived && <span className="text-xs md:text-sm font-normal text-muted-foreground bg-muted px-2 py-1 rounded">{t("archiveBadge")}</span>}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">
-            {showArchived ? "Tracks hidden from main view." : "Import local audio or video to start listening practice."}
+            {showArchived ? t("pageArchivedSubtitle") : t("pageActiveSubtitle")}
           </p>
         </div>
         
@@ -49,7 +51,7 @@ export default async function LibraryPage({
           <Link href={showArchived ? "/library" : "/library?archived=true"} className="flex-1 md:flex-none">
             <Button variant="outline" className="w-full">
               <Archive className="mr-2 h-4 w-4" />
-              {showArchived ? "View Active" : "Archive"}
+              {showArchived ? t("viewActive") : t("archive")}
             </Button>
           </Link>
           {!showArchived && (
@@ -59,7 +61,7 @@ export default async function LibraryPage({
                 className="flex-1 md:flex-none"
               >
                 <Button variant="outline" className="w-full">
-                  {showBatchUpload ? "Single" : "Batch"}
+                  {showBatchUpload ? t("singleMode") : t("batchMode")}
                 </Button>
               </Link>
               <div className="flex-1 md:flex-none">

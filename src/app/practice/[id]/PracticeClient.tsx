@@ -22,6 +22,7 @@ import NoteEditor from "@/components/feature/NoteEditor";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
 import { requireOkResponse } from "@/lib/client-response";
@@ -62,6 +63,7 @@ interface PracticeClientProps {
 
 export default function PracticeClient({ track }: PracticeClientProps) {
   const router = useRouter();
+  const t = useTranslations("practice");
   const { setMode } = useTimeTracking();
 
   useEffect(() => {
@@ -84,6 +86,12 @@ export default function PracticeClient({ track }: PracticeClientProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const [note, setNote] = useState<string | null>(track.note || null);
+
+  // Keep the note in sync with the server prop after router.refresh() so an
+  // externally-updated note is reflected instead of the stale local copy.
+  useEffect(() => {
+    setNote(track.note ?? null);
+  }, [track.note]);
 
   // 预加载音频 Buffer，为了 Shadowing 模式下的极速切片
   useEffect(() => {
@@ -115,13 +123,13 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         }),
       });
 
-      await requireOkResponse(res, "Failed to save to vault");
+      await requireOkResponse(res, t("saveVaultFailed"));
 
-      toast.success("Added to your Vault!");
+      toast.success(t("addedToVault"));
       setCapturingSentenceId(null);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save to vault");
+      toast.error(error instanceof Error ? error.message : t("saveVaultFailed"));
     }
   };
 
@@ -137,14 +145,14 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         body: JSON.stringify({ type: 'track', trackId: track.id }),
       });
 
-      await requireOkResponse(response, 'Export failed');
+      await requireOkResponse(response, t("audioExportFailed"));
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
-      toast.success('Audio exported successfully');
+      toast.success(t("audioExported"));
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+      toast.error(error instanceof Error ? error.message : t("audioExportFailed"));
     } finally {
       setIsExporting(false);
     }
@@ -167,24 +175,24 @@ export default function PracticeClient({ track }: PracticeClientProps) {
               disabled={isExporting}
             >
               <Download className="h-4 w-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export Audio'}
+              {isExporting ? t("exporting") : t("exportAudio")}
             </Button>
 
             <Button
               variant="secondary"
-              className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
+              className="bg-primary/15 text-primary hover:bg-primary/25 dark:bg-primary/15 dark:text-primary/25 dark:hover:bg-primary/25"
               disabled={!fullAudioBuffer} // 只有加载完了才能进跟读
               onClick={() => { setShadowIndex(0); setShadowingMode(true); }}
             >
               {fullAudioBuffer ? <Mic2 className="h-4 w-4 mr-2" /> : <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {fullAudioBuffer ? "Shadowing" : "Loading..."}
+              {fullAudioBuffer ? t("startShadowing") : t("loadingAudio")}
             </Button>
 
             <Button
               variant={blindMode ? "default" : "outline"}
               onClick={() => setBlindMode(!blindMode)}
               size="icon"
-              title="Blind Mode"
+              title={t("blindModeTitle")}
             >
               {blindMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>

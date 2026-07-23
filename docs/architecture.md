@@ -1,8 +1,30 @@
 # DeepListener Current Architecture
 
-Last updated: 2026-07-12
+Last updated: 2026-07-23
 
 This document describes the current codebase implementation. For product behavior, see [requirement.md](./requirement.md). For day-to-day operations, see [maintenance.md](./maintenance.md).
+
+## i18n (Internationalization)
+
+DeepListener uses `next-intl` in **without i18n routing** mode. URL paths remain unchanged; the locale is resolved server-side from:
+
+1. `NEXT_LOCALE` cookie (set by the LanguageToggle)
+2. `Accept-Language` request header (with proper q-value parsing)
+3. Fallback to `en`
+
+Supported locales: `en` (default) and `zh-CN`.
+
+**Key files:**
+- `src/i18n/config.ts` — locale constants and type
+- `src/i18n/locale.ts` — `resolveLocale()` pure function
+- `src/i18n/request.ts` — next-intl `getRequestConfig`
+- `src/i18n/client.ts` — cookie helpers and legacy migration
+- `src/i18n/domain-message-keys.ts` — TrackStatus → message key mapping
+- `messages/en.json`, `messages/zh-CN.json` — translation strings
+
+**Translation boundary:** Domain/data values (TrackStatus enums, trackType/trackTopic values, analytics bin keys) are never translated at the source. Translation happens at the UI display boundary via `useTranslations()` or `getTranslations()`.
+
+**global-error.tsx** runs outside NextIntlClientProvider and has its own minimal inline en/zh-CN fallback dictionary.
 
 ## Runtime Shape
 
@@ -67,6 +89,7 @@ flowchart LR
 | Route | Current purpose | Main files |
 | --- | --- | --- |
 | `/` | Redirects to `/library`; there is no separate landing page. | `src/app/page.tsx` |
+| `/setup` | Read-only environment readiness checks for Node.js, SQLite initialization, media storage, FFmpeg, provider configuration, and network exposure. | `src/app/setup/page.tsx`, `src/lib/setup-readiness.ts` |
 | `/library` | Upload, archive, filter, note, select, batch-play, and export tracks. | `src/app/library/**` |
 | `/practice/[id]` | Sentence-level audio/video practice, waveform, blind mode, diagnosis capture, generic track notes, shadowing. | `src/app/practice/[id]/**`, `src/components/feature/AudioPlayer.tsx` |
 | `/review` | Due-item SRS review queue with FSRS grading and short-interval relearning. | `src/app/review/**` |

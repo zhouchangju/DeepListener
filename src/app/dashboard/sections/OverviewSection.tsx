@@ -1,9 +1,14 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CalendarClock, Trophy, Clock, Headphones, Mic2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface OverviewSectionProps {
   countdownDays: number;
+  reached: boolean;
+  targetDateLabel: string;
   learntCount: number;
   progressPercent: number;
   totalHours: number;
@@ -14,6 +19,8 @@ interface OverviewSectionProps {
 
 export function OverviewSection({
   countdownDays,
+  reached,
+  targetDateLabel,
   learntCount,
   progressPercent,
   totalHours,
@@ -21,58 +28,59 @@ export function OverviewSection({
   totalTracks,
   totalSentences
 }: OverviewSectionProps) {
+  const t = useTranslations("dashboard");
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-none shadow-lg">
+        <Card className="bg-gradient-to-br from-primary to-purple-600 text-white border-none shadow-lg">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-100 font-medium text-lg">
-              <CalendarClock className="h-5 w-5" /> TOEFL Countdown
+            <CardTitle className="flex items-center gap-2 text-primary/15 font-medium text-lg">
+              <CalendarClock className="h-5 w-5" /> {t("countdownTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold">{countdownDays}</span>
-              <span className="text-xl text-indigo-100">days left</span>
+              <span className="text-xl text-primary/15">{reached ? t("reachedLabel") : t("daysLeft")}</span>
             </div>
-            <div className="text-sm text-indigo-200 mt-2">Target Date: May 16, 2026</div>
+            <div className="text-sm text-primary/25 mt-2">{t("targetDate", { date: targetDateLabel })}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-100 shadow-sm dark:border-indigo-400/20">
+        <Card className="border-primary/15 shadow-sm dark:border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-              <Trophy className="h-5 w-5 text-yellow-500" /> TOEFL 5.0 Progress
+            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary/15">
+              <Trophy className="h-5 w-5 text-yellow-500" /> {t("progressTitle")}
             </CardTitle>
-            <CardDescription>Target: 100 Learnt Tracks</CardDescription>
+            <CardDescription>{t("progressTarget")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between text-sm font-medium">
-              <span>{learntCount} / 100 Tracks</span>
+              <span>{t("tracksProgress", { count: learntCount })}</span>
               <span>{progressPercent}%</span>
             </div>
-            <Progress value={progressPercent} className="h-3 bg-indigo-100" />
+            <Progress value={progressPercent} className="h-3 bg-primary/15" />
             <div className="text-xs text-muted-foreground">
-              &quot;已学习&quot; (Learnt) counts towards this goal.
+              {t("learntNote")}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-indigo-100 shadow-sm dark:border-indigo-400/20">
+        <Card className="border-primary/15 shadow-sm dark:border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
-              <Clock className="h-5 w-5 text-blue-500" /> C1 Fluency Journey
+            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary/15">
+              <Clock className="h-5 w-5 text-blue-500" /> {t("c1Title")}
             </CardTitle>
-            <CardDescription>Target: 400 Hours</CardDescription>
+            <CardDescription>{t("c1Target")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between text-sm font-medium">
-              <span>{totalHours.toFixed(1)} / 400 Hours</span>
+              <span>{t("hoursProgress", { hours: totalHours.toFixed(1) })}</span>
               <span>{c1Progress.toFixed(1)}%</span>
             </div>
             <Progress value={c1Progress} className="h-3 bg-blue-100" />
             <div className="text-xs text-muted-foreground">
-              Tracks Listening, Shadowing & Review time.
+              {t("c1Note")}
             </div>
           </CardContent>
         </Card>
@@ -80,14 +88,14 @@ export function OverviewSection({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-muted/60 p-4 rounded-xl border border-border">
-          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">Total Tracks</div>
+          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">{t("totalTracksLabel")}</div>
           <div className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Headphones className="w-5 h-5 text-indigo-500" />
+            <Headphones className="w-5 h-5 text-primary" />
             {totalTracks}
           </div>
         </div>
         <div className="bg-muted/60 p-4 rounded-xl border border-border">
-          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">Vault Sentences</div>
+          <div className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">{t("vaultSentencesLabel")}</div>
           <div className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Mic2 className="w-5 h-5 text-purple-500" />
             {totalSentences}

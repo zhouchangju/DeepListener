@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export default function MiniWavePlayer({
   loop = false,
 }: MiniWavePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations("feature.audioPlayer");
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<RegionsPlugin | null>(null);
   const loopRef = useRef(loop);
@@ -75,10 +77,16 @@ export default function MiniWavePlayer({
 
     if (!containerRef.current) return;
 
+    const resolveColor = (explicit: string, token: string, fallback: string) =>
+      explicit || (typeof window !== "undefined" ? getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback : fallback);
+
+    const resolvedWaveColor = resolveColor(waveColor, "--border", "#cbd5e1");
+    const resolvedProgressColor = resolveColor(progressColor, "--primary", "#4f46e5");
+
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor,
-      progressColor,
+      waveColor: resolvedWaveColor,
+      progressColor: resolvedProgressColor,
       cursorColor: "transparent", // 隐藏光标，保持简洁
       barWidth: 2,
       barGap: 1,
@@ -90,7 +98,7 @@ export default function MiniWavePlayer({
     if (enableRegions) {
       const regions = ws.registerPlugin(RegionsPlugin.create());
       regions.enableDragSelection({
-        color: "rgba(79, 70, 229, 0.2)",
+        color: "color-mix(in oklab, var(--primary) 20%, transparent)",
       });
       regionsRef.current = regions;
 
@@ -208,7 +216,7 @@ export default function MiniWavePlayer({
             variant="destructive"
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md z-10 opacity-80 hover:opacity-100"
             onClick={clearRegions}
-            title="Clear Selection"
+            title={t("clearSelection")}
           >
             <X className="h-3 w-3" />
           </Button>

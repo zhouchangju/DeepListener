@@ -6,7 +6,7 @@ test("single upload button delegates response parsing to the shared helper", () 
   const source = readFileSync(new URL("./UploadButton.tsx", import.meta.url), "utf8");
 
   assert.match(source, /@\/lib\/client-response/);
-  assert.match(source, /requireOkResponse\(res,\s*"Upload failed"\)/);
+  assert.match(source, /requireOkResponse\(res,\s*t\("uploadFailed"\)\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Upload failed"\)/);
 });
 
@@ -15,8 +15,9 @@ test("single upload button keeps parsed server errors visible in the toast", () 
 
   assert.match(
     source,
-    /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : "Upload failed\. Check your OpenAI API Key\.", \{ id: toastId \}\);/,
+    /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : t\("uploadFailedHint"\), \{ id: toastId \}\);/,
   );
+  assert.doesNotMatch(source, /Check your OpenAI API Key/);
 });
 
 test("single upload opens a drop dialog while preserving single-file upload handling", () => {
@@ -32,8 +33,8 @@ test("single upload opens a drop dialog while preserving single-file upload hand
 test("single upload presents a generic media workflow", () => {
   const source = readFileSync(new URL("./UploadButton.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /triggerLabel="Import Media"/);
-  assert.match(source, /title="Import local media"/);
+  assert.match(source, /triggerLabel=\{t\("importMedia"\)\}/);
+  assert.match(source, /title=\{t\("importMediaTitle"\)\}/);
   assert.doesNotMatch(source, /Course|Module|Lesson|course note/i);
 });
 

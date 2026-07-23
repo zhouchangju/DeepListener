@@ -12,11 +12,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { requireOkResponse } from "@/lib/client-response";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import DifficultySelector from "./DifficultySelector";
 import ReviewNoteEditor from "./ReviewNoteEditor";
 import { Copy, Check } from "lucide-react";
 
-const ERROR_TAGS = ["Linking", "Vocab", "Misheard", "Comprehension", "Speed", "Grammar", "Accent"];
+const ERROR_TAGS = [
+  { id: "Linking", labelKey: "linking" },
+  { id: "Vocab", labelKey: "vocab" },
+  { id: "Misheard", labelKey: "misheard" },
+  { id: "Comprehension", labelKey: "comprehension" },
+  { id: "Speed", labelKey: "speed" },
+  { id: "Grammar", labelKey: "grammar" },
+  { id: "Accent", labelKey: "accent" },
+] as const;
 
 interface VaultItem {
   id: string;
@@ -38,6 +47,9 @@ interface EditVaultModalProps {
 }
 
 export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditVaultModalProps) {
+  const t = useTranslations("feature.editVault");
+  const diagT = useTranslations("feature.diagnosis");
+  const commonT = useTranslations("common");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("NORMAL");
   const [loading, setLoading] = useState(false);
@@ -63,7 +75,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
     setNoteLoading(true);
     fetch(`/api/vault/${item.id}`, { headers: { Accept: "application/json" } })
       .then(async (res) => {
-        await requireOkResponse(res, "Failed to load note");
+        await requireOkResponse(res, t("loadNoteFailed"));
         return await res.json() as { userNote?: string | null };
       })
       .then((data) => {
@@ -73,7 +85,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
         }
       })
       .catch((error) => {
-        if (!cancelled) toast.error(error instanceof Error ? error.message : "Failed to load note");
+        if (!cancelled) toast.error(error instanceof Error ? error.message : t("loadNoteFailed"));
       })
       .finally(() => {
         if (!cancelled) setNoteLoading(false);
@@ -82,16 +94,16 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
     return () => {
       cancelled = true;
     };
-  }, [isOpen, item]);
+  }, [isOpen, item, t]);
 
   const handleCopyText = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast.success("Copied to clipboard");
+      toast.success(t("copiedToast"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("copyFailed"));
     }
   };
 
@@ -111,13 +123,13 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
         body: JSON.stringify({ tags: selectedTags, difficulty }),
       });
 
-      await requireOkResponse(res, "Failed to update");
+      await requireOkResponse(res, t("updateFailed"));
 
-      toast.success("Saved successfully");
+      toast.success(t("saved"));
       onSaved({ tags: selectedTags, difficulty });
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save changes");
+      toast.error(error instanceof Error ? error.message : t("saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -127,7 +139,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Note</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
 
         {item && (
@@ -136,7 +148,7 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
             <div className="bg-muted/60 border border-border rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Original Text
+                  {t("originalText")}
                 </div>
                 <Button
                   size="sm"
@@ -147,12 +159,12 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
                   {copied ? (
                     <>
                       <Check className="w-3.5 h-3.5 mr-1" />
-                      Copied
+                      {t("copied")}
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 mr-1" />
-                      Copy
+                      {t("copy")}
                     </>
                   )}
                 </Button>
@@ -161,33 +173,33 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
                 {item.sentence?.text}
               </p>
               <div className="mt-2 text-xs text-muted-foreground">
-                From: {item.sentence?.track?.title || "Unknown Track"}
+                {t("from", { title: item.sentence?.track?.title || t("unknownTrack") })}
               </div>
             </div>
 
-            <div className="text-sm font-medium">Why was this difficult?</div>
+            <div className="text-sm font-medium">{t("whyDifficult")}</div>
             <div className="flex flex-wrap gap-2">
               {ERROR_TAGS.map((tag) => (
                 <Badge
-                  key={tag}
-                  variant={selectedTags.includes(tag) ? "default" : "outline"}
+                  key={tag.id}
+                  variant={selectedTags.includes(tag.id) ? "default" : "outline"}
                   className="cursor-pointer"
-                  onClick={() => toggleTag(tag)}
+                  onClick={() => toggleTag(tag.id)}
                 >
-                  {tag}
+                  {diagT(`tags.${tag.labelKey}` as Parameters<typeof diagT>[0])}
                 </Badge>
               ))}
             </div>
 
             <div>
-              <div className="text-xs font-medium mb-2 text-muted-foreground">Difficulty Rating</div>
+              <div className="text-xs font-medium mb-2 text-muted-foreground">{diagT("difficultyRating")}</div>
               <DifficultySelector value={difficulty} onChange={setDifficulty} />
             </div>
 
-            <div className="text-sm font-medium mt-2">Personal Note</div>
+            <div className="text-sm font-medium mt-2">{t("personalNote")}</div>
             {noteLoading ? (
               <div className="rounded-lg border border-border bg-muted/60 p-3 text-sm text-muted-foreground">
-                Loading note...
+                {t("loadingNote")}
               </div>
             ) : (
               <ReviewNoteEditor
@@ -200,9 +212,9 @@ export default function EditVaultModal({ isOpen, onClose, item, onSaved }: EditV
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{commonT("cancel")}</Button>
           <Button onClick={handleSave} disabled={loading || !item}>
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t("saving") : t("saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>

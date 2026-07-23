@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Bold, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface RichTextColor {
   c: string;
@@ -33,7 +34,7 @@ interface RichTextToolbarProps {
 }
 
 export function RichTextToolbar({
-  label = "Note",
+  label,
   colors = DEFAULT_RICH_TEXT_COLORS,
   variant = "compact",
   isSaving = false,
@@ -41,6 +42,8 @@ export function RichTextToolbar({
   onCommand,
   onCopy,
 }: RichTextToolbarProps) {
+  const t = useTranslations("feature.richText");
+  const resolvedLabel = label ?? t("noteLabel");
   const isComfortable = variant === "comfortable";
   const iconButtonClassName = isComfortable ? "h-8 w-8" : "h-7 w-7";
   const iconClassName = isComfortable ? "w-4 h-4" : "w-3.5 h-3.5";
@@ -52,14 +55,14 @@ export function RichTextToolbar({
 
   return (
     <div className="bg-muted/60 border-b border-border p-2 flex gap-2 items-center flex-wrap">
-      <span className="text-xs font-semibold text-muted-foreground uppercase mr-2 select-none">{label}</span>
+      <span className="text-xs font-semibold text-muted-foreground uppercase mr-2 select-none">{resolvedLabel}</span>
 
       <Button
         size="icon"
         variant="ghost"
         className={iconButtonClassName}
         onClick={() => onCommand("bold")}
-        title="Bold"
+        title={t("bold")}
       >
         <Bold className={iconClassName} />
       </Button>
@@ -72,7 +75,7 @@ export function RichTextToolbar({
           variant="ghost"
           onClick={() => onCommand("fontSize", "3")}
           className={normalSizeClassName}
-          title="Normal Size"
+          title={t("normalSize")}
         >
           Aa
         </Button>
@@ -81,7 +84,7 @@ export function RichTextToolbar({
           variant="ghost"
           onClick={() => onCommand("fontSize", "5")}
           className={largeSizeClassName}
-          title="Large Size"
+          title={t("largeSize")}
         >
           Aa
         </Button>
@@ -104,7 +107,7 @@ export function RichTextToolbar({
       {onCopy && (
         <>
           <div className="h-4 w-px bg-border mx-1" />
-          <Button size="icon" variant="ghost" className={iconButtonClassName} onClick={onCopy} title="Copy text">
+          <Button size="icon" variant="ghost" className={iconButtonClassName} onClick={onCopy} title={t("copyText")}>
             <Copy className={iconClassName} />
           </Button>
         </>
@@ -112,7 +115,7 @@ export function RichTextToolbar({
 
       {showSavingStatus && (
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          {isSaving ? <span className="animate-pulse">Saving...</span> : <span>Saved</span>}
+          {isSaving ? <span className="animate-pulse">{t("saving")}</span> : <span>{t("saved")}</span>}
         </div>
       )}
     </div>

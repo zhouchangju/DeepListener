@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Mic, X, Bookmark, BookmarkCheck, Eye, EyeOff, Keyboard } from "lucide-react";
+import { useTranslations } from "next-intl";
 import SpeedSelector from "../SpeedSelector";
 import { getPracticeModeButtonClassName, type ShadowingPracticeMode } from "./presentation";
 
@@ -32,15 +33,12 @@ export default function ShadowingHeader({
   onCapture,
   onClose,
 }: ShadowingHeaderProps) {
+  const t = useTranslations("feature.shadowingConsole");
   return (
     <div className="flex justify-between items-center p-6 border-b border-border">
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="text-xl font-bold text-foreground">
-          {practiceMode === "shadowing" ? (
-            <>Shadowing Mode(<span style={{ color: "red" }}>抓主谓宾/Chunk</span>)</>
-          ) : (
-            "Dictation Mode"
-          )}
+          {practiceMode === "shadowing" ? t("shadowingModeTitle") : t("dictationModeTitle")}
         </h2>
         <div className="text-sm font-medium px-3 py-1 bg-muted rounded-full text-muted-foreground">
           {currentIndex + 1} / {totalCount}
@@ -55,7 +53,7 @@ export default function ShadowingHeader({
             onClick={() => onPracticeModeChange("shadowing")}
           >
             <Mic className="h-4 w-4" />
-            Shadowing
+            {t("modeShadowing")}
           </Button>
           <Button
             type="button"
@@ -66,7 +64,7 @@ export default function ShadowingHeader({
             onClick={() => onPracticeModeChange("dictation")}
           >
             <Keyboard className="h-4 w-4" />
-            Dictation
+            {t("modeDictation")}
           </Button>
         </div>
         <SpeedSelector playbackRate={playbackRate} onRateChange={onPlaybackRateChange} variant="minimal" />
@@ -74,7 +72,7 @@ export default function ShadowingHeader({
           <Button
             variant="ghost"
             size="icon"
-            className={blindMode ? "bg-indigo-100 text-indigo-600" : "text-muted-foreground hover:text-indigo-600"}
+            className={blindMode ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary"}
             onClick={onToggleBlindMode}
             title={blindMode ? "Show text" : "Hide text"}
           >
@@ -84,7 +82,7 @@ export default function ShadowingHeader({
         <Button
           variant="ghost"
           size="icon"
-          className={isBookmarked ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-indigo-600"}
+          className={isBookmarked ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-primary"}
           onClick={onCapture}
         >
           {isBookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}

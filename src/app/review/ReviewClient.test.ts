@@ -47,8 +47,8 @@ test("review client delegates mutation response parsing to the shared helper", (
   const source = readFileSync(new URL("./ReviewClient.tsx", import.meta.url), "utf8");
 
   assert.match(source, /@\/lib\/client-response/);
-  assert.match(source, /requireOkResponse\(res,\s*"Failed to update"\)/);
-  assert.match(source, /requireOkResponse\(res,\s*'Failed to archive'\)/);
+  assert.match(source, /requireOkResponse\(res,\s*t\("saveProgressFailed"\)\)/);
+  assert.match(source, /requireOkResponse\(res,\s*t\("archiveFailed"\)\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to update"\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\('Failed to archive'\)/);
 });

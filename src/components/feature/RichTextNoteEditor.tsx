@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { RichTextToolbar } from "./rich-text/RichTextToolbar";
 import { useRichTextEditor } from "./rich-text/useRichTextEditor";
 
@@ -20,15 +21,16 @@ interface RichTextNoteEditorProps {
 export default function RichTextNoteEditor({
   initialNote = "",
   onChange,
-  placeholder = "Add a note...",
+  placeholder,
   className = "",
   reloadKey,
 }: RichTextNoteEditorProps) {
+  const t = useTranslations("feature.richText");
   const { editorRef, exec, handleInput } = useRichTextEditor({ initialNote, onChange, reloadKey });
 
   return (
     <div className={`border border-border rounded-lg shadow-sm bg-card overflow-hidden ${className}`}>
-      <RichTextToolbar label="Note" onCommand={exec} />
+      <RichTextToolbar onCommand={exec} />
 
       <div
         ref={editorRef}
@@ -36,7 +38,7 @@ export default function RichTextNoteEditor({
         contentEditable
         onInput={handleInput}
         suppressContentEditableWarning
-        data-placeholder={placeholder}
+        data-placeholder={placeholder ?? t("placeholder")}
       />
     </div>
   );

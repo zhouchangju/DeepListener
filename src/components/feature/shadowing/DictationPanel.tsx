@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Check, Copy, Loader2, Play, RotateCcw, SkipForward, Volume2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +45,8 @@ export default function DictationPanel({
   onRetry,
   onNext,
 }: DictationPanelProps) {
+  const t = useTranslations("feature.dictation");
+  const commonT = useTranslations("common");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const showResult = shouldShowDictationResult(result);
   const canPlayResultAudio = shouldEnableDictationResultPlayback(
@@ -55,9 +58,9 @@ export default function DictationPanel({
   const handleCopyOriginal = async () => {
     try {
       await navigator.clipboard.writeText(sentenceText);
-      toast.success("Original text copied");
+      toast.success(t("copiedOriginal"));
     } catch {
-      toast.error("Failed to copy original text");
+      toast.error(t("copyOriginalFailed"));
     }
   };
 
@@ -72,11 +75,11 @@ export default function DictationPanel({
       <div className="rounded-xl border border-border bg-muted/60 p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-            <Volume2 className="h-4 w-4 text-indigo-500" />
-            <span>{isListening ? "Listening..." : "Dictation"}</span>
+            <Volume2 className="h-4 w-4 text-primary" />
+            <span>{isListening ? t("listeningLabel") : t("dictationLabel")}</span>
           </div>
           <div className="rounded-full bg-card px-3 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border">
-            Replays: {replayCount}
+            {t("replays", { count: replayCount })}
           </div>
         </div>
 
@@ -87,7 +90,7 @@ export default function DictationPanel({
               value={answer}
               onChange={(event) => onAnswerChange(event.target.value)}
               disabled={!hasPlayedOnce || !isAudioReady}
-              placeholder={isAudioReady ? "Write what you heard..." : "Preparing audio..."}
+              placeholder={isAudioReady ? t("placeholderReady") : t("placeholderPreparing")}
               className="min-h-[150px] resize-none border-input bg-background text-lg leading-relaxed text-foreground placeholder:text-muted-foreground"
             />
 
@@ -104,7 +107,7 @@ export default function DictationPanel({
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                {hasPlayedOnce ? "Replay" : "Play Once"}
+                {hasPlayedOnce ? t("replay") : t("playOnce")}
               </Button>
 
               <Button
@@ -112,10 +115,10 @@ export default function DictationPanel({
                 className="gap-2"
                 onClick={onSubmit}
                 disabled={!answer.trim() || !hasPlayedOnce}
-                title="Submit (Cmd+Enter)"
+                title={t("submitTitle")}
               >
                 <Check className="h-4 w-4" />
-                Submit
+                {t("submit")}
               </Button>
             </div>
           </div>
@@ -129,16 +132,16 @@ export default function DictationPanel({
                     : "bg-amber-100 text-amber-700"
                 }`}
               >
-                {result.isExactAfterNormalization ? "Perfect" : `${result.accuracy}%`}
+                {result.isExactAfterNormalization ? t("perfect") : `${result.accuracy}%`}
               </div>
               <span className="text-sm text-muted-foreground">
-                Missing {result.missingWords.length} | Extra {result.extraWords.length}
+                {t("missingExtra", { missing: result.missingWords.length, extra: result.extraWords.length })}
               </span>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <ResultBlock
-                label="Original"
+                label={t("originalBlock")}
                 text={sentenceText}
                 RightAction={
                   showOriginalCopyButton ? (
@@ -146,21 +149,21 @@ export default function DictationPanel({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600"
+                      className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                       onClick={handleCopyOriginal}
-                      title="Copy original text"
+                      title={t("copyOriginalTitle")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   ) : null
                 }
               />
-              <ResultBlock label="Your Answer" text={answer} />
+              <ResultBlock label={t("yourAnswer")} text={answer} />
             </div>
 
             <div className="rounded-lg bg-card p-4 ring-1 ring-border">
               <div className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Word Diff
+                {t("wordDiff")}
               </div>
               <div className="flex flex-wrap gap-2 text-sm leading-7">
                 {result.wordDiff.map((item, index) => (
@@ -173,7 +176,7 @@ export default function DictationPanel({
               <Button
                 type="button"
                 variant="outline"
-                className="gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
+                className="gap-2 border-primary/25 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                 onClick={onPlay}
                 disabled={!canPlayResultAudio}
               >
@@ -182,15 +185,15 @@ export default function DictationPanel({
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                Play Audio
+                {t("playAudio")}
               </Button>
               <div className="flex flex-wrap justify-end gap-3">
               <Button type="button" variant="outline" className="gap-2" onClick={onRetry}>
                 <RotateCcw className="h-4 w-4" />
-                Retry
+                {t("retry")}
               </Button>
               <Button type="button" className="gap-2" onClick={onNext} disabled={!canGoNext}>
-                Next
+                {commonT("next")}
                 <SkipForward className="h-4 w-4" />
               </Button>
               </div>
@@ -241,7 +244,7 @@ function DiffToken({ item }: { item: DictationWordDiff }) {
 
   if (item.status === "extra") {
     return (
-      <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-700">
+      <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary">
         + {item.actual}
       </span>
     );

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Clock, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { downloadResponseBlob, downloadTextResponse } from "@/lib/client-download";
 import { requireOkResponse } from "@/lib/client-response";
 
@@ -40,6 +41,8 @@ export default function ExportButtons({
   dateTo,
   setDateTo,
 }: ExportButtonsProps) {
+  const t = useTranslations("vault");
+  const diffT = useTranslations("difficulties");
   const [isExporting, setIsExporting] = useState<string | null>(null);
 
   const toggleDifficulty = (value: string) => {
@@ -78,11 +81,11 @@ export default function ExportButtons({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      await requireOkResponse(response, 'Export failed');
+      await requireOkResponse(response, t("exportFailed"));
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
-      toast.success('Audio exported successfully');
+      toast.success(t("audioExported"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+      toast.error(error instanceof Error ? error.message : t("audioExportFailed"));
     } finally {
       setIsExporting(null);
     }
@@ -102,11 +105,11 @@ export default function ExportButtons({
           dateTo: dateTo || undefined,
         }),
       });
-      await requireOkResponse(response, 'Export failed');
+      await requireOkResponse(response, t("exportFailed"));
       await downloadTextResponse(response, 'DeepListener_Notes.txt');
-      toast.success('Notes exported successfully');
+      toast.success(t("notesExported"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to export notes');
+      toast.error(error instanceof Error ? error.message : t("notesExportFailed"));
     } finally {
       setIsExporting(null);
     }
@@ -131,19 +134,19 @@ export default function ExportButtons({
       <div className="flex flex-wrap gap-4 p-3 bg-muted/60 border border-border rounded-lg">
         {/* Difficulty filter */}
         <div>
-          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Difficulty</p>
+          <p className="text-xs text-muted-foreground mb-1.5 font-medium">{t("difficultyLabel")}</p>
           <div className="flex gap-1.5">
             {[
-              { value: 'NORMAL', label: 'Normal' },
-              { value: 'HARD', label: 'Hard' },
-              { value: 'VERY_HARD', label: 'Very Hard' },
+              { value: 'NORMAL', label: diffT("normal") },
+              { value: 'HARD', label: diffT("hard") },
+              { value: 'VERY_HARD', label: diffT("veryHard") },
             ].map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => toggleDifficulty(value)}
                 className={`px-2.5 py-1 text-xs rounded-full border transition-all ${
                   selectedDifficulties.includes(value)
-                    ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                    ? 'bg-primary/15 border-primary text-primary'
                     : 'bg-background border-border text-muted-foreground hover:border-gray-300 hover:text-foreground'
                 }`}
               >
@@ -156,7 +159,7 @@ export default function ExportButtons({
         {/* Track filter */}
         {availableTracks.length > 0 && (
           <div className="flex-grow">
-            <p className="text-xs text-muted-foreground mb-1.5 font-medium">Tracks</p>
+            <p className="text-xs text-muted-foreground mb-1.5 font-medium">{t("tracksLabel")}</p>
             <div className="flex flex-wrap gap-1.5">
               {availableTracks.map(track => (
                 <button
@@ -164,7 +167,7 @@ export default function ExportButtons({
                   onClick={() => toggleTrack(track.id)}
                   className={`px-2.5 py-1 text-xs rounded-full border transition-all max-w-[160px] truncate ${
                     selectedTrackIds.includes(track.id)
-                      ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
+                      ? 'bg-primary/15 border-primary text-primary'
                       : 'bg-background border-border text-muted-foreground hover:border-gray-300 hover:text-foreground'
                   }`}
                   title={track.title}
@@ -178,26 +181,26 @@ export default function ExportButtons({
 
         {/* Date range filter */}
         <div>
-          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Date Range</p>
+          <p className="text-xs text-muted-foreground mb-1.5 font-medium">{t("dateRangeLabel")}</p>
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <span className="text-muted-foreground">~</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {(dateFrom || dateTo) && (
               <button
                 onClick={clearDateFilter}
                 className="text-xs text-muted-foreground hover:text-red-600 transition-colors"
-                title="Clear date filter"
+                title={t("clearDateFilter")}
               >
                 ✕
               </button>
@@ -212,7 +215,7 @@ export default function ExportButtons({
               onClick={clearAllFilters}
               className="px-3 py-1 text-xs text-muted-foreground hover:text-red-600 border border-border rounded-md hover:border-red-200 transition-all"
             >
-              Clear All
+              {t("clearAll")}
             </button>
           </div>
         )}
@@ -226,7 +229,7 @@ export default function ExportButtons({
           className="flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          {isExporting === 'filtered' ? 'Exporting...' : `Export Audio (${exportCount})`}
+          {isExporting === 'filtered' ? t("exporting") : t("exportAudioCount", { count: exportCount })}
         </Button>
         <Button
           onClick={() => exportAudio('due')}
@@ -235,7 +238,7 @@ export default function ExportButtons({
           className="flex items-center gap-2"
         >
           <Clock className="w-4 h-4" />
-          {isExporting === 'due' ? 'Exporting...' : `Today's Audio (${dueCount})`}
+          {isExporting === 'due' ? t("exporting") : t("todayAudio", { count: dueCount })}
         </Button>
         <Button
           onClick={exportNotes}
@@ -244,7 +247,7 @@ export default function ExportButtons({
           className="flex items-center gap-2"
         >
           <FileText className="w-4 h-4" />
-          {isExporting === 'notes' ? 'Exporting...' : `Export Notes (${exportCount})`}
+          {isExporting === 'notes' ? t("exporting") : t("exportNotesCount", { count: exportCount })}
         </Button>
       </div>
     </div>

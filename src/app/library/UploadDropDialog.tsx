@@ -2,6 +2,7 @@
 
 import { useRef, useState, type DragEvent, type ChangeEvent } from "react";
 import { FileVideo2, Loader2, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +33,7 @@ export default function UploadDropDialog({
   uploading,
   processFiles,
 }: UploadDropDialogProps) {
+  const t = useTranslations("library");
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,10 +108,10 @@ export default function UploadDropDialog({
         >
           <FileVideo2 className="mb-4 h-10 w-10 text-muted-foreground" />
           <div className="text-sm font-medium text-foreground">
-            {multiple ? "Drag media files here" : "Drag a media file here"}
+            {multiple ? t("dragMany") : t("dragOne")}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
-            {multiple ? "Drop one or more local audio or video files" : "Drop one local audio or video file"}
+            {multiple ? t("dropMany") : t("dropOne")}
           </div>
           <Button
             type="button"
@@ -118,7 +120,7 @@ export default function UploadDropDialog({
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            Choose from folder
+            {t("chooseFolder")}
           </Button>
         </div>
       </DialogContent>

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Mic, RotateCcw, Loader2, Repeat, Pause } from "lucide-react";
+import { useTranslations } from "next-intl";
 import MiniWavePlayer from "../MiniWavePlayer";
 import { shouldRenderOriginalWavePlayer, type ShadowingWorkflowMode } from "./presentation";
 
@@ -28,11 +29,12 @@ export default function ShadowingVisualization({
   onRecAgain,
   onToggleLoop,
 }: ShadowingVisualizationProps) {
+  const t = useTranslations("feature.shadowingConsole");
   return (
     <div className="w-full space-y-4">
       {!isOriginalBlobReady && !originalBlob && (
         <div className="flex items-center justify-center text-muted-foreground gap-2 h-32">
-          <Loader2 className="h-6 w-6 animate-spin" /> Loading audio segment...
+          <Loader2 className="h-6 w-6 animate-spin" /> {t("loadingSegment")}
         </div>
       )}
 
@@ -40,7 +42,7 @@ export default function ShadowingVisualization({
         <div className={mode === "reviewing" ? "" : "opacity-80"}>
           <MiniWavePlayer
             audioBlob={originalBlob}
-            label="Original"
+            label={t("originalLabel")}
             waveColor="#94a3b8"
             progressColor="#475569"
             playbackRate={playbackRate}
@@ -50,9 +52,9 @@ export default function ShadowingVisualization({
               <Button
                 size="icon"
                 variant={isLooping ? "default" : "secondary"}
-                className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-indigo-600 hover:bg-indigo-700" : "bg-background hover:bg-accent"}`}
+                className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-primary hover:bg-primary" : "bg-background hover:bg-accent"}`}
                 onClick={onToggleLoop}
-                title="Loop Playback"
+                title={t("loopPlayback")}
               >
                 {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-foreground" />}
               </Button>
@@ -64,7 +66,7 @@ export default function ShadowingVisualization({
       {mode === "recording" && (
         <div className="h-20 flex items-center justify-center gap-4">
           <div className="flex items-center justify-center text-red-500 animate-pulse font-bold text-lg gap-2 bg-red-50 rounded-lg border border-red-100 px-6 py-2">
-            <Mic className="h-6 w-6" /> Recording...
+            <Mic className="h-6 w-6" /> {t("recording")}
           </div>
           <Button
             variant="outline"
@@ -72,7 +74,7 @@ export default function ShadowingVisualization({
             className="gap-2 border-border text-muted-foreground hover:text-red-600 hover:border-red-200"
             onClick={onRecAgain}
           >
-            <RotateCcw className="h-4 w-4" /> Restart
+            <RotateCcw className="h-4 w-4" /> {t("restart")}
           </Button>
         </div>
       )}
@@ -82,7 +84,7 @@ export default function ShadowingVisualization({
           <MiniWavePlayer
             key={`${sentenceId}-user`}
             audioBlob={userBlob}
-            label="Your Voice"
+            label={t("yourVoice")}
             waveColor="#fca5a5"
             progressColor="#e11d48"
             autoPlay={true}

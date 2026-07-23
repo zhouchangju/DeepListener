@@ -10,18 +10,19 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 import DifficultySelector from "./DifficultySelector";
 import RichTextNoteEditor from "./RichTextNoteEditor";
 
 const ERROR_TAGS = [
-  { id: "Linking", label: "Linking (连读/吞音)" },
-  { id: "Vocab", label: "Vocab (生词/短语)" },
-  { id: "Misheard", label: "Misheard (听错单词)" },
-  { id: "Comprehension", label: "Comprehension (不理解)" },
-  { id: "Speed", label: "Speed (语速过快)" },
-  { id: "Grammar", label: "Grammar (长难句)" },
-  { id: "Accent", label: "Accent (口音)" },
-];
+  { id: "Linking", labelKey: "linking" },
+  { id: "Vocab", labelKey: "vocab" },
+  { id: "Misheard", labelKey: "misheard" },
+  { id: "Comprehension", labelKey: "comprehension" },
+  { id: "Speed", labelKey: "speed" },
+  { id: "Grammar", labelKey: "grammar" },
+  { id: "Accent", labelKey: "accent" },
+] as const;
 
 export function getInitialDiagnosisTags(initialTags: string[], shouldDefaultVocab: boolean) {
   if (initialTags.length > 0) {
@@ -52,6 +53,8 @@ export default function DiagnosisModal({
   initialDifficulty = "NORMAL",
   shouldDefaultVocab = false,
 }: DiagnosisModalProps) {
+  const t = useTranslations("feature.diagnosis");
+  const commonT = useTranslations("common");
   const [selectedTags, setSelectedTags] = useState<string[]>(
     () => getInitialDiagnosisTags(initialTags, shouldDefaultVocab)
   );
@@ -75,7 +78,7 @@ export default function DiagnosisModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[638px]" zIndex="z-[60]">
         <DialogHeader>
-          <DialogTitle>Why couldn&apos;t you catch this?</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
@@ -91,28 +94,28 @@ export default function DiagnosisModal({
                 className="cursor-pointer px-3 py-1 text-sm"
                 onClick={() => toggleTag(tag.id)}
               >
-                {tag.label}
+                {t(`tags.${tag.labelKey}` as Parameters<typeof t>[0])}
               </Badge>
             ))}
           </div>
 
           <div>
-            <div className="text-xs font-medium mb-2 text-muted-foreground">Difficulty Rating</div>
+            <div className="text-xs font-medium mb-2 text-muted-foreground">{t("difficultyRating")}</div>
             <DifficultySelector value={difficulty} onChange={setDifficulty} />
           </div>
 
           <RichTextNoteEditor
             initialNote={note}
             onChange={setNote}
-            placeholder="Add a note (e.g., 'of' sounded like 'a')"
+            placeholder={t("notePlaceholder")}
             reloadKey={isOpen}
           />
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{commonT("cancel")}</Button>
           <Button onClick={handleSave} disabled={selectedTags.length === 0}>
-            Add to Vault
+            {t("addToVault")}
           </Button>
         </DialogFooter>
       </DialogContent>

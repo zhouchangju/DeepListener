@@ -2,9 +2,11 @@ import { prisma } from "@/lib/prisma";
 import PracticeClient from "./PracticeClient";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 export default async function PracticePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const t = await getTranslations("practice");
   
   const track = await prisma.track.findUnique({
     where: { id },
@@ -32,9 +34,9 @@ export default async function PracticePage({ params }: { params: Promise<{ id: s
         </h1>
         <Link
           href={`/vault?trackId=${id}`}
-          className="flex-shrink-0 ml-4 px-3 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full hover:bg-indigo-100 transition-colors"
+          className="flex-shrink-0 ml-4 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary border border-primary/15 rounded-full hover:bg-primary/15 transition-colors"
         >
-          View Notes
+          {t("viewNotes")}
         </Link>
       </div>
       <PracticeClient track={track} />

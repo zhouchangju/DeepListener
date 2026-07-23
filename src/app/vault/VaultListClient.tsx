@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Play, Archive, ArchiveRestore, X } from "lucide-react";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
+import ConfirmDialog from "@/components/feature/ConfirmDialog";
 import { requireOkResponse } from "@/lib/client-response";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { VaultQueryState } from "./vault-query";
 import type { SortOption, VaultItem, VaultPlaybackItem } from "./vault-items";
 import { VaultFilters } from "./VaultFilters";
@@ -50,7 +52,9 @@ export default function VaultListClient({
 }: VaultListClientProps) {
   const [editingItem, setEditingItem] = useState<VaultItem | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
+  const t = useTranslations("vault");
 
   const allDifficulties = ["NORMAL", "HARD", "VERY_HARD"];
   const totalPages = Math.max(1, Math.ceil(filteredCount / query.pageSize));
@@ -68,16 +72,23 @@ export default function VaultListClient({
   const hasActiveFilters = query.selectedDifficulties.length > 0 || query.selectedTags.length > 0 || query.searchQuery.length > 0;
   const activeFilterCount = query.selectedDifficulties.length + query.selectedTags.length + (query.searchQuery ? 1 : 0);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this sentence from your vault?")) return;
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async () => {
+    const id = deletingId;
+    if (!id) return;
 
     try {
       const res = await fetch(`/api/vault/${id}`, { method: "DELETE" });
-      await requireOkResponse(res, "Failed to delete");
-      toast.success("Removed from vault");
+      await requireOkResponse(res, t("deleteFailed"));
+      toast.success(t("removed"));
       router.refresh();
     } catch {
-      toast.error("Failed to delete");
+      toast.error(t("deleteFailed"));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -87,13 +98,13 @@ export default function VaultListClient({
         method: 'POST',
       });
 
-      await requireOkResponse(res, 'Failed to toggle archive');
+      await requireOkResponse(res, t("archiveFailed"));
 
       const data = await res.json();
-      toast.success(data.isArchived ? 'Archived' : 'Unarchived');
+      toast.success(data.isArchived ? t("archivedToast") : t("unarchivedToast"));
       router.refresh();
     } catch {
-      toast.error('Failed to toggle archive');
+      toast.error(t("archiveFailed"));
     }
   };
 
@@ -123,7 +134,7 @@ export default function VaultListClient({
             <Archive className="w-4 h-4 text-muted-foreground" />
           )}
           <span className="text-sm text-muted-foreground">
-            {query.showArchived ? 'Showing Archived Notes' : 'Showing Active Notes'}
+            {query.showArchived ? t("showingArchived") : t("showingActive")}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -135,27 +146,27 @@ export default function VaultListClient({
             className="flex items-center gap-1.5"
           >
             <Play className="w-4 h-4" />
-            {playAllActive ? 'Stop' : `Play All (${playbackItems.length})`}
+            {playAllActive ? t("stop") : t("playAllCount", { count: playbackItems.length })}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => onQueryChange({ showArchived: !query.showArchived })}
           >
-            {query.showArchived ? 'Show Active' : 'Show Archived'}
+            {query.showArchived ? t("showActive") : t("showArchived")}
           </Button>
         </div>
       </div>
 
       {activeTrackName && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg dark:bg-indigo-500/15 dark:border-indigo-400/25">
-          <span className="text-sm text-indigo-700 dark:text-indigo-200">
-            Filtered by track: <strong>{activeTrackName}</strong>
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/15 rounded-lg dark:bg-primary/15 dark:border-primary/25">
+          <span className="text-sm text-primary dark:text-primary/25">
+            {t("filteredByTrack")} <strong>{activeTrackName}</strong>
           </span>
           <button
             onClick={() => onQueryChange({ initialTrackId: null })}
-            className="ml-auto text-indigo-400 hover:text-indigo-700 transition-colors"
-            title="Clear track filter"
+            className="ml-auto text-primary/70 hover:text-primary transition-colors"
+            title={t("clearTrackFilter")}
           >
             <X className="w-4 h-4" />
           </button>
@@ -195,27 +206,38 @@ export default function VaultListClient({
         />
       ))}
 
-      <EditVaultModal 
-        isOpen={!!editingItem} 
-        onClose={() => setEditingItem(null)} 
+      <EditVaultModal
+        isOpen={!!editingItem}
+        onClose={() => setEditingItem(null)}
         item={editingItem}
         onSaved={() => router.refresh()}
+      />
+
+      <ConfirmDialog
+        open={!!deletingId}
+        onOpenChange={(open) => { if (!open) setDeletingId(null); }}
+        title={t("removeTitle")}
+        description={t("removeDescription")}
+        confirmLabel={t("removeConfirm")}
+        cancelLabel={t("removeCancel")}
+        destructive
+        onConfirm={confirmDelete}
       />
 
       {filteredItems.length === 0 && (
         <div className="text-center py-20 bg-card rounded-xl border border-dashed text-muted-foreground">
           {query.showArchived
-            ? 'No archived notes. Archive some notes to see them here!'
+            ? t("emptyArchived")
             : query.initialTrackId
-            ? 'No saved notes for this track yet. Capture difficult sentences from the practice page!'
-            : 'Your vault is empty. Capture some difficult sentences from the Workbench first!'}
+            ? t("emptyTrack")
+            : t("emptyVault")}
         </div>
       )}
 
       {filteredCount > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-card border border-border rounded-lg">
           <div className="text-xs text-muted-foreground">
-            Showing {pageStart}-{pageEnd} of {filteredCount} notes
+            {t("showingRange", { start: pageStart, end: pageEnd, total: filteredCount })}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -224,10 +246,10 @@ export default function VaultListClient({
               disabled={query.page <= 1}
               onClick={() => onQueryChange({ page: query.page - 1 })}
             >
-              Previous
+              {t("previous")}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Page {query.page} of {totalPages}
+              {t("pageOf", { page: query.page, total: totalPages })}
             </span>
             <Button
               variant="outline"
@@ -235,7 +257,7 @@ export default function VaultListClient({
               disabled={query.page >= totalPages}
               onClick={() => onQueryChange({ page: query.page + 1 })}
             >
-              Next
+              {t("next")}
             </Button>
           </div>
         </div>

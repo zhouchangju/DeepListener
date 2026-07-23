@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { requireOkResponse } from "@/lib/client-response";
 import { toast } from "sonner";
+import { presetTrackTypes, presetTrackTopics } from "@/lib/track-taxonomy";
 
 interface RenameTrackModalProps {
   isOpen: boolean;
@@ -19,10 +21,11 @@ interface RenameTrackModalProps {
   onRenamed: () => void;
 }
 
-const CATEGORIES = ["Conversation", "Lecture", "Other"];
-const TOPICS = ["校园生活", "社会科学", "自然科学", "文化艺术", "课程学业", "生命科学", "Other"];
-
 export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: RenameTrackModalProps) {
+  const t = useTranslations("library");
+  const typeT = useTranslations("trackTypes");
+  const topicT = useTranslations("topics");
+  const commonT = useTranslations("common");
   const [title, setTitle] = useState(track.title);
   const [trackType, setTrackType] = useState(track.trackType || "Other");
   const [trackTopic, setTrackTopic] = useState(track.trackTopic || "Other");
@@ -43,13 +46,13 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
         body: JSON.stringify({ title, trackType, trackTopic }),
       });
 
-      await requireOkResponse(res, "Failed to update");
+      await requireOkResponse(res, t("updateFailed"));
 
-      toast.success("Updated successfully");
+      toast.success(t("updateSuccess"));
       onRenamed();
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update");
+      toast.error(error instanceof Error ? error.message : t("updateFailed"));
     } finally {
       setLoading(false);
     }
@@ -59,53 +62,53 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Track Details</DialogTitle>
+          <DialogTitle>{t("editTitle")}</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <label className="text-sm font-medium">Title</label>
+            <label className="text-sm font-medium">{t("title")}</label>
             <input
-              className="w-full p-2.5 text-sm border border-input bg-background rounded-md outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2.5 text-sm border border-input bg-background rounded-md outline-none focus:ring-2 focus:ring-primary"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter title..."
+              placeholder={t("titlePlaceholder")}
             />
           </div>
 
           <div className="grid gap-2">
-             <label className="text-sm font-medium">Type</label>
+             <label className="text-sm font-medium">{t("type")}</label>
              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(cat => (
+                {presetTrackTypes.map(cat => (
                     <button
-                        key={cat}
-                        onClick={() => setTrackType(cat)}
+                        key={cat.value}
+                        onClick={() => setTrackType(cat.value)}
                         className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                            trackType === cat 
-                                ? "bg-indigo-600 text-white border-indigo-600" 
-                                : "bg-background text-muted-foreground border-border hover:border-indigo-300 hover:text-foreground"
+                            trackType === cat.value
+                                ? "bg-primary text-white border-primary"
+                                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
                         }`}
                     >
-                        {cat}
+                        {typeT(cat.messageKey as Parameters<typeof typeT>[0])}
                     </button>
                 ))}
              </div>
           </div>
 
           <div className="grid gap-2">
-             <label className="text-sm font-medium">Topic</label>
+             <label className="text-sm font-medium">{t("topic")}</label>
              <div className="flex flex-wrap gap-2">
-                {TOPICS.map(topic => (
+                {presetTrackTopics.map(tp => (
                     <button
-                        key={topic}
-                        onClick={() => setTrackTopic(topic)}
+                        key={tp.value}
+                        onClick={() => setTrackTopic(tp.value)}
                         className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                            trackTopic === topic 
+                            trackTopic === tp.value 
                                 ? "bg-emerald-600 text-white border-emerald-600" 
                                 : "bg-background text-muted-foreground border-border hover:border-emerald-300 hover:text-foreground"
                         }`}
                     >
-                        {topic}
+                        {topicT(tp.messageKey as Parameters<typeof topicT>[0])}
                     </button>
                 ))}
              </div>
@@ -113,9 +116,9 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{commonT("cancel")}</Button>
           <Button onClick={handleSave} disabled={loading || !title.trim()}>
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t("saving") : t("saveChanges")}
           </Button>
         </DialogFooter>
       </DialogContent>

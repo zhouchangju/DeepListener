@@ -23,6 +23,7 @@ import { NotationType, SentenceFormatting } from "./notation/types";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { requireOkResponse } from "@/lib/client-response";
 
@@ -66,6 +67,8 @@ export default function ShadowingConsole({
 }: ShadowingConsoleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const t = useTranslations("feature.shadowingConsole");
+  const commonT = useTranslations("common");
   const { setMode } = useTimeTracking();
   const sentenceStateKey = getSentenceStateKey(sentence);
   const [activeSentenceStateKey, setActiveSentenceStateKey] = useState(sentenceStateKey);
@@ -130,13 +133,13 @@ export default function ShadowingConsole({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: tempText, formatting: null }),
       });
-      await requireOkResponse(res, "Failed to save text");
+      await requireOkResponse(res, t("saveTextFailed"));
       setLocalFormatting({});
       setIsEditingText(false);
       router.refresh();
-      toast.success("Text updated");
+      toast.success(t("textUpdated"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save text");
+      toast.error(error instanceof Error ? error.message : t("saveTextFailed"));
     }
   };
 
@@ -254,9 +257,9 @@ export default function ShadowingConsole({
               <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
                 <Textarea value={tempText} onChange={(e) => setTempText(e.target.value)} className="text-xl font-medium min-h-[120px] resize-none" />
                 <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>{commonT("cancel")}</Button>
                   <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
-                    <Check className="w-4 h-4 mr-2" /> Save Text
+                    <Check className="w-4 h-4 mr-2" /> {t("saveText")}
                   </Button>
                 </div>
               </div>
@@ -265,7 +268,7 @@ export default function ShadowingConsole({
                 <div className="text-2xl font-medium text-muted-foreground/60 leading-loose text-center max-w-xl blur-sm select-none">{sentence.text}</div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-muted/95 px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-border">
-                    Click to reveal text
+                    {t("clickToReveal")}
                   </div>
                 </div>
               </div>
@@ -282,15 +285,15 @@ export default function ShadowingConsole({
                   />
                 </div>
                 <div className={getShadowingActionButtonsClassName()}>
-                  <Button size="icon" variant="ghost" className="h-12 w-12" onClick={() => setIsEditingText(true)} title="Edit Text">
-                    <Edit3 className="w-6 h-6 text-muted-foreground hover:text-indigo-600" />
+                  <Button size="icon" variant="ghost" className="h-12 w-12" onClick={() => setIsEditingText(true)} title={t("editText")}>
+                    <Edit3 className="w-6 h-6 text-muted-foreground hover:text-primary" />
                   </Button>
                   <Button
                     size="icon" variant="ghost" className="h-12 w-12"
-                    onClick={async () => { try { await navigator.clipboard.writeText(sentence.text); toast.success("Copied to clipboard"); } catch { toast.error("Failed to copy"); } }}
-                    title="Copy text"
+                    onClick={async () => { try { await navigator.clipboard.writeText(sentence.text); toast.success(t("copiedToast")); } catch { toast.error(t("copyFailed")); } }}
+                    title={t("copyText")}
                   >
-                    <Copy className="w-6 h-6 text-muted-foreground hover:text-indigo-600" />
+                    <Copy className="w-6 h-6 text-muted-foreground hover:text-primary" />
                   </Button>
                 </div>
               </div>
@@ -318,11 +321,11 @@ export default function ShadowingConsole({
         </div>
 
         <div className="bg-muted/60 p-4 flex justify-between border-t border-border">
-          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0}>Previous</Button>
+          <Button variant="ghost" onClick={handlePrev} disabled={currentIndex === 0}>{commonT("previous")}</Button>
           <div className="text-muted-foreground text-sm flex items-center">
-            {practiceMode === "dictation" ? "Listen -> Type -> Check" : mode === "reviewing" ? "Compare waveforms & audio" : "Listen -> Record -> Compare"}
+            {practiceMode === "dictation" ? t("hintDictation") : mode === "reviewing" ? t("hintReviewing") : t("hintShadowing")}
           </div>
-          <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>Next</Button>
+          <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>{commonT("next")}</Button>
         </div>
       </div>
     </div>

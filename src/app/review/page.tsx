@@ -2,12 +2,14 @@ import { prisma } from "@/lib/prisma";
 import ReviewClient from "./ReviewClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getTranslations } from "next-intl/server";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/local-day";
 
-export default function ReviewPage() {
+export default async function ReviewPage() {
+  const t = await getTranslations("review");
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-8">Review Session</h1>
+      <h1 className="text-3xl font-bold mb-8">{t("sessionTitle")}</h1>
       <Suspense fallback={<ReviewSkeleton />}>
         <ReviewContent />
       </Suspense>
@@ -105,9 +107,10 @@ async function ReviewContent() {
   });
 
   if (items.length === 0) {
+    const t = await getTranslations("review");
     return (
       <div className="text-center py-20 bg-card rounded-xl border border-dashed">
-        <p className="text-muted-foreground">No sentences due for review. Great job!</p>
+        <p className="text-muted-foreground">{t("noDue")}</p>
       </div>
     );
   }

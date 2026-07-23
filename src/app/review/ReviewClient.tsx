@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useEffectEvent } from "react";
+import { useState, useEffect, useEffectEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Edit3, Download, Archive } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
 import { requireOkResponse } from "@/lib/client-response";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { getReviewKeyboardAction, type ReviewKeyboardGrade } from "./review-keyboard";
 import { removeCurrentReviewItem } from "./review-queue";
 import { useReviewAudio } from "./useReviewAudio";
@@ -58,6 +59,7 @@ export default function ReviewClient({
   reviewedCount: number;
 }) {
   const router = useRouter();
+  const t = useTranslations("review");
   const { setMode } = useTimeTracking();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -71,6 +73,23 @@ export default function ReviewClient({
 
   const current = items[currentIndex];
   const { playAudio } = useReviewAudio({ current, playbackRate });
+
+  // Mirror items/currentIndex in refs so async handlers (handleGrade) can
+  // read the latest values after an `await` instead of the stale closure
+  // captured at call time. Without this, rapid consecutive grades operate on
+  // the pre-transition state and skip/duplicate cards.
+  const itemsRef = useRef(items);
+  const currentIndexRef = useRef(currentIndex);
+  // Re-entry guard: while a grade is in flight, ignore subsequent grades so
+  // the FSRS progression and the UI transition stay in sync.
+  const gradingRef = useRef(false);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   useEffect(() => {
     setReviewed(reviewedCount);
@@ -106,42 +125,54 @@ export default function ReviewClient({
   });
 
   const handleGrade = async (quality: ReviewQuality) => {
-    if (!current) return;
+    if (gradingRef.current) return;
+    const latestItems = itemsRef.current;
+    const latestIndex = currentIndexRef.current;
+    const itemToGrade = latestItems[latestIndex];
+    if (!itemToGrade) return;
 
+    gradingRef.current = true;
     try {
       const res = await fetch("/api/review/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reviewItemId: current.id,
+          reviewItemId: itemToGrade.id,
           quality,
         }),
       });
 
-      await requireOkResponse(res, "Failed to update");
+      await requireOkResponse(res, t("saveProgressFailed"));
 
       setReviewed((prev) => prev + 1);
       setRemaining((prev) => Math.max(0, prev - 1));
 
-      const transition = removeCurrentReviewItem({ items, currentIndex });
+      // Read the freshest items/index from the refs again in case other
+      // state updates landed during the await; fall back to the captured
+      // snapshot if nothing changed.
+      const transitionItems = itemsRef.current;
+      const transitionIndex = currentIndexRef.current;
+      const transition = removeCurrentReviewItem({ items: transitionItems, currentIndex: transitionIndex });
       setItems(transition.items);
       setCurrentIndex(transition.currentIndex);
 
       if (quality === "again" || quality === "hard") {
         if (quality === "again") {
-          toast.success("Will review again in 5 minutes");
+          toast.success(t("againSoon5"));
         } else {
-          toast.success("Will review again in 15 minutes");
+          toast.success(t("againSoon15"));
         }
       } else if (transition.completed) {
-        toast.success("Batch completed! Loading more...");
+        toast.success(t("batchCompleted"));
       }
 
       if (transition.completed) {
         router.refresh();
       }
     } catch {
-      toast.error("Failed to save progress");
+      toast.error(t("saveProgressFailed"));
+    } finally {
+      gradingRef.current = false;
     }
   };
 
@@ -160,7 +191,7 @@ export default function ReviewClient({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const action = getReviewKeyboardAction({ key: e.key, isEditing });
+      const action = getReviewKeyboardAction({ key: e.key, isEditing, target: e.target });
       if (!action) return;
 
       if (action.preventDefault) {
@@ -198,14 +229,14 @@ export default function ReviewClient({
         body: JSON.stringify({ type: 'due' }),
       });
 
-      await requireOkResponse(response, 'Export failed');
+      await requireOkResponse(response, t("audioExportFailed"));
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
-      toast.success('Audio exported successfully');
+      toast.success(t("audioExported"));
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to export audio');
+      toast.error(error instanceof Error ? error.message : t("audioExportFailed"));
     } finally {
       setIsExporting(false);
     }
@@ -219,11 +250,11 @@ export default function ReviewClient({
         method: 'POST',
       });
 
-      await requireOkResponse(res, 'Failed to archive');
+      await requireOkResponse(res, t("archiveFailed"));
 
       const data: ReviewGradeResponse = await res.json();
 
-      toast.success(data.isArchived ? 'Note archived' : 'Note unarchived');
+      toast.success(data.isArchived ? t("noteArchived") : t("noteUnarchived"));
 
       if (data.isArchived) {
         setRemaining((prev) => Math.max(0, prev - 1));
@@ -234,18 +265,18 @@ export default function ReviewClient({
       setCurrentIndex(transition.currentIndex);
 
       if (transition.completed) {
-        toast.success('Session completed!');
+        toast.success(t("sessionCompleted"));
         router.refresh();
       }
     } catch {
-      toast.error('Failed to archive note');
+      toast.error(t("archiveFailed"));
     }
   };
 
   if (!current) {
     return (
       <div className="text-center py-20 bg-card rounded-xl border border-dashed">
-        <p className="text-muted-foreground">No sentences due for review. Great job!</p>
+        <p className="text-muted-foreground">{t("noDue")}</p>
       </div>
     );
   }
@@ -257,19 +288,19 @@ export default function ReviewClient({
         <div className="flex items-center justify-between px-3 py-2 bg-card border border-border rounded-lg">
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">Reviewed</span>
+              <span className="text-muted-foreground">{t("reviewed")}</span>
               <span className="font-bold text-green-600">{reviewed}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">In Queue</span>
+              <span className="text-muted-foreground">{t("queue")}</span>
               <span className="font-bold text-blue-600">{remaining}</span>
             </div>
           </div>
 
           <div className="text-xs text-muted-foreground">
-            <span>播放: {current.stats?.totalListens || 0}</span>
+            <span>{t("playsLabel", { count: current.stats?.totalListens || 0 })}</span>
             <span className="text-muted-foreground/50 mx-1">|</span>
-            <span>日均: {current.stats?.averageDailyListens?.toFixed(1) || "0.0"}</span>
+            <span>{t("dailyAvgLabel", { value: current.stats?.averageDailyListens?.toFixed(1) || "0.0" })}</span>
           </div>
         </div>
 
@@ -281,10 +312,10 @@ export default function ReviewClient({
           {showAnswer && (
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={handleArchive}>
-                <Archive className="h-3.5 w-3.5 mr-1.5" /> 归档
+                <Archive className="h-3.5 w-3.5 mr-1.5" /> {t("archiveAction")}
               </Button>
               <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={() => setIsEditing(true)}>
-                <Edit3 className="h-3.5 w-3.5 mr-1.5" /> 笔记
+                <Edit3 className="h-3.5 w-3.5 mr-1.5" /> {t("noteAction")}
               </Button>
             </div>
           )}
@@ -338,7 +369,7 @@ export default function ReviewClient({
         size="lg"
       >
         <Download className="w-4 h-4 mr-2" />
-        {isExporting ? 'Exporting...' : `Export Due (${remaining})`}
+        {isExporting ? t("exporting") : t("exportDue", { count: remaining })}
       </Button>
     </div>
   );

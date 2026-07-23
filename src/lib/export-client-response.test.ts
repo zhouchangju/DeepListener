@@ -32,7 +32,7 @@ test("export clients delegate failed response parsing to the shared helper", () 
       file,
     );
     assert.equal(
-      source.match(/requireOkResponse\(response,\s*['"]Export failed['"]\)/g)?.length ?? 0,
+      source.match(/requireOkResponse\(response,\s*t\("(?:audioExportFailed|exportFailed)"\)\)/g)?.length ?? 0,
       expectedChecks,
       file,
     );

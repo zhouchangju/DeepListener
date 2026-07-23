@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { requireOkResponse } from "@/lib/client-response";
 import { RichTextToolbar } from "./rich-text/RichTextToolbar";
 import { useAutosavedRichTextNote } from "./rich-text/useAutosavedRichTextNote";
@@ -12,6 +13,7 @@ interface ReviewNoteEditorProps {
 }
 
 export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChange }: ReviewNoteEditorProps) {
+  const t = useTranslations("feature.richText");
   const { editorRef, exec, getText, handleInput, isSaving, saveNote } = useAutosavedRichTextNote({
     initialNote,
     reloadKey: reviewItemId,
@@ -23,18 +25,18 @@ export default function ReviewNoteEditor({ initialNote, reviewItemId, onNoteChan
         body: JSON.stringify({ userNote: content }),
       });
 
-      await requireOkResponse(res, "Failed to save note");
+      await requireOkResponse(res, t("saveNoteFailed"));
     },
     onSaved: onNoteChange,
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to save note"),
+    onError: (error) => toast.error(error instanceof Error ? error.message : t("saveNoteFailed")),
   });
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(getText());
-      toast.success("Copied to clipboard");
+      toast.success(t("copiedToast"));
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("copyFailed"));
     }
   };
 

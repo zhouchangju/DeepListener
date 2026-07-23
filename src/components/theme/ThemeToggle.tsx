@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 
 export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useTranslations("theme");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
@@ -17,7 +19,7 @@ export default function ThemeToggle() {
 
   const isDark = resolvedTheme === "dark";
   const nextTheme = isDark ? "light" : "dark";
-  const label = mounted && isDark ? "Switch to light mode" : "Switch to dark mode";
+  const label = mounted && isDark ? t("switchToLight") : t("switchToDark");
 
   return (
     <Button

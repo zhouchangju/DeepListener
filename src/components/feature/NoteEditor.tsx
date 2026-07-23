@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { requireOkResponse } from "@/lib/client-response";
 import { RED_FIRST_RICH_TEXT_COLORS, RichTextToolbar } from "./rich-text/RichTextToolbar";
 import { useAutosavedRichTextNote } from "./rich-text/useAutosavedRichTextNote";
@@ -13,6 +14,7 @@ interface NoteEditorProps {
 }
 
 export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditorProps) {
+  const t = useTranslations("feature.richText");
   const { editorRef, exec, getText, handleInput, isSaving, saveNote } = useAutosavedRichTextNote({
     initialNote,
     reloadKey: trackId,
@@ -24,10 +26,10 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
         body: JSON.stringify({ note: content }),
       });
 
-      await requireOkResponse(res, "Failed to save note");
+      await requireOkResponse(res, t("saveNoteFailed"));
     },
     onSaved,
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to save note"),
+    onError: (error) => toast.error(error instanceof Error ? error.message : t("saveNoteFailed")),
   });
 
   useEffect(() => {
@@ -48,16 +50,16 @@ export default function NoteEditor({ initialNote, trackId, onSaved }: NoteEditor
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(getText());
-      toast.success("Copied to clipboard");
+      toast.success(t("copiedToast"));
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("copyFailed"));
     }
   };
 
   return (
     <div className="mt-8 border border-border rounded-lg shadow-sm bg-card overflow-hidden flex flex-col h-[400px]">
       <RichTextToolbar
-        label="Notes"
+        label={t("notesLabel")}
         variant="comfortable"
         colors={RED_FIRST_RICH_TEXT_COLORS}
         isSaving={isSaving}

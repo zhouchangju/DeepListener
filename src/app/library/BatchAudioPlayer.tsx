@@ -1,4 +1,5 @@
 import { Play, Pause, SkipBack, SkipForward, X, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 export interface BatchPlaybackState {
@@ -29,6 +30,7 @@ export default function BatchAudioPlayer({
   onSkipPrev,
   onSkipNext,
 }: BatchAudioPlayerProps) {
+  const t = useTranslations("library");
   if (!state.isActive) return null;
 
   const isGap = state.currentTrackId === null;
@@ -44,7 +46,7 @@ export default function BatchAudioPlayer({
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    3秒间隔中... ({state.currentIndex + 1}/{totalTracks})
+                    {t("gapLabel")} ({state.currentIndex + 1}/{totalTracks})
                   </p>
                 </>
               ) : (
@@ -52,7 +54,7 @@ export default function BatchAudioPlayer({
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                     <p className="text-sm font-medium truncate">
-                      {currentTrackTitle || `Track ${state.currentIndex + 1}`}
+                      {currentTrackTitle || t("trackFallback", { index: state.currentIndex + 1 })}
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -62,7 +64,7 @@ export default function BatchAudioPlayer({
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              循环播放模式
+              {t("loopModeLabel")}
             </p>
           </div>
 
@@ -73,7 +75,7 @@ export default function BatchAudioPlayer({
               variant="ghost"
               onClick={onSkipPrev}
               disabled={isGap}
-              title="上一个"
+              title={t("prevTrack")}
             >
               <SkipBack className="h-4 w-4" />
             </Button>
@@ -83,7 +85,7 @@ export default function BatchAudioPlayer({
                 size="icon"
                 onClick={onResume}
                 disabled={isGap}
-                title="播放"
+                title={t("playTitle")}
               >
                 <Play className="h-4 w-4" />
               </Button>
@@ -91,7 +93,7 @@ export default function BatchAudioPlayer({
               <Button
                 size="icon"
                 onClick={onPause}
-                title="暂停"
+                title={t("pauseTitle")}
               >
                 <Pause className="h-4 w-4" />
               </Button>
@@ -102,7 +104,7 @@ export default function BatchAudioPlayer({
               variant="ghost"
               onClick={onSkipNext}
               disabled={isGap}
-              title="下一个"
+              title={t("nextTrack")}
             >
               <SkipForward className="h-4 w-4" />
             </Button>
@@ -113,7 +115,7 @@ export default function BatchAudioPlayer({
               size="icon"
               variant="ghost"
               onClick={onStop}
-              title="停止"
+              title={t("stopTitle")}
             >
               <X className="h-4 w-4" />
             </Button>

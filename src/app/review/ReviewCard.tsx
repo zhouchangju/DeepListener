@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { InteractiveText } from "@/components/feature/notation/InteractiveText";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { Check, Eye, HelpCircle, Play, RotateCcw, TrendingDown, TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type ReviewQuality = "again" | "hard" | "good" | "easy";
 
@@ -37,6 +38,7 @@ export function ReviewCard({
   onToggleAnswer,
   onGrade,
 }: ReviewCardProps) {
+  const t = useTranslations("review");
   return (
     <Card className="min-h-[300px] flex flex-col justify-between relative">
       <div className="absolute top-4 right-4 z-10">
@@ -53,16 +55,16 @@ export function ReviewCard({
           } hover:opacity-100 md:group-hover:opacity-100 md:pointer-events-auto`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="font-semibold mb-2">快捷键指南：</div>
+          <div className="font-semibold mb-2">{t("shortcutGuideTitle")}</div>
           <div className="space-y-1">
             <div>
-              • 点击播放按钮或按 <kbd className="bg-muted px-1 rounded">R</kbd> 重播音频
+              • {t.rich("shortcutReplay", { kbd: (chunks) => <kbd className="bg-muted px-1 rounded">{chunks}</kbd> })}
             </div>
             <div>
-              • 按 <kbd className="bg-muted px-1 rounded">Space</kbd> 显示/隐藏答案
+              • {t.rich("shortcutToggle", { kbd: (chunks) => <kbd className="bg-muted px-1 rounded">{chunks}</kbd> })}
             </div>
             <div>
-              • 按 <kbd className="bg-muted px-1 rounded">1-4</kbd> 评分（Again/Hard/Good/Easy）
+              • {t.rich("shortcutGrade", { kbd: (chunks) => <kbd className="bg-muted px-1 rounded">{chunks}</kbd> })}
             </div>
           </div>
         </div>
@@ -92,7 +94,7 @@ export function ReviewCard({
             </div>
             {current.userNote && (
               <div className="text-sm text-foreground bg-muted/60 p-3 rounded border border-border">
-                <div className="text-xs font-semibold text-muted-foreground mb-1">NOTE:</div>
+                <div className="text-xs font-semibold text-muted-foreground mb-1">{t("noteLabel")}</div>
                 <div
                   className="prose prose-sm max-w-none whitespace-pre-wrap"
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(current.userNote) }}
@@ -105,7 +107,7 @@ export function ReviewCard({
 
       <CardFooter className="bg-muted/50 p-6 flex flex-col gap-5">
         <Button className="w-full h-12 text-base" onClick={onToggleAnswer}>
-          <Eye className="mr-2 h-5 w-5" /> {showAnswer ? "Hide" : "Reveal"} Answer (Space)
+          <Eye className="mr-2 h-5 w-5" /> {showAnswer ? t("hideAnswer") : t("revealAnswer")}
         </Button>
 
         <div className="grid grid-cols-4 gap-2 w-full">
@@ -115,7 +117,7 @@ export function ReviewCard({
             onClick={() => onGrade("again")}
           >
             <RotateCcw className="h-4 w-4 mb-1" />
-            <span className="text-xs font-medium">Again</span>
+            <span className="text-xs font-medium">{t("again")}</span>
             <span className="text-[10px] text-muted-foreground">1</span>
           </Button>
           <Button
@@ -124,12 +126,12 @@ export function ReviewCard({
             onClick={() => onGrade("hard")}
           >
             <TrendingDown className="h-4 w-4 mb-1" />
-            <span className="text-xs font-medium">Hard</span>
+            <span className="text-xs font-medium">{t("hard")}</span>
             <span className="text-[10px] text-muted-foreground">2</span>
           </Button>
           <Button className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3" onClick={() => onGrade("good")}>
             <Check className="h-4 w-4 mb-1" />
-            <span className="text-xs font-medium">Good</span>
+            <span className="text-xs font-medium">{t("good")}</span>
             <span className="text-[10px] text-green-200">3</span>
           </Button>
           <Button
@@ -138,7 +140,7 @@ export function ReviewCard({
             onClick={() => onGrade("easy")}
           >
             <TrendingUp className="h-4 w-4 mb-1" />
-            <span className="text-xs font-medium">Easy</span>
+            <span className="text-xs font-medium">{t("easy")}</span>
             <span className="text-[10px] text-muted-foreground">4</span>
           </Button>
         </div>

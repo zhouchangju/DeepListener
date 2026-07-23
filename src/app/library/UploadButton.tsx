@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { requireOkResponse } from "@/lib/client-response";
 import UploadDropDialog from "./UploadDropDialog";
 
 export default function UploadButton() {
+  const t = useTranslations("library");
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
@@ -15,7 +17,7 @@ export default function UploadButton() {
     if (!file) return;
 
     setUploading(true);
-    const toastId = toast.loading("Processing media and preparing the listening track...");
+    const toastId = toast.loading(t("processingMedia"));
 
     try {
       const res = await fetch("/api/upload", {
@@ -28,13 +30,13 @@ export default function UploadButton() {
         body: file,
       });
 
-      await requireOkResponse(res, "Upload failed");
+      await requireOkResponse(res, t("uploadFailed"));
 
       const track = await res.json();
-      toast.success("Ready to practice!", { id: toastId });
+      toast.success(t("readyToPractice"), { id: toastId });
       router.push(`/practice/${track.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed. Check your OpenAI API Key.", { id: toastId });
+      toast.error(error instanceof Error ? error.message : t("uploadFailedHint"), { id: toastId });
     } finally {
       setUploading(false);
     }
@@ -42,10 +44,10 @@ export default function UploadButton() {
 
   return (
     <UploadDropDialog
-      triggerLabel="Import Media"
-      uploadingLabel="Processing..."
-      title="Import local media"
-      description="Drop a local audio, MP4, or WebM file here. Video stays local while its audio is prepared for listening practice."
+      triggerLabel={t("importMedia")}
+      uploadingLabel={t("processing")}
+      title={t("importMediaTitle")}
+      description={t("importMediaDesc")}
       uploading={uploading}
       processFiles={handleFiles}
     />

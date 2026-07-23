@@ -1,5 +1,8 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Brain, BarChart3, Activity, AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StabilityDistributionChart, RetentionTrendChart } from "../MemoryCharts";
 import { LeechItem, NamedValueDatum, RetentionDatum } from "../types";
 
@@ -10,18 +13,19 @@ interface MemorySectionProps {
 }
 
 export function MemorySection({ stabilityData, retentionData, leeches }: MemorySectionProps) {
+  const t = useTranslations("dashboard");
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold flex items-center gap-2 text-foreground">
-        <Brain className="w-6 h-6 text-indigo-500" /> Memory Health (FSRS)
+        <Brain className="w-6 h-6 text-primary" /> {t("memoryHealth")}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" /> Stability Distribution
+              <BarChart3 className="w-4 h-4" /> {t("stabilityDist")}
             </CardTitle>
-            <CardDescription>Knowledge base maturity profile</CardDescription>
+            <CardDescription>{t("stabilityDistDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <StabilityDistributionChart data={stabilityData} />
@@ -31,9 +35,9 @@ export function MemorySection({ stabilityData, retentionData, leeches }: MemoryS
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="w-4 h-4" /> True Retention
+              <Activity className="w-4 h-4" /> {t("trueRetention")}
             </CardTitle>
-            <CardDescription>Last 14 days review quality (Target 90%)</CardDescription>
+            <CardDescription>{t("trueRetentionDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <RetentionTrendChart data={retentionData} />
@@ -43,9 +47,9 @@ export function MemorySection({ stabilityData, retentionData, leeches }: MemoryS
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2 text-rose-600">
-              <AlertCircle className="w-4 h-4" /> Leech Alert
+              <AlertCircle className="w-4 h-4" /> {t("leechAlert")}
             </CardTitle>
-            <CardDescription>Difficult items with high failure rate</CardDescription>
+            <CardDescription>{t("leechDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {leeches.length > 0 ? (
@@ -55,7 +59,7 @@ export function MemorySection({ stabilityData, retentionData, leeches }: MemoryS
                 </div>
               ))
             ) : (
-              <div className="text-sm text-muted-foreground text-center py-10">No leeches detected. Great job!</div>
+              <div className="text-sm text-muted-foreground text-center py-10">{t("noLeeches")}</div>
             )}
           </CardContent>
         </Card>

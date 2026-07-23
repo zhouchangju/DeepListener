@@ -13,7 +13,8 @@ test("upload dialog exposes drag-and-drop and file picker affordances", () => {
 });
 
 test("upload dialog describes generic local media instead of course-specific content", () => {
-  assert.match(source, /Drag a media file here/);
+  assert.match(source, /useTranslations\("library"\)/);
+  assert.match(source, /\{multiple \? t\("dragMany"\) : t\("dragOne"\)\}/);
   assert.doesNotMatch(source, /Course|Module|Lesson/);
 });
 

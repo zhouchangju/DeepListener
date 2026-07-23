@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Archive, RotateCcw, MoreVertical, Trash2, Edit3, BookOpen, Check as CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,8 +15,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
+import ConfirmDialog from "@/components/feature/ConfirmDialog";
 import { requireOkResponse } from "@/lib/client-response";
-import { getTrackStatusDisplay, TRACK_STATUS_OPTIONS } from "@/lib/domain-constants";
+import { getTrackStatusDisplay, TRACK_STATUS_OPTIONS, type TrackStatus } from "@/lib/domain-constants";
+
+const STATUS_MESSAGE_KEYS: Record<TrackStatus, "unlearnt" | "intensive" | "analysis" | "shadowing" | "speedShadowing" | "paraphrase" | "learnt"> = {
+  UNLEARNT: "unlearnt",
+  INTENSIVE: "intensive",
+  ANALYSIS: "analysis",
+  SHADOWING: "shadowing",
+  SPEED_SHADOWING: "speedShadowing",
+  PARAPHRASE: "paraphrase",
+  LEARNT: "learnt",
+};
 
 interface Track {
   id: string;
@@ -42,14 +54,34 @@ export default function TrackList({
   onToggleSelection,
 }: TrackListProps) {
   const router = useRouter();
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const t = useTranslations("library");
+  const statusT = useTranslations("statuses");
+  const commonT = useTranslations("common");
+  // Track which track ids have an in-flight action so OTHER tracks stay
+  // actionable. Previously a single loadingId:string blocked every card while
+  // any one card was busy, silently dropping rapid multi-card actions.
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [renamingTrack, setRenamingTrack] = useState<Track | null>(null);
+  const [deletingTrack, setDeletingTrack] = useState<Track | null>(null);
+
+  const startLoading = (id: string) =>
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  const stopLoading = (id: string) =>
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
 
   const handleAction = async (e: React.MouseEvent, action: "archive" | "delete" | "rename" | "change-status", track: Track, value?: string) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (loadingId) return;
+    if (loadingIds.has(track.id)) return;
 
     if (action === "rename") {
       setRenamingTrack(track);
@@ -57,61 +89,74 @@ export default function TrackList({
     }
 
     if (action === "change-status" && value) {
-      setLoadingId(track.id);
+      startLoading(track.id);
       try {
         const res = await fetch(`/api/track/${track.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: value }),
         });
-        await requireOkResponse(res, "Operation failed");
-        toast.success(`Status updated to ${getTrackStatusDisplay(value).label}`);
+        await requireOkResponse(res, t("operationFailed"));
+        toast.success(t("statusUpdated", { status: statusT(STATUS_MESSAGE_KEYS[value as TrackStatus] ?? "intensive") }));
         router.refresh();
       } catch {
-        toast.error("Operation failed");
+        toast.error(t("operationFailed"));
       } finally {
-        setLoadingId(null);
+        stopLoading(track.id);
       }
       return;
     }
 
     if (action === "archive") {
-      setLoadingId(track.id);
+      startLoading(track.id);
       try {
         const res = await fetch(`/api/track/${track.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isArchived: !track.isArchived }),
         });
-        await requireOkResponse(res, "Operation failed");
-        toast.success(track.isArchived ? "Restored!" : "Archived!");
+        await requireOkResponse(res, t("operationFailed"));
+        toast.success(track.isArchived ? t("restored") : t("archivedToast"));
         router.refresh();
       } catch {
-        toast.error("Operation failed");
+        toast.error(t("operationFailed"));
       } finally {
-        setLoadingId(null);
+        stopLoading(track.id);
       }
     } else if (action === "delete") {
-      if (!confirm("⚠️ PERMANENT DELETE WARNING ⚠️\n\nThis will remove the media files and ALL your notes/reviews for this track.\nThis action CANNOT be undone.\n\nAre you sure?")) return;
-      
-      setLoadingId(track.id);
-      try {
-        const res = await fetch(`/api/track/${track.id}`, { method: "DELETE" });
-        await requireOkResponse(res, "Delete failed");
-        toast.success("Track deleted permanently");
-        router.refresh();
-      } catch {
-        toast.error("Delete failed");
-      } finally {
-        setLoadingId(null);
-      }
+      setDeletingTrack(track);
+    }
+  };
+
+  const confirmDelete = async () => {
+    const track = deletingTrack;
+    if (!track) return;
+
+    startLoading(track.id);
+    try {
+      const res = await fetch(`/api/track/${track.id}`, { method: "DELETE" });
+      await requireOkResponse(res, t("deleteFailed"));
+      toast.success(t("deletedPermanently"));
+      router.refresh();
+    } catch {
+      toast.error(t("deleteFailed"));
+    } finally {
+      stopLoading(track.id);
+      setDeletingTrack(null);
     }
   };
 
   if (tracks.length === 0) {
     return (
-      <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl text-muted-foreground">
-        No tracks found.
+      <div className="col-span-full rounded-xl border-2 border-dashed px-6 py-16 text-center">
+        <BookOpen className="mx-auto h-10 w-10 text-primary" />
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t("emptyTitle")}</h2>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+          {t("emptyBody")}
+        </p>
+        <Button asChild variant="outline" className="mt-5">
+          <Link href="/setup">{t("checkSetup")}</Link>
+        </Button>
       </div>
     );
   }
@@ -124,14 +169,34 @@ export default function TrackList({
           const isSelected = selectedTrackIds.has(track.id);
 
           const cardContent = (
-            <Card className={`hover:shadow-md transition-shadow relative group ${
+            <Card
+              className={`hover:shadow-md transition-shadow relative group ${
               track.status === "LEARNT" ? "bg-green-50/30 dark:bg-green-500/10" : "hover:bg-slate-50 dark:hover:bg-accent/60"
             } ${selectionMode ? "cursor-default" : "cursor-pointer"} ${
-              isSelected ? "ring-2 ring-indigo-500" : ""
-            }`}>
+              isSelected ? "ring-2 ring-primary" : ""
+            }`}
+            {...(selectionMode
+              ? {}
+              : {
+                  role: "link",
+                  tabIndex: 0,
+                  "aria-label": `Open ${track.title}`,
+                  onClick: () => router.push(`/practice/${track.id}`),
+                  onKeyDown: (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/practice/${track.id}`);
+                    }
+                  },
+                })}
+            >
               {/* Selection Checkbox */}
               {selectionMode && (
-                <div
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`Select ${track.title}`}
                   className="absolute top-3 left-3 z-10"
                   onClick={(e) => {
                     e.preventDefault();
@@ -139,23 +204,23 @@ export default function TrackList({
                     onToggleSelection?.(track.id);
                   }}
                 >
-                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                  <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
                     isSelected
-                      ? "bg-indigo-500 border-indigo-500"
-                      : "bg-background border-border hover:border-indigo-400"
+                      ? "bg-primary border-primary"
+                      : "bg-background border-border hover:border-primary/70"
                   }`}>
-                    {isSelected && <CheckIcon className="w-4 h-4 text-white" />}
-                  </div>
-                </div>
+                    {isSelected && <CheckIcon className="w-4 h-4 text-white" aria-hidden="true" />}
+                  </span>
+                </button>
               )}
 
               <CardHeader className={`pr-12 ${selectionMode ? "pl-12" : ""}`}>
                   <div className="flex flex-wrap gap-2 mb-2">
                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium border ${statusConfig.bgClass} ${statusConfig.textClass} border-transparent`}>
-                        {statusConfig.label}
+                        {statusT(STATUS_MESSAGE_KEYS[(track.status as TrackStatus)] ?? "intensive")}
                      </span>
                     {track.trackType && track.trackType !== "Other" && (
-                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-xs rounded-full font-medium border border-indigo-100 dark:bg-indigo-500/15 dark:border-indigo-400/25 dark:text-indigo-200">
+                       <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium border border-primary/15 dark:bg-primary/15 dark:border-primary/25 dark:text-primary/25">
                           {track.trackType}
                        </span>
                     )}
@@ -171,11 +236,11 @@ export default function TrackList({
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-indigo-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          disabled={loadingId === track.id}
+                          disabled={loadingIds.has(track.id)}
                         >
-                          <MoreVertical className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -186,7 +251,7 @@ export default function TrackList({
                             className={track.status === config.value ? "bg-accent" : ""}
                           >
                              <div className={`w-2 h-2 rounded-full mr-2 ${config.dotClass}`} />
-                             Set to {config.label}
+                             {t("setTo", { status: statusT(STATUS_MESSAGE_KEYS[config.value]) })}
                           </DropdownMenuItem>
                         ))}
                         <DropdownMenuItem
@@ -196,24 +261,24 @@ export default function TrackList({
                             router.push(`/vault?trackId=${track.id}`);
                           }}
                         >
-                          <BookOpen className="mr-2 h-4 w-4" /> View Notes
+                          <BookOpen className="mr-2 h-4 w-4" /> {t("viewNotesMenu")}
                         </DropdownMenuItem>
                         <div className="h-px bg-border my-1" />
                         <DropdownMenuItem onClick={(e) => handleAction(e, "rename", track)}>
-                          <Edit3 className="mr-2 h-4 w-4" /> Edit
+                          <Edit3 className="mr-2 h-4 w-4" /> {t("edit")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => handleAction(e, "archive", track)}>
                           {track.isArchived ? (
-                            <><RotateCcw className="mr-2 h-4 w-4" /> Restore</>
+                            <><RotateCcw className="mr-2 h-4 w-4" /> {t("restoreAction")}</>
                           ) : (
-                            <><Archive className="mr-2 h-4 w-4" /> Archive</>
+                            <><Archive className="mr-2 h-4 w-4" /> {t("archiveAction")}</>
                           )}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={(e) => handleAction(e, "delete", track)}
                           className="text-red-600 focus:text-red-600 focus:bg-red-50"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                          <Trash2 className="mr-2 h-4 w-4" /> {t("deletePermanently")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -221,31 +286,38 @@ export default function TrackList({
 
                   <CardDescription className="mt-2">
                     <span suppressHydrationWarning>
-                      {track._count.sentences} sentences • {new Date(track.createdAt).toLocaleDateString()}
+                      {t("sentenceCount", { count: track._count.sentences })} • {new Date(track.createdAt).toLocaleDateString()}
                     </span>
                   </CardDescription>
                 </CardHeader>
               </Card>
             );
 
-          return selectionMode ? (
+          return (
             <div key={track.id}>{cardContent}</div>
-          ) : (
-            <Link key={track.id} href={`/practice/${track.id}`}>
-              {cardContent}
-            </Link>
           );
         })}
       </div>
 
       {renamingTrack && (
-        <RenameTrackModal 
-          isOpen={!!renamingTrack} 
-          onClose={() => setRenamingTrack(null)} 
+        <RenameTrackModal
+          isOpen={!!renamingTrack}
+          onClose={() => setRenamingTrack(null)}
           track={renamingTrack}
           onRenamed={() => router.refresh()}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deletingTrack}
+        onOpenChange={(open) => { if (!open) setDeletingTrack(null); }}
+        title={t("deleteTitle")}
+        description={t("deleteDescription")}
+        confirmLabel={t("deleteConfirm")}
+        cancelLabel={commonT("cancel")}
+        destructive
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }

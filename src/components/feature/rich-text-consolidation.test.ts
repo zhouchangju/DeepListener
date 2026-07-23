@@ -43,10 +43,10 @@ test("autosaved note editors delegate response parsing to the shared helper", ()
 
   for (const source of [noteEditor, reviewEditor]) {
     assert.match(source, /@\/lib\/client-response/);
-    assert.match(source, /requireOkResponse\(res,\s*"Failed to save note"\)/);
+    assert.match(source, /requireOkResponse\(res,\s*t\("saveNoteFailed"\)\)/);
     assert.match(
       source,
-      /onError: \(error\) => toast\.error\(error instanceof Error \? error\.message : "Failed to save note"\)/,
+      /onError: \(error\) => toast\.error\(error instanceof Error \? error\.message : t\("saveNoteFailed"\)\)/,
     );
     assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to save"\)/);
   }

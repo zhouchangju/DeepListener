@@ -3,6 +3,7 @@ import Link from "next/link";
 import VaultPageClient from "./VaultPageClient";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getTranslations } from "next-intl/server";
 import { getVaultPageData, type VaultSearchParams } from "./vault-query";
 
 export const dynamic = "force-dynamic";
@@ -13,19 +14,20 @@ export default async function VaultPage({
   searchParams?: Promise<VaultSearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
+  const t = await getTranslations("vault");
 
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Sentence Vault</h1>
+          <h1 className="text-3xl font-bold">{t("pageTitle")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Review and manage your captured sentences
+            {t("pageSubtitle")}
           </p>
         </div>
         <Link href="/review">
-          <Badge className="px-4 py-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700">
-            Start SRS Review
+          <Badge className="px-4 py-2 cursor-pointer bg-primary hover:bg-primary">
+            {t("startReview")}
           </Badge>
         </Link>
       </div>

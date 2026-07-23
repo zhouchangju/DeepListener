@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, X, FileAudio } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { requireOkResponse } from "@/lib/client-response";
 import UploadDropDialog from "./UploadDropDialog";
 
@@ -15,9 +16,20 @@ interface UploadProgress {
 }
 
 export default function BatchUploadButton() {
+  const t = useTranslations("library");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
   const router = useRouter();
+  // Hold the post-success navigation timeout so it can be cleared on unmount
+  // or when a new upload starts (otherwise navigating away within 2s would
+  // push the user back to the first track after they left).
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+    };
+  }, []);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -30,9 +42,7 @@ export default function BatchUploadButton() {
     setProgress(initialProgress);
     setUploading(true);
 
-    const toastId = toast.loading(
-      `Processing ${files.length} media file${files.length > 1 ? "s" : ""}...`
-    );
+    const toastId = toast.loading(t("processingFiles", { count: files.length }));
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -45,7 +55,7 @@ export default function BatchUploadButton() {
         body: formData,
       });
 
-      await requireOkResponse(res, "Batch upload failed. Check your connection.");
+      await requireOkResponse(res, t("batchFailed"));
 
       const data = await res.json();
       const { success, failed } = data as {
@@ -82,28 +92,25 @@ export default function BatchUploadButton() {
 
       // Show summary toast
       if (failed.length === 0) {
-        toast.success(
-          `All ${success.length} file${success.length > 1 ? "s" : ""} processed successfully!`,
-          { id: toastId }
-        );
+        toast.success(t("allProcessed", { count: success.length }), { id: toastId });
       } else {
-        toast.warning(
-          `${success.length} succeeded, ${failed.length} failed. See details below.`,
-          { id: toastId }
-        );
+        toast.warning(t("partialProcessed", { success: success.length, failed: failed.length }), { id: toastId });
       }
 
-      // Navigate to the first successful track if any
+      // Navigate to the first successful track if any. Track the timer so it
+      // is cleared on unmount or overwritten by a subsequent upload.
       if (success.length > 0) {
-        setTimeout(() => {
+        if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+        navigateTimerRef.current = setTimeout(() => {
           router.push(`/practice/${success[0].id}`);
+          navigateTimerRef.current = null;
         }, 2000);
       }
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Batch upload failed. Check your connection.";
+          : t("batchFailed");
       toast.error(message, { id: toastId });
       setProgress(
         initialProgress.map((p) => ({ ...p, status: "error", error: message }))
@@ -116,10 +123,10 @@ export default function BatchUploadButton() {
   return (
     <div className="w-full space-y-4">
       <UploadDropDialog
-        triggerLabel="Batch Import Media"
-        uploadingLabel="Processing..."
-        title="Batch import local media"
-        description="Drop local audio, MP4, or WebM files here."
+        triggerLabel={t("batchTrigger")}
+        uploadingLabel={t("processing")}
+        title={t("batchTitle")}
+        description={t("batchDesc")}
         multiple
         uploading={uploading}
         processFiles={handleFiles}
@@ -129,8 +136,7 @@ export default function BatchUploadButton() {
       {progress.length > 0 && (
         <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
           <div className="text-sm font-medium text-foreground sticky top-0 bg-background py-2 border-b border-border">
-            Upload Progress ({progress.filter((p) => p.status === "success").length} /{" "}
-            {progress.length})
+            {t("uploadProgress", { done: progress.filter((p) => p.status === "success").length, total: progress.length })}
           </div>
           {progress.map((item, idx) => (
             <div
@@ -173,7 +179,7 @@ export default function BatchUploadButton() {
             onClick={() => setProgress([])}
             disabled={uploading}
           >
-            Clear
+            {t("clear")}
           </Button>
         </div>
       )}

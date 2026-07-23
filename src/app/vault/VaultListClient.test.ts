@@ -18,7 +18,7 @@ test("vault list delegates mutation response parsing to the shared helper", () =
   const clientSource = readFileSync(new URL("./VaultListClient.tsx", import.meta.url), "utf8");
 
   assert.match(clientSource, /@\/lib\/client-response/);
-  assert.match(clientSource, /requireOkResponse\(res,\s*"Failed to delete"\)/);
-  assert.match(clientSource, /requireOkResponse\(res,\s*'Failed to toggle archive'\)/);
+  assert.match(clientSource, /requireOkResponse\(res,\s*t\("deleteFailed"\)\)/);
+  assert.match(clientSource, /requireOkResponse\(res,\s*t\("archiveFailed"\)\)/);
   assert.doesNotMatch(clientSource, /if \(!res\.ok\) throw new Error\(\)/);
 });

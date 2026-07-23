@@ -21,7 +21,7 @@ test("shadowing text save delegates response parsing to the shared helper", () =
   const source = readFileSync(new URL("./ShadowingConsole.tsx", import.meta.url), "utf8");
 
   assert.match(source, /@\/lib\/client-response/);
-  assert.match(source, /requireOkResponse\(res,\s*"Failed to save text"\)/);
+  assert.match(source, /requireOkResponse\(res,\s*t\("saveTextFailed"\)\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to update text"\)/);
 });
 
@@ -30,7 +30,7 @@ test("shadowing text save keeps parsed server errors visible in the toast", () =
 
   assert.match(
     source,
-    /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : "Failed to save text"\);/,
+    /catch \(error\) \{\s*toast\.error\(error instanceof Error \? error\.message : t\("saveTextFailed"\)\);/,
   );
 });
 
