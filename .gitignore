@@ -44,6 +44,15 @@ yarn-error.log*
 /prisma/*.db.*.backup
 *.log
 
+# vendored ffmpeg binaries (keep README + .gitkeep, ignore the large binaries)
+/vendor/ffmpeg/ffmpeg
+/vendor/ffmpeg/ffprobe
+/vendor/ffmpeg/*.exe
+/vendor/ffmpeg/*.dylib
+
+# local UI-configured secrets (transcription provider keys etc.)
+/settings/secrets.json
+
 # vercel
 .vercel
 
@@ -57,3 +66,6 @@ next-env.d.ts
 .worktrees/
 docs/OMSCS
 .gstack/
+
+# desktop build artifacts (standalone bundle + dmg + unpacked .app)
+.desktop-build/

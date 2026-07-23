@@ -4,9 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
+// Resolve the project root from (1) an explicit env override, then (2) the
+// location of this file (scripts/codex-hooks/ → repo root). Never hard-code a
+// personal absolute path so the hook works in forks and CI checkouts.
 const PROJECT_ROOT = path.resolve(
-  process.env.DEEPLISTENER_ROOT || "/Users/leozhou/git/DeepListener",
+  process.env.DEEPLISTENER_ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".."),
 );
 const mode = process.argv[2] || "stop";
 const outputLineLimit = Number(process.env.DEEPLISTENER_HOOK_OUTPUT_LINES || 80);

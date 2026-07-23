@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD): DeepListener
 
-**Version:** 4.3 (Updated 2026-07-12)
+**Version:** 4.4 (Updated 2026-07-22)
 **Status:** This document is aligned to the current codebase implementation, not an aspirational roadmap.
 **Tech Stack:** Next.js App Router, React 19, Prisma + SQLite, Tailwind CSS, WaveSurfer.js, FFmpeg, Deepgram/OpenAI/Gemini, Symphony tooling
 
@@ -44,12 +44,12 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 当前 provider 选择逻辑：
 
 - 由 `TRANSCRIPTION_PROVIDER` 决定，支持 `openai` / `google` / `deepgram`
-- 如果没有设置环境变量，代码回退到 `openai`
+- 如果没有设置环境变量，代码默认使用 `deepgram`（单词级时间戳更稳，通常无需代理）
 - `undici` 的全局 dispatcher 会根据 `HTTPS_PROXY` / `https_proxy` 处理代理场景
 
 说明：
 
-- 旧版 PRD 里把 Deepgram 写成固定默认实现，这和当前代码不一致；当前实现是“环境变量驱动，默认回退 OpenAI”。
+- 默认值曾在历史版本中在文档与代码之间漂移过；当前事实来源是 `src/lib/transcription/factory.ts`，未设置 `TRANSCRIPTION_PROVIDER` 时默认 `deepgram`，不匹配值时 fallback 到 `openai`。
 
 ### 模块 B: 媒体精听台 (Practice Workbench)
 
@@ -332,6 +332,25 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 
 - 这部分是项目内置的开发运维能力，不属于最终学习者的主训练流，但已经是代码库中的正式模块，PRD 应该记录。
 
+### 模块 K: 产品介绍与环境诊断
+
+当前实现入口：
+
+- `/`
+- `/setup`
+- `src/lib/setup-readiness.ts`
+
+当前已实现能力：
+
+- 根路径说明句子级学习闭环、本地优先边界和首次使用入口
+- `/setup` 只读检查 Node.js、SQLite 初始化状态、媒体目录、FFmpeg、转录 provider 配置和网络暴露风险
+- 检查结果只显示配置是否存在，不显示凭证值
+- 环境诊断不会修改 `.env`、初始化数据库、联系转录 provider 或迁移用户数据
+
+说明：
+
+- 这是当前浏览器/Server 版本的上手引导；计划中的桌面首次运行向导属于目标态，不应被误写成已实现能力。
+
 ## 4. 当前实现的数据模型 (Implemented Data Model)
 
 下面是当前代码实际使用的数据模型摘要，不再使用旧版过于简化的伪 schema。
@@ -434,7 +453,25 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - 把 Deepgram 写成固定默认，而当前代码是环境变量驱动、默认回退 OpenAI
 - 完全遗漏全局主题系统和黑夜模式
 - 完全遗漏 Symphony 模块
+- 完全遗漏产品介绍页和只读环境诊断页
+
+## 7. 计划中的桌面发行（尚未实现）
+
+DeepListener 已确定以桌面客户端降低安装和运行门槛，但本节只记录方向，不改变上文“当前已实现”的事实边界。
+
+- 技术路线：保留现有 Next.js + Prisma 业务核心，以 Electron 提供桌面壳层和本机生命周期管理。
+- 平台顺序：先做 macOS Apple Silicon 可行性验证，再做签名和公证的 macOS beta；共享运行时稳定后增加 Windows x64。
+- 兼容边界：浏览器/Server 版本继续存在，不能因为桌面化而失去现有开发和自托管能力。
+- 数据边界：数据库、媒体和备份迁移必须显式、可预览、copy-first、可回滚；卸载或升级不能静默删除学习数据。
+- AI 边界：首个桌面版本不为追逐标签新增泛化聊天功能，优先消除安装、配置、导入和恢复摩擦；AI 学习能力需另立需求并验证学习价值。
+
+目标态的完整需求、设计与执行拆分见：
+
+- [桌面客户端 PRD](./desktop-client-prd.md)
+- [OpenSpec proposal](../openspec/changes/desktop-first-distribution/proposal.md)
+- [OpenSpec design](../openspec/changes/desktop-first-distribution/design.md)
+- [OpenSpec tasks](../openspec/changes/desktop-first-distribution/tasks.md)
 
 ---
 
-*Last Updated: 2026-06-30*
+*Last Updated: 2026-07-22*

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Indigo brand gradient, matches the primary token -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#3730a3"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="100%" stop-color="#e0e7ff" stop-opacity="0.85"/>
+    </linearGradient>
+    <!-- subtle top-left highlight -->
+    <radialGradient id="glow" cx="0.3" cy="0.25" r="0.8">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- rounded-rect clip for macOS squircle-ish corners -->
+    <clipPath id="round">
+      <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#glow)"/>
+
+    <!-- Sound waves emanating — "listening" motif. 5 concentric arcs, center-right. -->
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" opacity="0.9">
+      <path d="M 600 360 A 200 200 0 0 1 600 664" stroke-width="20" opacity="0.22"/>
+      <path d="M 600 300 A 280 280 0 0 1 600 724" stroke-width="20" opacity="0.16"/>
+      <path d="M 600 240 A 360 360 0 0 1 600 784" stroke-width="20" opacity="0.10"/>
+    </g>
+
+    <!-- Vertical equalizer bars forming an abstract "D" on the left + waveform feel -->
+    <g fill="url(#wave)">
+      <!-- left cluster (suggests the stem of a "D") -->
+      <rect x="300" y="412" width="44" height="200" rx="22"/>
+      <rect x="372" y="360" width="44" height="304" rx="22"/>
+      <!-- center peak (the focal "beat") -->
+      <rect x="444" y="300" width="44" height="424" rx="22"/>
+      <!-- right taper -->
+      <rect x="516" y="380" width="44" height="264" rx="22"/>
+      <rect x="588" y="440" width="44" height="144" rx="22"/>
+    </g>
+  </g>
+</svg>

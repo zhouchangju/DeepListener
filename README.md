@@ -1,13 +1,27 @@
 # DeepListener
 
-DeepListener 是一个专为高阶英语学习者设计的“原子级”听力解码工具，旨在通过数据驱动的精听训练，彻底突破听力瓶颈。
+**English** · **[简体中文](README.zh-CN.md)**
+
+DeepListener is a local-first, sentence-level English listening trainer. It breaks listening material into the smallest diagnosable units, drives an intensive-practice / shadowing / spaced-review loop, and keeps all of your media, database, and provider keys on your own machine.
 
 - **Self-hosted & local-first:** your media, your database, and your provider keys stay on your own machine.
 - **Bring your own media:** DeepListener ships no copyrighted sample media; you import audio/video you have the rights to use (see [SECURITY.md](SECURITY.md#media-and-content-boundary)).
-- **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable; degrades gracefully.
+- **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable.
 - License: [MIT](LICENSE).
 
-## Quick Start
+![DeepListener onboarding](docs/assets/deeplistener-onboarding.svg)
+
+## Two ways to run DeepListener
+
+### 1. Desktop client (recommended, alpha)
+
+Download the latest [release dmg](https://github.com/zhouchangju/DeepListener/releases) and drag to Applications. No Node.js, Prisma, or terminal commands required. macOS Apple Silicon only for the alpha; signed builds and Windows will follow once the alpha proves out.
+
+The client bundles a 5-second synthetic demo clip so you can try the sentence-level listening loop immediately, without a provider key or media import. To practice on real material, open `/library` and choose **Import Media**.
+
+All user data (SQLite database, uploaded media, exported audio) lives under the OS user-data directory — nothing is sent to a server. Transcription is still BYO key; configure it on the in-app `/setup` page.
+
+### 2. From source (developers)
 
 ```bash
 npm install
@@ -16,6 +30,14 @@ npx prisma generate         # generate the Prisma client (required before build)
 npx prisma migrate deploy   # initialize the SQLite schema
 npm run dev                 # open http://localhost:3000
 ```
+
+After startup:
+
+1. Open `/setup` and resolve any **Action needed** checks.
+2. Open `/library` and choose **Import Media**.
+3. Start with a short audio file so you can reach the practice screen quickly.
+
+> DeepListener bundles one synthetic demo (`public/demo/demo-listening.mp3`, a 5-second FFmpeg-generated sine wave — no copyright) so a first session works without any provider key. To practice on real material, open `/library` and choose **Import Media**.
 
 You can verify the build and tests **without** any private config:
 
@@ -26,199 +48,135 @@ npm run build
 npm run test:ci
 ```
 
-> Transcription features need at least one provider key in `.env`. The app, build, and test suite
-> otherwise run without secrets. The `prisma generate` step is required because the source uses
-> generated Prisma namespace types (e.g. `Prisma.ReviewItemWhereInput`); CI runs it automatically.
+> Transcription features need at least one provider key in `.env`. The app, build, and test suite otherwise run without secrets. The `prisma generate` step is required because the source uses generated Prisma namespace types (e.g. `Prisma.ReviewItemWhereInput`); CI runs it automatically.
 
-## 🌟 核心特性
+## Key features
 
-- **通用音频 / 视频精听**：
-    - 支持导入本地音频、MP4 和 WebM；一个文件对应一个 Track，不引入 Course / Lesson 等课程领域概念。
-    - 视频会提取派生 MP3；若视频带有可解析的内嵌字幕则优先使用，否则转录派生音轨。
-    - Practice 中视频是唯一播放时钟，波形、字幕、句子跳转、变速和循环共享同一时间轴。
-    - Vault、Review、Shadowing 和导出继续使用音频，保持听力训练主线。
+- **Generic audio / video intensive listening:** import local audio, MP4, and WebM. One file maps to one Track (no Course/Lesson domain concepts). Video derives an MP3 audio track; embedded subtitles are preferred when parseable, otherwise the derived audio is transcribed. In Practice the video is the single playback clock — waveform, subtitles, sentence seeking, rate, and loop all share one timeline.
+- **Multi-provider transcription:** choose `openai` / `deepgram` / `google` via `TRANSCRIPTION_PROVIDER`; defaults to `deepgram` (word-level timestamps, usually needs no proxy) when unset, falls back to `openai` for unknown values. Deepgram combines word-level timestamps with local re-segmentation to handle very long sentences.
+- **Waveform practice workbench:** right-drag pan, scroll zoom, drag-select to loop, 0.5x–2.0x rate; blind mode blurs the text; difficulty grading (`Normal` / `Hard` / `Very Hard`); multi-stage status flow `UNLEARNT → INTENSIVE → ANALYSIS → SHADOWING → SPEED_SHADOWING → PARAPHRASE → LEARNT`.
+- **Shadowing console:** original-vs-recording dual-waveform comparison; per-sentence loop, interruptible recording, live progress; in-memory slicing for zero-latency sentence switching.
+- **Library management:** archive / hard-delete, filter by `trackType` / `trackTopic`, per-Track notes, rename, multi-select sequential playback, responsive mobile layout.
+- **Attribution diagnostics:** forces you to record *why* you didn't hear something (linking, vocab, speed, accent, …).
+- **FSRS-4.5 spaced review (Vault):** `Again` / `Hard` are remapped to 5 / 15 minute short-interval relearn. Export all / due / single-Track / filtered sentence audio, and text notes grouped by tag / difficulty / Track / date.
+- **Theming:** follows the OS light/dark preference by default; manual toggle in the top-right, choice persisted.
 
-- **多模型转录引擎**：
-    - **环境变量驱动**：通过 `TRANSCRIPTION_PROVIDER` 选择 `openai` / `deepgram` / `google`；未设置时回退到 `openai`。
-    - **Deepgram**：结合单词级时间戳与本地重组分句逻辑，解决超长难句问题。
-- **波形精听台**：
-    - **交互升级**：右键平移、滚轮缩放、圈选即播、自动循环、0.5x-2.0x 变速播放。
-    - **盲听模式 (Blind Mode)**：一键模糊文本，强制听力理解。
-    - **笔记系统**：
-        - **状态标记**：已收藏句子自动高亮 (琥珀色)。
-        - **难度分级**：支持 `Normal` / `Hard` / `Very Hard` 三级难度标注。
-    - **进度管理**：
-        - **状态流转**：支持 `UNLEARNT -> INTENSIVE -> ANALYSIS -> SHADOWING -> SPEED_SHADOWING -> PARAPHRASE -> LEARNT` 多阶段管理。
-- **Shadowing 工作台 (跟读)**：
-    - **双波形对比**：原音与录音波形同屏显示，直观对比节奏与重音。
-    - **交互升级**：支持单句循环播放、打断式录音、实时进度显示。
-    - **沉浸式流程**：听 -> 录 -> 自动回放 -> 对比 -> 重录。
-    - **极速切片**：基于内存的音频切片，切换句子零延迟。
-- **素材管理 (Library)**：
-    - **归档系统**：支持素材软删除 (Archive) 和物理删除 (Delete)。
-    - **筛选与笔记**：支持按 `trackType` / `trackTopic` 过滤，并维护 Track 级别笔记。
-    - **重命名**：支持修改自动生成的媒体标题。
-    - **批量循环播放**：支持多选 Track 后按顺序循环播放。
-    - **移动端适配**：全站响应式设计，支持手机端操作。
-- **归因诊断系统**：强制记录听不懂的原因（连读、生词、语速等）。
-- **智能复习 (Vault)**：
-    - **间隔复习**：基于 FSRS-4.5，并对 `Again` / `Hard` 做 5 分钟 / 15 分钟短间隔重学。
-    - **导出能力**：支持导出全部、到期、单个 Track 或过滤后的句子音频，也支持按标签 / 难度 / Track / 日期导出笔记。
-- **界面主题**：
-    - **系统跟随**：默认跟随操作系统浅色 / 深色偏好。
-    - **手动切换**：右上角日夜图标可在白天和黑夜风格之间切换，并保留用户选择。
+## Interaction guide
 
-## 🚀 快速开始
+| Action | Effect |
+| :--- | :--- |
+| **Space** | Play / pause |
+| **Scroll** | Zoom waveform density |
+| **Right Drag** | Pan waveform left/right |
+| **Left Drag** | Select a region and auto-loop (plays on release) |
+| **Alt + Click** | (on the Position label) toggle timeline debug mode |
 
-### 前置要求
+### Audio export
 
-**FFmpeg (必需)**：视频音轨提取、内嵌字幕探测和音频导出需要安装 FFmpeg/ffprobe。
+Audio export is available from:
+- **Vault page:** export all / due / current-filter sentence audio, and text notes.
+- **Review page:** export the current due review queue.
+- **Track practice page:** export favorited sentences for the current audio file.
+
+Exported MP3 format: 192 kbps, 2-second silence between sentences, filename `DeepListener_Export_YYYY-MM-DD.mp3`, grouped by source audio then sentence order. If any selected sentence or Track references missing or invalid source audio, export returns an error instead of producing an incomplete file.
+
+Text notes export as `.txt`, grouped by tag, preserving difficulty, source Track, filter conditions, and plain-text notes.
+
+### Video import
+
+- In Library click **Import Media** and pick a local MP4 or WebM.
+- Single-file import streams the raw request body; video limit is 1 GB. Use the single-file path for large files, not Batch.
+- If the video has embedded subtitles, the system tries to build a timeline directly; otherwise it uses the configured transcription provider.
+- A **Show subtitles / Hide subtitles** toggle appears below video playback; it is off by default and shows only the transcript sentence aligned with the current playback position.
+- The original video is stored in `public/videos/` and the derived MP3 in `public/uploads/`.
+- Deleting a video Track cleans up both the original video and the derived MP3.
+
+## Prerequisites (when running from source)
+
+**FFmpeg (required):** video audio extraction, embedded-subtitle detection, and audio export need `ffmpeg`/`ffprobe` on your `PATH`.
 
 ```bash
 # macOS
 brew install ffmpeg
-
 # Ubuntu/Debian
 sudo apt-get update && sudo apt-get install ffmpeg
-
-# Windows
-# 从 https://ffmpeg.org/download.html 下载并添加到 PATH
+# Windows: download from https://ffmpeg.org/download.html and add to PATH
 ```
 
-验证安装：
+Verify:
+
 ```bash
 ffmpeg -version
 ```
 
-### 1. 安装依赖
-```bash
-npm install
-```
+You can also run `bin/setup`, which performs dependency install, Prisma client generation, and existing migration application. It never creates or edits `.env`; configure local `.env` manually if you need transcription or Symphony credentials.
 
-### 2. 环境配置
-创建或编辑 `.env` 文件：
+## 🖥️ Desktop Client (alpha)
 
-```bash
-# SQLite
-DATABASE_URL="file:./dev.db"
+DeepListener also ships as a self-contained Electron desktop client so end users do not need to install Node.js, Prisma, or run terminal commands. The client hosts the exact same Next.js service inside a sandboxed window; all user data stays under the OS user-data directory.
 
-# 推荐：Deepgram（通常无需代理，时间轴更稳）
-TRANSCRIPTION_PROVIDER=deepgram
-DEEPGRAM_API_KEY=your_deepgram_key
+- **Platform:** macOS Apple Silicon (arm64). Windows and signed/notarized builds are planned once the alpha proves out.
+- **Demo:** the client bundles a synthetic 5-second demo clip so you can try the sentence-level listening loop immediately, without a provider key or media import.
+- **Transcription:** still BYO key (OpenAI / Deepgram / Google). Configure it on the in-app setup page; the key is stored locally with `060` permissions and never leaves your machine.
+- **FFmpeg:** resolved at launch from a vendored copy if present, otherwise from the system `PATH`. See [`vendor/ffmpeg/README.md`](vendor/ffmpeg/README.md).
 
-# 备选：OpenAI / Google
-# TRANSCRIPTION_PROVIDER=openai
-# OPENAI_API_KEY=sk-...
-#
-# TRANSCRIPTION_PROVIDER=google
-# GOOGLE_API_KEY=AIza...
-
-# 网络代理（OpenAI / Google 在受限网络环境下通常需要）
-HTTPS_PROXY=http://127.0.0.1:7890
-```
-
-说明：
-- 如果未设置 `TRANSCRIPTION_PROVIDER`，系统会回退到 `openai`
-- Deepgram 通常不依赖代理，但如果设置了 `HTTPS_PROXY`，工厂层依然会统一接管请求
-- Prisma 会按 `prisma/schema.prisma` 所在目录解析 `file:./dev.db`，所以默认数据库文件是 `prisma/dev.db`，不是仓库根目录的 `dev.db`
-
-### 3. 数据库初始化
-```bash
-npx prisma migrate deploy
-```
-
-也可以运行 `bin/setup` 完成依赖安装、Prisma Client 生成和现有 migration 应用。该脚本不会创建或修改 `.env`；如需转录或 Symphony 凭证，请手动创建本机 `.env`。
-
-### 4. 启动开发服务器
-```bash
-npm run dev
-```
-
-### 5. 提交前验证
-推荐在提交前至少运行：
+### Build a distributable from source
 
 ```bash
-npm run lint
-npm run build
+# 1. from the repo root: build the Next.js standalone bundle
+npm run desktop:package
+
+# 2. install the desktop toolchain once
+(cd desktop && npm install)
+
+# 3. pack the macOS dmg (unsigned alpha)
+npm run desktop:dist
+# → artifacts land in .desktop-build/dist/
 ```
 
-`npm run build` 会通过 `scripts/next-build.mjs` 调用 Next.js，并在受限本地 Node 运行时使用已声明的 WASM fallback。不要用直接调用 `next build` 的结果替代项目构建入口。
+For an unpacked `.app` (faster iteration), use `npm run desktop:dist -- --dir`.
 
-如果改动涉及 dashboard、vault、review、audio player 或 shadowing 流程，建议再补跑对应的 `node --import tsx --test ...` 定向回归测试。
+## Repository layout
 
-## 📂 目录结构预览
+- `/src/app`: Next.js App Router pages and APIs. The root path is the product landing page; `setup` provides read-only environment diagnostics. Main app pages: `library`, `practice/[id]`, `review`, `vault`, `dashboard`, `dashboard/symphony`.
+- `/src/app/api`: route handlers for upload, export, Vault, Review, Study Time, Track, Sentence, Symphony state, and byte-range media serving.
+- `/src/components/feature`: business components for intensive practice, Shadowing, review, rich-text notes, waveform player.
+- `/src/components/theme`: global theme provider and the top-right day/night toggle.
+- `/src/components/ui`: primitive UI components (Button, Card, Dialog, Dropdown, Progress, Skeleton, …).
+- `/src/lib`: Prisma client, API schema/response helpers, upload safety policy, audio utils, FSRS, text/HTML utilities, and transcription providers.
+- `/src/lib/transcription`: `openai` / `deepgram` / `google` provider implementations behind a single factory.
+- `/src/symphony`: local Symphony runner / orchestrator / tracker / workspace (developer tooling, not part of the learner's main flow).
+- `/public/uploads`: original audio and video-derived audio; user data, gitignored.
+- `/public/videos`: original local videos; user data, gitignored.
+- `/prisma`: schema, migrations, and the default SQLite database `prisma/dev.db`.
+- `/desktop`: Electron shell (`main.js` / `preload.js` / `electron-builder.yml`) hosting the standalone Next.js service.
+- `/vendor/ffmpeg`: optional vendored FFmpeg/ffprobe binaries; defaults to system PATH, see the README in that directory.
+- `/scripts`: test runner, migration tooling, desktop packaging, icon generation, Codex quality gate, and other maintenance scripts.
+- `/docs`: current-state docs, maintenance manual, historical plans, audit material, and agent harness.
 
-- `/src/app`: Next.js App Router 页面与 API。当前页面包括 `library`、`practice/[id]`、`review`、`vault`、`dashboard` 和 `dashboard/symphony`；根路径会重定向到 `/library`。
-- `/src/app/api`: 上传、导出、Vault、Review、Study Time、Track、Sentence、Symphony state 等 route handlers。
-- `/src/components/feature`: 精听、Shadowing、复习、富文本笔记、波形播放器等业务组件。
-- `/src/components/theme`: 全局主题 Provider 和右上角日夜切换按钮。
-- `/src/components/ui`: Button、Card、Dialog、Dropdown、Progress、Skeleton 等基础 UI primitives。
-- `/src/lib`: Prisma、API schema/response helper、上传安全策略、音频工具、FSRS、文本/HTML 工具和转录 provider。
-- `/public/uploads`: 原始音频及视频派生音轨；属于用户数据，不提交 Git。
-- `/public/videos`: 本地原视频；属于用户数据，不提交 Git。
-- `/src/lib/transcription`: `openai` / `deepgram` / `google` 多 provider 转录实现。
-- `/src/symphony`: 本地 Symphony runner / orchestrator / tracker / workspace 实现。
-- `/prisma`: schema、migrations，以及默认 SQLite 数据库 `prisma/dev.db`。
-- `/scripts`: 测试、迁移、调试、图标生成、Codex quality gate 等维护脚本。
-- `/docs`: 当前说明、维护手册、历史计划、审计资料和 agent harness。
+## Documentation
 
-## 🛠️ 交互指南
-
-| 操作 | 作用 |
-| :--- | :--- |
-| **Space** | 播放 / 暂停 |
-| **Scroll** | 缩放波形密度 |
-| **Right Drag** | 左右平移波形 |
-| **Left Drag** | 圈选区域并自动循环 (松开即播) |
-| **Alt + Click** | (在 Position 标题上) 开启时间轴调试模式 |
-
-### 音频导出
-
-在以下位置可以导出音频：
-- **Vault 页面**：导出全部、到期、当前过滤结果对应的句子音频，也可导出文本笔记
-- **Review 页面**：导出当前到期待复习队列的句子音频
-- **Track 练习页面**：导出当前音频文件对应的收藏句子音频
-
-导出的 MP3 文件格式：
-- 比特率：192 kbps
-- 句子间隔：2 秒静音
-- 文件命名：`DeepListener_Export_YYYY-MM-DD.mp3`
-- 排序：按来源音频分组，组内按句子顺序排列
-- 完整性：如果所选句子或 Track 引用的源音频缺失或路径非法，导出会返回错误而不是生成不完整文件
-
-文本笔记导出为 `.txt`，会按标签分组，并保留难度、来源 Track、筛选条件与纯文本备注内容。
-
-### 导入视频
-
-- 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM。
-- 单文件导入采用流式传输，视频上限 1 GB；大 Lesson 应使用单文件入口，不要使用 Batch。
-- 如果视频有内嵌字幕，系统会尝试直接生成时间轴；没有或无法解析时，使用当前配置的转录 Provider。
-- 视频下方提供 **Show subtitles / Hide subtitles** 开关；每次进入页面默认关闭，开启后只显示与当前播放位置对齐的一句转录文本。
-- 原视频保存在 `public/videos/`，派生 MP3 保存在 `public/uploads/`。
-- 删除视频 Track 时，原视频和派生 MP3 会一起清理。
-
-## 📚 文档资源
-
-- [文档导航地图](./docs/README.md) - 先看这里，区分当前事实、维护手册、历史计划和审计资料
-- [更新日志](./CHANGELOG.md) - 长期迭代版本记录，按 commit 历史归档主要阶段
-- [当前架构](./docs/architecture.md) - 当前 routes、API、数据模型、上传/复习流和数据安全边界
-- [产品需求文档 (PRD)](./docs/requirement.md) - 已实现产品行为与模块边界
-- [维护手册](./docs/maintenance.md) - Provider、数据库、上传、导出、备份和常见问题
-- [复习系统与 FSRS 算法说明](./docs/review-system.md)
-- [Symphony 智能开发协调器](./docs/symphony.md)
-- [技术原理：解决 Node.js 代理超时](./docs/solving-node-proxy-timeout.md)
+- [Docs navigation map](./docs/README.md) — start here; separates current facts, maintenance, history, and audits.
+- [Changelog](./CHANGELOG.md) — long-term iteration log, organized by commit-history phases.
+- [Architecture](./docs/architecture.md) — routes, APIs, data model, upload/review flows, data-safety boundaries.
+- [Product Requirements (PRD)](./docs/requirement.md) — implemented behavior and module boundaries.
+- [Desktop client PRD](./docs/desktop-client-prd.md) — planned Electron distribution goals, milestones, acceptance criteria.
+- [Desktop distribution OpenSpec](./openspec/changes/desktop-first-distribution/proposal.md) — proposal, design, capability specs, and a parallelizable task graph.
+- [Maintenance manual](./docs/maintenance.md) — provider, database, upload, export, backup, and FAQ.
+- [Review system & FSRS algorithm](./docs/review-system.md).
+- [Symphony orchestrator](./docs/symphony.md).
+- [Technical deep-dive: solving Node.js proxy timeout](./docs/solving-node-proxy-timeout.md).
 
 ## Support
 
-DeepListener 是**单人维护、尽力而为（best-effort）**的自托管项目，没有 SLA，也没有 LTS 分支；只有最新 `main` 和最新 tag 会收到修复。
+DeepListener is a **solo-maintained, best-effort** self-hosted project with no SLA and no LTS branch; only the latest `main` and the latest tag receive fixes.
 
-- Bug 与功能请求：开 GitHub issue，附上版本/commit 与复现步骤。
-- 安全报告：见 [SECURITY.md](SECURITY.md) —— **不要**用公开 issue 报告安全问题。
-- 贡献：见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- Bugs and feature requests: open a GitHub issue with version/commit and reproduction steps.
+- Security reports: see [SECURITY.md](SECURITY.md) — **do not** use public issues for security reports.
+- Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-初次上手依赖 FFmpeg、SQLite 以及至少一个转录 provider 的 API key；请在本地 `.env` 中配置（参考 `.env.example`）。远程同步脚本（`npm run sync` / `npm run sync:safe`）从环境变量 `SYNC_REMOTE` / `SYNC_REMOTE_BASE` 读取目标，仓库不内置任何部署主机。
+Running from source depends on FFmpeg, SQLite, and at least one transcription provider API key; configure them in your local `.env` (see `.env.example`). The remote sync scripts (`npm run sync` / `npm run sync:safe`) read their target from the `SYNC_REMOTE` / `SYNC_REMOTE_BASE` environment variables; the repository ships no deployment host.
 
 ## License
 
-[MIT](LICENSE) © zhouchangju。第三方依赖与外部运行时（FFmpeg）的归属见 [NOTICE](NOTICE)。
-
+[MIT](LICENSE) © zhouchangju. Third-party dependency and external-runtime (FFmpeg) attributions are in [NOTICE](NOTICE).

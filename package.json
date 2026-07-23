@@ -3,6 +3,28 @@
   "version": "0.2.0",
   "private": true,
   "license": "MIT",
+  "description": "Local-first, sentence-level English listening trainer with FSRS-4.5 spaced review, multi-provider transcription (OpenAI/Deepgram/Google), waveform-based intensive practice, and shadowing.",
+  "keywords": [
+    "english-learning",
+    "listening",
+    "fsrs",
+    "spaced-repetition",
+    "transcription",
+    "wavesurfer",
+    "shadowing",
+    "self-hosted",
+    "local-first",
+    "nextjs"
+  ],
+  "homepage": "https://github.com/zhouchangju/DeepListener",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhouchangju/DeepListener.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhouchangju/DeepListener/issues"
+  },
+  "author": "zhouchangju",
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/next-build.mjs",
@@ -11,6 +33,8 @@
     "test:ci": "node scripts/run-node-tests.mjs",
     "verify": "npm run lint && npm run test:ci && npm run build",
     "verify:quick": "npm run lint && npm run test:ci",
+    "desktop:package": "node scripts/desktop-package.mjs",
+    "desktop:dist": "node scripts/desktop-dist.mjs",
     "sync": "bash scripts/sync-uploads-and-db.sh",
     "sync:safe": "bash scripts/sync-safe.sh",
     "symphony": "./bin/symphony",

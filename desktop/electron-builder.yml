@@ -1,0 +1,78 @@
+# electron-builder configuration for DeepListener Desktop.
+#
+# Produces a distributable macOS dmg (arm64 first; x64/intel can be added
+# later by extending the `mac.target` list and providing matching binaries).
+#
+# Pipeline:
+#   1. `npm run desktop:package` (repo root) → builds the Next.js standalone
+#      bundle into ../.desktop-build/standalone
+#   2. `npm run dist` (desktop/) → electron-builder reads this file, packs the
+#      Electron shell + standalone bundle + vendored ffmpeg into a dmg.
+#
+# Security: the app is NOT code-signed or notarized by default (alpha). End
+# users open it via the macOS Gatekeeper "Open Anyway" path. Set the env vars
+# below (and install the signing identities) before a signed release:
+#   CSC_LINK / CSC_KEY_PASSWORD   — Developer ID certificate (p12)
+#   APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID — notarization
+appId: io.github.zhouchangju.deeplistener
+productName: DeepListener
+copyright: Copyright (c) 2026 zhouchangju
+
+# The standalone Next.js bundle produced by scripts/desktop-package.mjs is the
+# runtime the Electron main process spawns. Package it as an extra resource so
+# main.js can resolve it via process.resourcesPath/standalone.
+directories:
+  output: ../.desktop-build/dist
+  buildResources: build
+
+# Keep the unpacked .app around for debugging; electron-builder cleans on rerun.
+files:
+  - main.js
+  - preload.js
+  - package.json
+  - icon.png
+  - "!**/.DS_Store"
+
+# The standalone bundle + vendored ffmpeg are NOT part of the Electron app
+# source; they are extra resources unpacked beside the app at runtime.
+# main.js resolves them via process.resourcesPath.
+extraResources:
+  - from: ../.desktop-build/standalone
+    to: standalone
+    filter: ["**/*", "!**/.DS_Store"]
+  - from: ../vendor/ffmpeg
+    to: ffmpeg
+    filter: ["ffmpeg", "ffprobe", "!**/.DS_Store"]
+
+# macOS target. arm64 is the priority (Apple Silicon, the maintainer's host).
+# Add "zip" alongside dmg if you need a CI-friendly artifact.
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch:
+        - arm64
+  icon: build/icon.icns
+  # Dark mode + retina-friendly.
+  darkModeSupport: true
+  hardenedRuntime: true
+  # Alpha: gatekeeper entitlements allow the unsigned helper tools to run.
+  # Remove before a signed release if not needed.
+  gatekeeperAssess: false
+  # Notarization is opt-in via env (see header comment).
+  notarize: false
+
+# DMG layout — a single drag-to-Applications tile.
+dmg:
+  title: "${productName} ${version}"
+  contents:
+    - x: 130
+      "y": 220
+    - x: 410
+      "y": 220
+      type: link
+      path: /Applications
+
+# Publish is intentionally empty. Releases are attached to GitHub manually for
+# the alpha; add a provider here when automated releases are wired up.
+publish: null

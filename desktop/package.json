@@ -1,0 +1,21 @@
+{
+  "name": "deeplistener-desktop",
+  "productName": "DeepListener",
+  "version": "0.3.0-alpha.0",
+  "description": "DeepListener desktop shell — hosts the packaged Next.js standalone service in a sandboxed Electron window.",
+  "main": "main.js",
+  "author": "zhouchangju",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "DEEPLISTENER_STANDALONE_ROOT=\"$(pwd)/../.desktop-build/standalone\" electron .",
+    "start:headless": "DEEPLISTENER_HEADLESS=1 DEEPLISTENER_STANDALONE_ROOT=\"$(pwd)/../.desktop-build/standalone\" electron .",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}

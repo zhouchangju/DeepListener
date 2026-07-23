@@ -2,7 +2,7 @@
 
 All notable changes to DeepListener are documented here.
 
-This project currently has no git tags. Version numbers are maintenance milestones reconstructed from commit history and aligned with the private app version in `package.json`.
+Version numbers align with the `version` field in `package.json`. Starting with `0.3.0-alpha.0`, each release is also tagged in Git so the version is auditable, not just a reconstructed milestone.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style categories where useful.
 
@@ -29,6 +29,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 - `npm run test:ci` (188 tests)
 - Real MP4 streaming import, embedded-subtitle extraction, browser timeline seek, and dual-file cleanup
 - Default-off subtitle toggle, current-sentence updates at 0.5s and 6.5s, and reset-to-hidden after reload on a real local video Track
+
+## [0.3.0-alpha.0] - 2026-07-24
+
+First release tagged in Git. Establishes the Electron desktop distribution
+path so end users can run DeepListener without installing Node.js, Prisma, or
+running terminal commands. Alpha: macOS Apple Silicon only, unsigned.
+
+### Added
+
+- Added the `desktop:dist` one-shot pipeline (`scripts/desktop-dist.mjs`) that chains the Next.js standalone build with `electron-builder` to produce a macOS dmg.
+- Added `desktop/electron-builder.yml` with a `darwin-arm64` dmg target, hardened-runtime, and a drag-to-Applications dmg layout. Signing and notarization are opt-in via env (alpha ships unsigned).
+- Added FFmpeg/ffprobe resolution in the Electron main process (`desktop/main.js`): env override → vendored `vendor/ffmpeg/{ffmpeg,ffprobe}` → system PATH, so media import works whether or not the user has a system FFmpeg install.
+- Added optional vendored FFmpeg copy in `scripts/desktop-package.mjs` and a `vendor/ffmpeg/` directory with a README explaining when and how to vendor binaries.
+- Added `description`, `keywords`, `repository`, `homepage`, `bugs`, and `author` to `package.json` so the project is discoverable on GitHub and npm search.
+
+### Changed
+
+- Corrected the documented default transcription provider: `TRANSCRIPTION_PROVIDER` defaults to `deepgram` (matching `src/lib/transcription/factory.ts`), not `openai`. Fixed in `README.md`, `.env.example`, `docs/requirement.md`, and `docs/maintenance.md`.
+- Corrected the README claim that DeepListener does not bundle demo media: a synthetic 5-second FFmpeg-generated demo clip already ships under `public/demo/` so a first session works without a provider key.
+- Stopped hard-coding the maintainer's absolute path in `scripts/codex-hooks/deeplistener-quality-gate.mjs`; the project root now resolves from the script location with an env override.
+
+### Verified
+
+- `npm run lint`
+- `npm run test:ci`
+- `npm run build`
+- `node --check` on every changed `.mjs`/`.js` script (`desktop-package.mjs`, `desktop-dist.mjs`, `desktop/main.js`, `deeplistener-quality-gate.mjs`)
 
 ## [0.2.0] - 2026-06-30
 

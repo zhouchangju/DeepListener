@@ -13,7 +13,7 @@ Last updated: 2026-07-12
 选择逻辑位于 `src/lib/transcription/factory.ts`：
 
 - 通过 `TRANSCRIPTION_PROVIDER` 选择具体实现
-- 未设置或设置为未知值时，回退到 `openai`
+- 未设置时默认使用 `deepgram`；设置为未知值时 fallback 到 `openai`
 - 如果存在 `HTTPS_PROXY` 或 `https_proxy`，工厂会使用 `undici` 的 `ProxyAgent` 接管 Node 侧请求
 
 ### 如何增加新的 Provider
