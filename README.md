@@ -9,7 +9,17 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 - **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable.
 - License: [MIT](LICENSE).
 
-![DeepListener onboarding](docs/assets/deeplistener-onboarding.svg)
+<p align="center">
+  <img src="docs/assets/deeplistener-landing.png" alt="DeepListener landing page" width="860" />
+</p>
+
+### Screenshots
+
+| | | |
+|:---:|:---:|:---:|
+| ![Practice workbench](docs/assets/deeplistener-practice.png) | ![Dashboard](docs/assets/deeplistener-dashboard.png) | ![Library](docs/assets/deeplistener-library.png) |
+| Sentence-level practice with waveform | FSRS dashboard & analytics | Media library & import |
+| ![Setup diagnostics](docs/assets/deeplistener-setup.png) | ![Onboarding diagram](docs/assets/deeplistener-onboarding.svg) | |
 
 ## Two ways to run DeepListener
 
