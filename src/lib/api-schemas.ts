@@ -66,6 +66,17 @@ export const studyTimeSchema = z.object({
   duration: z.number().int().min(1).max(3600),
 }).strict();
 
+/**
+ * Provider config entered via the Desktop UI. `apiKey` is required so an empty
+ * submission cannot silently clear an existing key; `baseUrl` is optional and
+ * only honored for the openai provider.
+ */
+export const providerConfigSchema = z.object({
+  provider: z.enum(["deepgram", "openai", "google"]),
+  apiKey: nonEmptyString.max(500),
+  baseUrl: z.string().trim().url().max(500).optional(),
+}).strict();
+
 export const reviewLogSchema = z.object({
   reviewItemId: nonEmptyString,
   rating: z.number().int().min(1).max(4),
