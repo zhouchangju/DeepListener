@@ -10,8 +10,10 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 - License: [MIT](LICENSE).
 
 <p align="center">
-  <img src="docs/assets/deeplistener-landing.png" alt="DeepListener landing page" width="860" />
+  <img src="docs/assets/deeplistener-demo.gif" alt="DeepListener product tour — 30s walkthrough of practice, dashboard, library, and setup" width="780" />
 </p>
+
+<p align="center"><em>30-second tour: landing → practice workbench → FSRS dashboard → library → setup diagnostics.</em></p>
 
 ### Screenshots
 
