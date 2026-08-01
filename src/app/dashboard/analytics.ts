@@ -1,5 +1,5 @@
 import { DashboardData, LeechItem, NamedValueDatum, RadarDatum, RetentionDatum, ReviewCountDatum } from "./types";
-import { addLocalDays, localDateKey, startOfLocalDay } from "@/lib/local-day";
+import { addLocalDays, localDateKey, localDayDiff, startOfLocalDay } from "@/lib/local-day";
 
 export interface DashboardTrack {
   status: string;
@@ -37,6 +37,8 @@ export interface DashboardReviewItem {
 
 interface BuildDashboardDataInput {
   countdownDays: number;
+  reached: boolean;
+  targetDateLabel: string;
   tracks: DashboardTrack[];
   tags: DashboardTag[];
   totalSentences: number;
@@ -60,6 +62,8 @@ export function formatDuration(seconds: number): string {
 
 export function buildDashboardData({
   countdownDays,
+  reached,
+  targetDateLabel,
   tracks,
   tags,
   totalSentences,
@@ -75,6 +79,8 @@ export function buildDashboardData({
 
   return {
     countdownDays,
+    reached,
+    targetDateLabel,
     learntCount,
     progressPercent: Math.min(Math.round((learntCount / 100) * 100), 100),
     totalHours,
@@ -138,22 +144,24 @@ function buildRetentionData(reviewLogs: DashboardReviewLog[], now: Date): Retent
 
     return {
       date: key.slice(5),
-      retention: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 100,
+      // null on days with no reviews so the chart can distinguish "no data"
+      // from a perfect 100% day (previously idle days looked perfect).
+      retention: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null,
     };
   });
 }
 
 function buildOverdueData(items: DashboardReviewItem[], now: Date): NamedValueDatum[] {
-  const todayStart = startOfLocalDay(now);
   const overdueBins = { "Today": 0, "1-3d": 0, "4-7d": 0, "1w+": 0 };
 
   for (const item of items) {
-    const dueDate = startOfLocalDay(item.due);
-    if (dueDate >= todayStart) continue;
+    // Calendar-day diff via local keys so DST transitions don't shift the
+    // bin by one (ms/86400000 was off across DST boundaries). diffDays > 0
+    // means the due date is strictly in the past (overdue); 0 = due today.
+    const diffDays = localDayDiff(item.due, now);
+    if (diffDays <= 0) continue; // due today or in the future: not overdue
 
-    const diffDays = Math.floor((todayStart.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) overdueBins["Today"]++;
-    else if (diffDays <= 3) overdueBins["1-3d"]++;
+    if (diffDays <= 3) overdueBins["1-3d"]++;
     else if (diffDays <= 7) overdueBins["4-7d"]++;
     else overdueBins["1w+"]++;
   }

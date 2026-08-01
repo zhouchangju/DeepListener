@@ -15,11 +15,23 @@ interface ReviewAudioItem {
 interface UseReviewAudioOptions {
   current: ReviewAudioItem | null | undefined;
   playbackRate: number;
+  /**
+   * Called when the browser blocked audio playback (e.g. the user has not
+   * interacted with the page yet). Previously this was a silent
+   * `console.log`, leaving the user with no audio and no explanation during a
+   * review session. The caller is expected to surface a toast with a retry.
+   */
+  onPlaybackBlocked?: (reason: unknown) => void;
 }
 
-export function useReviewAudio({ current, playbackRate }: UseReviewAudioOptions) {
+export function useReviewAudio({ current, playbackRate, onPlaybackBlocked }: UseReviewAudioOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentItemRef = useRef<ReviewAudioItem | null>(null);
+  const onPlaybackBlockedRef = useRef(onPlaybackBlocked);
+
+  useEffect(() => {
+    onPlaybackBlockedRef.current = onPlaybackBlocked;
+  }, [onPlaybackBlocked]);
 
   useEffect(() => {
     currentItemRef.current = current ?? null;
@@ -59,7 +71,13 @@ export function useReviewAudio({ current, playbackRate }: UseReviewAudioOptions)
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.play().catch((error) => console.log("Auto-play prevented:", error));
+    audio.play().catch((error) => {
+      // Auto-play policies block audio that starts without a user gesture.
+      // This is a real, user-visible condition (no audio during review) so we
+      // surface it instead of failing silently.
+      console.warn("Review audio playback blocked:", error);
+      onPlaybackBlockedRef.current?.(error);
+    });
   }, [playbackRate]);
 
   return { playAudio };

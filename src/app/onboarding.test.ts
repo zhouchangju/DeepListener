@@ -13,6 +13,14 @@ test("the root route is a product landing page with two explicit first-use paths
   assert.match(translationsSource, /Your media and database stay local; provider keys remain under your control/);
 });
 
+test("landing preview and setup CTA preserve contrast against primary backgrounds", () => {
+  const source = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /bg-primary-foreground\/70/);
+  assert.match(source, /hover:bg-white\/90/);
+  assert.doesNotMatch(source, /hover:bg-primary\/10/);
+});
+
 test("setup remains dynamic and describes its read-only boundary", () => {
   const source = readFileSync(new URL("./setup/page.tsx", import.meta.url), "utf8");
   const messages = JSON.parse(readFileSync(new URL("../../messages/en.json", import.meta.url), "utf8"));

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Mic2, BookmarkCheck, Save, Copy } from "lucide-react";
 import { RefObject, memo } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { InteractiveText } from "../notation/InteractiveText";
 
 interface ReviewItem {
@@ -40,6 +41,7 @@ const SentenceItem = memo(function SentenceItem({
   isBlurred,
   isSaved,
   debugMode,
+  labels,
   onClick,
   onShadowing,
   onCapture,
@@ -51,6 +53,15 @@ const SentenceItem = memo(function SentenceItem({
   isBlurred: boolean;
   isSaved: boolean;
   debugMode: boolean;
+  labels: {
+    shadowing: string;
+    copy: string;
+    capture: string;
+    captured: string;
+    copiedToast: string;
+    savedShort: string;
+    captureShort: string;
+  };
   onClick: () => void;
   onShadowing: (e: React.MouseEvent) => void;
   onCapture: (e: React.MouseEvent) => void;
@@ -62,7 +73,7 @@ const SentenceItem = memo(function SentenceItem({
       onClick={onClick}
       className={`group flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-4 rounded-xl transition-all cursor-pointer border-2 mb-2 ${
         isActive
-          ? "bg-indigo-50/50 border-indigo-100 shadow-sm dark:bg-indigo-500/12 dark:border-indigo-400/30"
+          ? "bg-primary/10 border-primary/15 shadow-sm dark:bg-primary/10 dark:border-primary/30"
           : isSaved
           ? "bg-amber-50/30 border-amber-100/50 dark:bg-amber-500/10 dark:border-amber-400/25"
           : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-accent/60"
@@ -71,7 +82,7 @@ const SentenceItem = memo(function SentenceItem({
       <div
         className={`mt-2.5 w-1.5 h-1.5 rounded-full shrink-0 hidden sm:block ${
           isActive
-            ? "bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]"
+            ? "bg-primary shadow-[0_0_8px_color-mix(in_oklab,var(--primary)_50%,transparent)]"
             : isSaved
             ? "bg-amber-400"
             : "bg-muted"
@@ -85,7 +96,7 @@ const SentenceItem = memo(function SentenceItem({
           }`}
         >
           <div className="flex items-start gap-2">
-            <span className="text-[10px] font-bold text-muted-foreground mt-1 shrink-0 bg-muted px-1.5 py-0.5 rounded min-w-[24px] text-center">
+            <span className="text-[10px] font-bold text-muted-foreground mt-1 shrink-0 bg-muted px-1.5 py-0.5 rounded min-w-[24px] text-center tabular-nums">
               {i + 1}
             </span>
             <div className="flex-grow">
@@ -111,7 +122,7 @@ const SentenceItem = memo(function SentenceItem({
             className="h-9 px-3 gap-1.5 border-border flex-1"
             onClick={onShadowing}
           >
-            <Mic2 className="h-4 w-4 text-indigo-500" />
+            <Mic2 className="h-4 w-4 text-primary" />
           </Button>
           <Button
             variant="outline"
@@ -136,17 +147,17 @@ const SentenceItem = memo(function SentenceItem({
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {isSaved ? "SAVED" : "CAPTURE"}
+            {isSaved ? labels.savedShort : labels.captureShort}
           </Button>
         </div>
       </div>
 
-      <div className="hidden sm:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pt-1">
+      <div className="hidden sm:flex gap-2 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0 pt-1">
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 p-0"
-          title="Shadowing"
+          className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 p-0"
+          title={labels.shadowing}
           onClick={onShadowing}
         >
           <Mic2 className="h-5 w-5" />
@@ -154,8 +165,8 @@ const SentenceItem = memo(function SentenceItem({
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 p-0"
-          title="Copy Text"
+          className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 p-0"
+          title={labels.copy}
           onClick={onCopy}
         >
           <Copy className="h-5 w-5" />
@@ -166,9 +177,9 @@ const SentenceItem = memo(function SentenceItem({
           className={`h-9 w-9 p-0 ${
             isSaved
               ? "text-amber-500 hover:text-amber-600"
-              : "text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50"
+              : "text-muted-foreground hover:text-primary hover:bg-primary/10"
           }`}
-          title={isSaved ? "Already Saved" : "Capture to Vault"}
+          title={isSaved ? labels.captured : labels.capture}
           onClick={onCapture}
         >
           {isSaved ? (
@@ -194,9 +205,24 @@ export const SentenceList = memo(function SentenceList({
   onShadowing,
   onCapture,
 }: SentenceListProps) {
+  const t = useTranslations("feature.audioPlayer");
+
+  // Build the localized labels once and reuse across items so the memoized
+  // SentenceItem gets a stable object identity for the labels prop and does
+  // not need its own useTranslations call (which would break memoization).
+  const labels = {
+    shadowing: t("sentenceShadowing"),
+    copy: t("sentenceCopy"),
+    capture: t("sentenceCapture"),
+    captured: t("sentenceCaptured"),
+    copiedToast: t("copiedToast"),
+    savedShort: t("sentenceCaptured"),
+    captureShort: t("sentenceCapture"),
+  };
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    toast.success(labels.copiedToast);
   };
 
   return (
@@ -220,6 +246,7 @@ export const SentenceList = memo(function SentenceList({
               isBlurred={isBlurred}
               isSaved={isSaved}
               debugMode={debugMode}
+              labels={labels}
               onClick={() => onSentenceClick(s, i)}
               onShadowing={(e) => {
                 e.stopPropagation();

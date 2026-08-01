@@ -188,11 +188,36 @@ export default function AudioPlayer({
     setSubtitlesVisible(visible);
   };
 
+  // Plain (non-memoized) helper: it only runs inside the keyboard handlers
+  // below, and useAudioInteractions re-subscribes when these props change.
+  const seekToSentence = (index: number) => {
+    const s = sentences[index];
+    if (!s) return;
+    wavesurferRef.current?.setTime(s.startTime);
+    playMediaSafely(wavesurferRef.current?.play());
+    regionsRef.current?.clearRegions();
+  };
+
+  const currentIndexRef = useRef(activeSentenceIndex);
+  useEffect(() => {
+    currentIndexRef.current = activeSentenceIndex;
+  }, [activeSentenceIndex]);
+
   useAudioInteractions({
     containerRef,
     isReady,
     setZoomLevel,
     onPlayPause: handlePlayPause,
+    onPrevSentence: () =>
+      seekToSentence(Math.max(0, (currentIndexRef.current < 0 ? 0 : currentIndexRef.current) - 1)),
+    onNextSentence: () =>
+      seekToSentence(Math.min(sentences.length - 1, (currentIndexRef.current < 0 ? -1 : currentIndexRef.current) + 1)),
+    onToggleLoop: handleToggleLoop,
+    onShadowing: () => {
+      const index = currentIndexRef.current < 0 ? 0 : currentIndexRef.current;
+      wavesurferRef.current?.pause();
+      onShadowing(index);
+    },
   });
 
   // Separate Loop Effect

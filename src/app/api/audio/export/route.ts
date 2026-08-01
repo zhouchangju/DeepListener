@@ -3,10 +3,13 @@ import { prisma } from '@/lib/prisma';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
+import { createReadStream } from 'fs';
 import { tmpdir } from 'os';
-import { badRequest, internalServerError } from '@/lib/api-response';
+import { Readable } from 'stream';
+import { badRequest, internalServerErrorFrom } from '@/lib/api-response';
 import { audioExportSchema, formatZodError } from '@/lib/api-schemas';
 import { formatIncompleteExportMessage, resolveExportSource, type ExportSourceIssue } from '@/lib/export-file-policy';
+import { withFfmpegLimit } from '@/lib/ffmpeg-limiter';
 import { buildDueReviewItemsWhere, buildFilteredReviewItemsWhere, getSegmentExportAudioFilters } from './query';
 
 export const maxDuration = 300; // 5 minutes
@@ -183,8 +186,14 @@ export async function POST(req: NextRequest) {
     // Gather segments
     const { segments, issues, totalItems } = await gatherSegments(type, trackId, difficulties, trackIds, dateFrom, dateTo);
 
-    if (issues.length > 0) {
+    // Only fail when EVERY segment has a problem; otherwise export the valid
+    // segments and log the issues. This matches library export behavior so a
+    // single broken audio file can't block exporting the rest.
+    if (issues.length > 0 && segments.length === 0) {
       return badRequest(formatIncompleteExportMessage('sentences', totalItems, issues));
+    }
+    if (issues.length > 0) {
+      console.warn('Audio export skipped segments with issues:', issues);
     }
 
     if (segments.length === 0) {
@@ -209,7 +218,7 @@ export async function POST(req: NextRequest) {
         const duration = seg.endTime - seg.startTime;
         const outputFile = path.join(tempDir!, `segment_${globalIndex}.mp3`);
 
-        return new Promise<void>((resolve, reject) => {
+        return withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
           ffmpeg(seg.audioPath)
             .setStartTime(seg.startTime)
             .setDuration(duration)
@@ -221,7 +230,7 @@ export async function POST(req: NextRequest) {
               resolve();
             })
             .save(outputFile);
-        });
+        }));
       });
 
       await Promise.all(batchPromises);
@@ -253,7 +262,7 @@ export async function POST(req: NextRequest) {
             if (j < segmentFiles.length - 1) {
               const currentSilenceFile = path.join(tempDir!, `silence_${j}.mp3`);
               silencePromises.push(
-                new Promise<void>((resolve, reject) => {
+                withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
                   ffmpeg(segmentFiles[0]!)
                     .audioFilters([
                       {
@@ -270,7 +279,7 @@ export async function POST(req: NextRequest) {
                     .on('error', reject)
                     .on('end', () => resolve())
                     .save(currentSilenceFile);
-                })
+                }))
               );
             }
           }
@@ -289,7 +298,7 @@ export async function POST(req: NextRequest) {
 
     // Merge all files using concat demuxer
     const outputFile = path.join(tempDir!, 'output.mp3');
-    await new Promise<void>((resolve, reject) => {
+    await withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(concatFilePath)
         .inputOptions(['-f concat', '-safe 0'])
@@ -297,29 +306,39 @@ export async function POST(req: NextRequest) {
         .on('error', reject)
         .on('end', () => resolve())
         .save(outputFile);
-    });
+    }));
 
-    // Read final output file (use readFile instead of readSync to avoid blocking)
-    const finalBuffer = await fs.promises.readFile(outputFile);
-
-    // Cleanup temp directory
-    if (tempDir) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-
+    // Stream the final output instead of buffering it whole. A 500-segment
+    // export can be tens of MB; reading it into a single Buffer risks OOM
+    // under concurrent exports.
+    const stat = await fs.promises.stat(outputFile);
     const filename = type === 'filtered'
       ? `DeepListener_Filtered_${new Date().toISOString().split('T')[0]}.mp3`
       : generateFilename();
 
-    return new Response(finalBuffer, {
+    // Hold the temp dir until the stream finishes draining, then clean up.
+    const fileStream = createReadStream(outputFile);
+    const webStream = Readable.toWeb(fileStream) as ReadableStream<Uint8Array>;
+    const tempDirRef = tempDir;
+    tempDir = null; // transferred ownership to the stream cleanup below
+    fileStream.on('close', () => {
+      if (tempDirRef) {
+        try {
+          fs.rmSync(tempDirRef, { recursive: true, force: true });
+        } catch (e) {
+          console.error('Failed to cleanup temp directory:', e);
+        }
+      }
+    });
+
+    return new Response(webStream, {
       headers: {
         'Content-Type': 'audio/mpeg',
+        'Content-Length': String(stat.size),
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {
-    console.error('Audio export error:', error);
-
     // Cleanup temp directory on error
     if (tempDir) {
       try {
@@ -329,6 +348,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return internalServerError();
+    return internalServerErrorFrom(error, 'FFMPEG_FAILED');
   }
 }

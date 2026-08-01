@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useEffectEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Edit3, Download, Archive } from "lucide-react";
+import { Edit3, Download, Archive, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import EditVaultModal from "@/components/feature/EditVaultModal";
 import SpeedSelector from "@/components/feature/SpeedSelector";
@@ -72,7 +73,15 @@ export default function ReviewClient({
   const [remaining, setRemaining] = useState(initialItems.length);
 
   const current = items[currentIndex];
-  const { playAudio } = useReviewAudio({ current, playbackRate });
+  const { playAudio } = useReviewAudio({
+    current,
+    playbackRate,
+    onPlaybackBlocked: () => {
+      // Auto-play was blocked — give the user a visible reason + retry rather
+      // than leaving them pressing play with no audio and no feedback.
+      toast.error(t("playbackBlocked"), { action: { label: t("retry"), onClick: () => playAudio() } });
+    },
+  });
 
   // Mirror items/currentIndex in refs so async handlers (handleGrade) can
   // read the latest values after an `await` instead of the stale closure
@@ -219,6 +228,15 @@ export default function ReviewClient({
 
   const exportAudio = async () => {
     setIsExporting(true);
+    // Exports run ffmpeg server-side and can take a while. A static spinner
+    // looks frozen on long exports, so refresh a toast with elapsed time so
+    // the user knows it is progressing.
+    const toastId = toast.loading(t("exporting"));
+    const startedAt = Date.now();
+    const progressTimer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      toast.loading(t("exportingProgress", { elapsed }), { id: toastId });
+    }, 5000);
 
     try {
       const response = await fetch('/api/audio/export', {
@@ -233,11 +251,12 @@ export default function ReviewClient({
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
-      toast.success(t("audioExported"));
+      toast.success(t("audioExported"), { id: toastId });
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error instanceof Error ? error.message : t("audioExportFailed"));
+      toast.error(error instanceof Error ? error.message : t("audioExportFailed"), { id: toastId });
     } finally {
+      clearInterval(progressTimer);
       setIsExporting(false);
     }
   };
@@ -274,6 +293,25 @@ export default function ReviewClient({
   };
 
   if (!current) {
+    // Completion moment: the queue is empty. If the user actually graded
+    // cards this session, celebrate (calmly) and show the count; otherwise
+    // it's the plain "nothing due" state.
+    if (reviewed > 0) {
+      return (
+        <div className="mx-auto max-w-md text-center py-16 px-8 bg-card rounded-xl border shadow-card animate-in fade-in zoom-in-95 duration-300">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+            <CheckCircle2 className="h-7 w-7 text-success" aria-hidden="true" />
+          </div>
+          <h2 className="text-xl font-bold">{t("completedTitle")}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {t("completedBody", { count: reviewed })}
+          </p>
+          <Button asChild variant="outline" className="mt-6">
+            <Link href="/library">{t("goLibrary")}</Link>
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className="text-center py-20 bg-card rounded-xl border border-dashed">
         <p className="text-muted-foreground">{t("noDue")}</p>
@@ -289,11 +327,11 @@ export default function ReviewClient({
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">{t("reviewed")}</span>
-              <span className="font-bold text-green-600">{reviewed}</span>
+              <span className="font-bold text-success tabular-nums">{reviewed}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">{t("queue")}</span>
-              <span className="font-bold text-blue-600">{remaining}</span>
+              <span className="font-bold text-primary tabular-nums">{remaining}</span>
             </div>
           </div>
 

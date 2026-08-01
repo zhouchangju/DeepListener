@@ -10,25 +10,36 @@ export async function POST(
   try {
     const { id } = await params;
 
-    // Toggle isArchived status
-    const reviewItem = await prisma.reviewItem.findUnique({
-      where: { id },
+    // Atomic read-then-flip inside a transaction. The previous findUnique +
+    // update pair raced under double-clicks / concurrent requests (both read
+    // isArchived=false, both wrote true, so the toggle stuck). Wrapping the
+    // read and update in a transaction serializes concurrent toggles.
+    const result = await prisma.$transaction(async (tx) => {
+      const reviewItem = await tx.reviewItem.findUnique({
+        where: { id },
+      });
+
+      if (!reviewItem) {
+        return { kind: 'notFound' as const };
+      }
+
+      const updatedItem = await tx.reviewItem.update({
+        where: { id },
+        data: {
+          isArchived: !reviewItem.isArchived,
+        },
+      });
+
+      return { kind: 'ok' as const, isArchived: updatedItem.isArchived };
     });
 
-    if (!reviewItem) {
+    if (result.kind === 'notFound') {
       return notFound('Review item not found');
     }
 
-    const updatedItem = await prisma.reviewItem.update({
-      where: { id },
-      data: {
-        isArchived: !reviewItem.isArchived,
-      },
-    });
-
     return NextResponse.json({
       success: true,
-      isArchived: updatedItem.isArchived,
+      isArchived: result.isArchived,
     });
   } catch (error) {
     console.error('Archive toggle error:', error);

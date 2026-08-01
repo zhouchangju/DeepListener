@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
+import { getChartPalette } from "./chart-theme";
 
 // Client-side only wrapper with delayed rendering
 function ChartWrapper({ children, fallbackHeight = 350 }: { children: React.ReactNode; fallbackHeight?: number }) {
@@ -13,7 +14,7 @@ function ChartWrapper({ children, fallbackHeight = 350 }: { children: React.Reac
   }, []);
 
   if (!isReady) {
-    return <div style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-slate-50 rounded-lg" />;
+    return <div style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-muted rounded-lg" />;
   }
 
   return (
@@ -52,8 +53,8 @@ function ReviewTooltip({ active, payload }: ReviewTooltipProps) {
   return (
     <div className="bg-popover text-popover-foreground p-3 border border-border rounded-lg shadow-md">
       <p className="text-sm font-semibold text-foreground">{data.fullDate}</p>
-      <p className="text-sm text-indigo-600">Reviewed: {data.past}</p>
-      <p className="text-sm text-emerald-600">Due: {data.future}</p>
+      <p className="text-sm text-primary">Reviewed: {data.past}</p>
+      <p className="text-sm text-emerald-600 dark:text-emerald-400">Due: {data.future}</p>
     </div>
   );
 }
@@ -83,6 +84,16 @@ export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
     };
   });
 
+  // Place the "today" divider between the last purely-past day and the first
+  // day that includes future/due data. We derive the boundary index from the
+  // merged allDates list (not pastData.length) so a missing past or future
+  // date doesn't shift the divider onto the wrong bar.
+  const todayKey = futureData[0]?.date;
+  const todayIndexInAll = todayKey ? allDates.indexOf(todayKey) : -1;
+  const dividerX = todayIndexInAll >= 0 ? todayIndexInAll - 0.5 : undefined;
+
+  const palette = getChartPalette();
+
   return (
     <ChartWrapper fallbackHeight={350}>
       <BarChart
@@ -94,16 +105,18 @@ export function ReviewChart({ pastData, futureData }: ReviewChartProps) {
           dataKey="date"
           height={50}
           interval={0}
-          tick={{ fontSize: 11, fill: '#64748b' }}
+          tick={{ fontSize: 11, fill: palette.axis }}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
-        <Tooltip content={<ReviewTooltip />} cursor={{ fill: '#f1f5f9' }} />
+        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: palette.axis }} />
+        <Tooltip content={<ReviewTooltip />} cursor={{ fill: palette.cursor }} />
         <Legend verticalAlign="top" height={36}/>
-        <ReferenceLine x={pastData.length - 0.5} stroke="#cbd5e1" strokeDasharray="3 3" />
-        <Bar dataKey="past" name="Completed Reviews" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
-        <Bar dataKey="future" name="Scheduled Reviews" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+        {dividerX !== undefined && (
+          <ReferenceLine x={dividerX} stroke={palette.grid} strokeDasharray="3 3" />
+        )}
+        <Bar dataKey="past" name="Completed Reviews" fill={palette.primary} radius={[4, 4, 0, 0]} barSize={32} />
+        <Bar dataKey="future" name="Scheduled Reviews" fill={palette.success} radius={[4, 4, 0, 0]} barSize={32} />
       </BarChart>
     </ChartWrapper>
   );

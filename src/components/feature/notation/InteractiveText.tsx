@@ -95,14 +95,14 @@ export const InteractiveText = React.memo(({
               className={cn(
                 "relative px-1 transition-all duration-200 rounded",
                 mode === "edit" && activeTool && activeTool !== "linking" && "hover:bg-slate-100 cursor-pointer",
-                isStressed && "font-bold text-indigo-600",
+                isStressed && "font-bold text-primary",
                 isReduced && "text-slate-400 scale-90 origin-bottom",
                 isElided && "line-through decoration-rose-500 decoration-2 text-slate-300"
               )}
             >
               {/* Stress Mark (Dot above) */}
               {isStressed && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-indigo-500 text-xs select-none">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-primary text-xs select-none">
                   ●
                 </span>
               )}

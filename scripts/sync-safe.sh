@@ -34,6 +34,18 @@ if [ -z "$REMOTE" ] || [ -z "$REMOTE_BASE" ]; then
   exit 1
 fi
 
+DB_PATH="prisma/dev.db"
+
+# Excludes shared by both uploads and database transfers (see sync-uploads-and-db.sh).
+EXCLUDES=(
+  --exclude='*.part'
+  --exclude='*.tmp'
+  --exclude='.tmp'
+  --exclude='*-wal'
+  --exclude='*-shm'
+  --exclude='*.backup'
+)
+
 echo "=== DeepListener Safe Sync ==="
 echo "Source: public/uploads/ + prisma/dev.db"
 echo "Original videos in public/videos are not synced."
@@ -42,8 +54,8 @@ echo ""
 
 if [ "$DRY_RUN" = true ]; then
   echo "DRY RUN — showing what would be synced:"
-  rsync -avzn --progress public/uploads/ "${REMOTE}:${REMOTE_BASE}/public/uploads/" 2>&1 | head -30
-  rsync -avzn --progress prisma/dev.db "${REMOTE}:${REMOTE_BASE}/prisma/dev.db" 2>&1 | head -10
+  rsync -avzn --progress "${EXCLUDES[@]}" public/uploads/ "${REMOTE}:${REMOTE_BASE}/public/uploads/" 2>&1 | head -30
+  rsync -avzn --progress "${EXCLUDES[@]}" "$DB_PATH" "${REMOTE}:${REMOTE_BASE}/prisma/dev.db" 2>&1 | head -10
   echo ""
   echo "Dry run complete. No changes made."
   exit 0
@@ -62,10 +74,21 @@ if [ "$AUTO_YES" = false ]; then
   fi
 fi
 
+# Checkpoint WAL into the main DB file so the snapshot is internally
+# consistent (see sync-uploads-and-db.sh for rationale).
+if command -v sqlite3 >/dev/null 2>&1; then
+  if [ -f "$DB_PATH" ]; then
+    echo "Checkpointing WAL into ${DB_PATH}..."
+    sqlite3 "$DB_PATH" "PRAGMA wal_checkpoint(TRUNCATE);" >/dev/null
+  fi
+else
+  echo "⚠️  sqlite3 not found on PATH; skipping WAL checkpoint." >&2
+fi
+
 echo "Syncing uploads..."
-rsync -avz --progress public/uploads/ "${REMOTE}:${REMOTE_BASE}/public/uploads/"
+rsync -avz --progress --backup --suffix=.bak "${EXCLUDES[@]}" public/uploads/ "${REMOTE}:${REMOTE_BASE}/public/uploads/"
 
 echo "Syncing database..."
-rsync -avz --progress prisma/dev.db "${REMOTE}:${REMOTE_BASE}/prisma/dev.db"
+rsync -avz --progress --backup --suffix=.bak "${EXCLUDES[@]}" "$DB_PATH" "${REMOTE}:${REMOTE_BASE}/prisma/dev.db"
 
 echo "✅ Sync complete."

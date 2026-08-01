@@ -14,21 +14,38 @@ export async function POST(req: NextRequest) {
     const { type, duration } = parsed.data;
     const today = startOfLocalDay();
 
-    const session = await prisma.studySession.upsert({
-      where: {
-        date_type: {
+    // Wrap the upsert in a transaction. SQLite's upsert semantics under
+    // Prisma can race on the unique [date, type] constraint: two near-
+    // simultaneous requests may both miss the row and both take the create
+    // branch, dropping the prior accumulated minutes. Reading then
+    // incrementing inside a transaction serializes the two requests so the
+    // duration accumulates correctly.
+    const session = await prisma.$transaction(async (tx) => {
+      const existing = await tx.studySession.findUnique({
+        where: {
+          date_type: {
+            date: today,
+            type: type,
+          },
+        },
+      });
+
+      if (existing) {
+        return tx.studySession.update({
+          where: { id: existing.id },
+          data: {
+            duration: { increment: duration },
+          },
+        });
+      }
+
+      return tx.studySession.create({
+        data: {
           date: today,
           type: type,
+          duration: duration,
         },
-      },
-      update: {
-        duration: { increment: duration },
-      },
-      create: {
-        date: today,
-        type: type,
-        duration: duration,
-      },
+      });
     });
 
     return NextResponse.json(session);

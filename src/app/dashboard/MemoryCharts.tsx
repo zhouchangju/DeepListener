@@ -14,6 +14,7 @@ import {
   CartesianGrid,
   ReferenceLine
 } from "recharts";
+import { getChartPalette } from "./chart-theme";
 
 function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.ReactNode; fallbackHeight?: number }) {
   const [isReady, setIsReady] = useState(false);
@@ -24,7 +25,7 @@ function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.Reac
   }, []);
 
   if (!isReady) {
-    return <div style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-slate-50 rounded-lg" />;
+    return <div style={{ width: '100%', height: fallbackHeight }} className="animate-pulse bg-muted rounded-lg" />;
   }
 
   return (
@@ -36,15 +37,15 @@ function ChartWrapper({ children, fallbackHeight = 250 }: { children: React.Reac
   );
 }
 
-const STABILITY_COLORS: Record<string, string> = {
-  "New": "#94a3b8",
-  "Short-term": "#6366f1",
-  "Mid-term": "#8b5cf6",
-  "Long-term": "#d946ef",
-  "Mature": "#16a34a",
-};
-
 export function StabilityDistributionChart({ data }: { data: { name: string; value: number }[] }) {
+  const palette = getChartPalette();
+  const stabilityColors: Record<string, string> = {
+    "New": "#94a3b8",
+    "Short-term": palette.primary,
+    "Mid-term": palette.purple,
+    "Long-term": "#d946ef",
+    "Mature": palette.success,
+  };
   return (
     <ChartWrapper>
       <BarChart data={data}>
@@ -53,7 +54,7 @@ export function StabilityDistributionChart({ data }: { data: { name: string; val
         <Tooltip />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={STABILITY_COLORS[entry.name] || "#6366f1"} />
+            <Cell key={`cell-${index}`} fill={stabilityColors[entry.name] || palette.primary} />
           ))}
         </Bar>
       </BarChart>
@@ -61,26 +62,30 @@ export function StabilityDistributionChart({ data }: { data: { name: string; val
   );
 }
 
-export function RetentionTrendChart({ data }: { data: { date: string; retention: number }[] }) {
+export function RetentionTrendChart({ data }: { data: { date: string; retention: number | null }[] }) {
+  const palette = getChartPalette();
   return (
     <ChartWrapper>
       <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
         <XAxis
           dataKey="date"
           tick={{ fontSize: 10 }}
           interval="preserveStartEnd"
         />
         <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-        <Tooltip formatter={(value) => [`${value}%`, "Retention"]} />
-        <ReferenceLine y={90} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'right', value: '90%', fill: '#10b981', fontSize: 10 }} />
+        <Tooltip formatter={(value) => (value == null ? ["No data", "Retention"] : [`${value}%`, "Retention"])} />
+        <ReferenceLine y={90} stroke={palette.success} strokeDasharray="3 3" label={{ position: 'right', value: '90%', fill: palette.success, fontSize: 10 }} />
         <Line
           type="monotone"
           dataKey="retention"
-          stroke="#6366f1"
+          stroke={palette.primary}
           strokeWidth={2}
           dot={{ r: 3 }}
           activeDot={{ r: 5 }}
+          // Days with no reviews have retention:null; do not connect across
+          // them so the gap is visible instead of implying 100%/0%.
+          connectNulls={false}
         />
       </LineChart>
     </ChartWrapper>
@@ -88,7 +93,8 @@ export function RetentionTrendChart({ data }: { data: { date: string; retention:
 }
 
 export function OverdueBacklogChart({ data }: { data: { name: string; value: number }[] }) {
-  const COLORS = ["#ef4444", "#f97316", "#f59e0b", "#10b981"];
+  const palette = getChartPalette();
+  const COLORS = ["#ef4444", "#f97316", palette.warning, palette.success];
   return (
     <ChartWrapper>
       <BarChart data={data} layout="vertical">

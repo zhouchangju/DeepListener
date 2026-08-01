@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -32,11 +32,28 @@ interface ProviderConfigDialogProps {
   initialSummary: ProviderSummaryClient;
 }
 
+/**
+ * Official console / sign-up URLs for each provider. These are public,
+ * well-known entry points (no secrets). If a curated tutorial link should
+ * be added later, extend this map in one place.
+ */
+const PROVIDER_HELP: Record<ProviderId, { consoleUrl: string; stepsKey: "deepgramSteps" | "openaiSteps" | "googleSteps" }> = {
+  deepgram: { consoleUrl: "https://console.deepgram.com/", stepsKey: "deepgramSteps" },
+  openai: { consoleUrl: "https://platform.openai.com/api-keys", stepsKey: "openaiSteps" },
+  google: { consoleUrl: "https://aistudio.google.com/app/apikey", stepsKey: "googleSteps" },
+};
+
 const PROVIDERS: { id: ProviderId; label: string; hintKey: "deepgramHint" | "openaiHint" | "googleHint" }[] = [
   { id: "deepgram", label: "Deepgram", hintKey: "deepgramHint" },
   { id: "openai", label: "OpenAI", hintKey: "openaiHint" },
   { id: "google", label: "Google", hintKey: "googleHint" },
 ];
+
+const PROVIDER_LABELS: Record<ProviderId, string> = {
+  deepgram: "Deepgram",
+  openai: "OpenAI",
+  google: "Google",
+};
 
 export default function ProviderConfigDialog({
   isOpen,
@@ -51,6 +68,11 @@ export default function ProviderConfigDialog({
   const [baseUrl, setBaseUrl] = useState("");
   const [showBaseUrl, setShowBaseUrl] = useState(initialSummary.hasBaseUrl);
   const [loading, setLoading] = useState(false);
+  // Inline "how to get a key" help panel. Previously the dialog only showed a
+  // one-line "get a key from your provider's dashboard" hint, which left
+  // non-technical users stuck at the very first step of the install→practice
+  // journey the desktop PRD calls out as the #1 friction point.
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,6 +80,7 @@ export default function ProviderConfigDialog({
       setApiKey("");
       setBaseUrl("");
       setShowBaseUrl(initialSummary.hasBaseUrl || initialSummary.provider === "openai");
+      setShowHelp(false);
     }
   }, [isOpen, initialSummary]);
 
@@ -123,7 +146,20 @@ export default function ProviderConfigDialog({
           </div>
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium">{t("apiKeyLabel")}</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">{t("apiKeyLabel")}</label>
+              <button
+                type="button"
+                onClick={() => setShowHelp((v) => !v)}
+                aria-expanded={showHelp}
+                aria-controls="provider-key-help"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                title={t("howToGetKeyHint")}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                {t("howToGetKey")}
+              </button>
+            </div>
             <input
               type="password"
               autoComplete="off"
@@ -140,6 +176,36 @@ export default function ProviderConfigDialog({
               <p className="text-xs text-muted-foreground">
                 {t("getKeyHint")}
               </p>
+            )}
+
+            {/*
+              Inline "how to get a key" help, anchored to the API key field so
+              users see it exactly where they get stuck. Shows provider-specific
+              steps and a link to the official console so the apply→paste flow
+              is one click away instead of a dead end.
+            */}
+            {showHelp && (
+              <div
+                id="provider-key-help"
+                className="space-y-2.5 rounded-lg border border-primary/20 bg-primary/5 p-3"
+              >
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <HelpCircle className="h-3.5 w-3.5 text-primary" />
+                  {t("howToTitle", { provider: PROVIDER_LABELS[provider] })}
+                </p>
+                <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                  {t(PROVIDER_HELP[provider].stepsKey)}
+                </p>
+                <a
+                  href={PROVIDER_HELP[provider].consoleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("openConsole", { provider: PROVIDER_LABELS[provider] })}
+                </a>
+              </div>
             )}
           </div>
 

@@ -35,7 +35,7 @@ export const PlayerControls = memo(function PlayerControls({
           variant="default"
           size="icon"
           aria-label={isPlaying ? "Pause" : "Play"}
-          className="bg-indigo-600 hover:bg-indigo-700 h-12 w-12 rounded-full shrink-0"
+          className="bg-primary hover:bg-primary h-12 w-12 rounded-full shrink-0"
           onClick={onTogglePlay}
         >
           {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
@@ -59,7 +59,7 @@ export const PlayerControls = memo(function PlayerControls({
           variant={loopMode ? "default" : "outline"}
           size="sm"
           className={`h-9 rounded-full px-4 ${
-            loopMode ? "bg-indigo-600 border-transparent text-white hover:bg-indigo-700" : "text-muted-foreground"
+            loopMode ? "bg-primary border-transparent text-white hover:bg-primary" : "text-muted-foreground"
           }`}
           onClick={onToggleLoop}
         >

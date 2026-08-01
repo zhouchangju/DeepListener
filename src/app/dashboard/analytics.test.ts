@@ -7,6 +7,8 @@ const now = new Date("2026-05-25T12:00:00.000Z");
 test("buildDashboardData preserves dashboard aggregation semantics", () => {
   const data = buildDashboardData({
     countdownDays: 30,
+    reached: false,
+    targetDateLabel: "December 31, 2026",
     now,
     tracks: [
       { status: "UNLEARNT", trackType: "Lecture" },

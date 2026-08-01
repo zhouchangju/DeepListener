@@ -62,6 +62,8 @@ test("next build has a wasm swc fallback for restricted local Node runtimes", ()
   );
   assert.equal(packageJson.devDependencies?.["lightningcss-wasm"], "1.30.2");
   assert.match(buildScript, /NEXT_TEST_WASM_DIR/);
+  assert.match(buildScript, /path\.join\(projectRoot, "\.next", "standalone"\)/);
+  assert.match(buildScript, /rmSync\(standaloneOutputDir/);
 });
 
 test("custom eslint rules declare direct plugin dependencies", () => {

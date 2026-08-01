@@ -113,35 +113,35 @@ export function ReviewCard({
         <div className="grid grid-cols-4 gap-2 w-full">
           <Button
             variant="outline"
-            className="border-red-200 hover:bg-red-50 text-red-600 flex-col h-auto py-3"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive flex-col h-auto py-3"
             onClick={() => onGrade("again")}
           >
             <RotateCcw className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">{t("again")}</span>
-            <span className="text-[10px] text-muted-foreground">1</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">1</span>
           </Button>
           <Button
             variant="outline"
-            className="border-orange-200 hover:bg-orange-50 text-orange-600 flex-col h-auto py-3"
+            className="border-warning/50 text-warning hover:bg-warning/10 hover:text-warning flex-col h-auto py-3"
             onClick={() => onGrade("hard")}
           >
             <TrendingDown className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">{t("hard")}</span>
-            <span className="text-[10px] text-muted-foreground">2</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">2</span>
           </Button>
-          <Button className="bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-3" onClick={() => onGrade("good")}>
+          <Button className="bg-success text-success-foreground hover:bg-success/90 flex-col h-auto py-3" onClick={() => onGrade("good")}>
             <Check className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">{t("good")}</span>
-            <span className="text-[10px] text-green-200">3</span>
+            <span className="text-[10px] opacity-70 tabular-nums">3</span>
           </Button>
           <Button
             variant="outline"
-            className="border-blue-200 hover:bg-blue-50 text-blue-600 flex-col h-auto py-3"
+            className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary flex-col h-auto py-3"
             onClick={() => onGrade("easy")}
           >
             <TrendingUp className="h-4 w-4 mb-1" />
             <span className="text-xs font-medium">{t("easy")}</span>
-            <span className="text-[10px] text-muted-foreground">4</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">4</span>
           </Button>
         </div>
       </CardFooter>

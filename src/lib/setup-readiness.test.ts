@@ -39,7 +39,10 @@ test("network exposure is a safety notice on the page, not a readiness check", a
   });
 
   assert.equal(checks.length, 5);
-  assert.equal(checks.find((check) => check.id === "network"), undefined);
+  assert.deepEqual(
+    checks.map((check) => check.id),
+    ["runtime", "database", "media", "ffmpeg", "provider"],
+  );
 });
 
 test("gives provider-specific recovery instructions when the selected key is absent", async () => {

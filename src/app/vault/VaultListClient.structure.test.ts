@@ -9,7 +9,10 @@ test("vault list delegates large UI regions to focused child components", () => 
   assert.match(source, /VaultListItem/);
   assert.match(source, /VaultPlayAllBar/);
   assert.match(source, /useVaultPlayback/);
-  assert.match(source, /useVaultPlayback\(playbackItems\)/);
+  // The first positional argument must remain playbackItems (not the raw
+  // filteredItems) so play-all only iterates the currently visible set. The
+  // optional messages argument may follow; only assert the leading call.
+  assert.match(source, /useVaultPlayback\(playbackItems(?:,|\s*\))/);
   assert.doesNotMatch(source, /useVaultPlayback\(filteredItems\)/);
   assert.doesNotMatch(source, /activeTimer/);
 });

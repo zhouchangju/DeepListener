@@ -60,7 +60,7 @@ test("vault filter helpers keep UI state deterministic", () => {
   assert.deepEqual(toggleFilterSelection("Grammar", ["Grammar", "Vocab"]), ["Vocab"]);
   assert.equal(getDifficultyStyle("HARD"), "bg-orange-50 border-orange-200");
   assert.equal(getDifficultyStyle("VERY_HARD"), "bg-red-50 border-red-200");
-  assert.equal(getDifficultyStyle("NORMAL"), "hover:border-indigo-200");
+  assert.equal(getDifficultyStyle("NORMAL"), "hover:border-primary/25");
 });
 
 function baseOptions(overrides: Partial<Parameters<typeof filterVaultItems>[1]> = {}): Parameters<typeof filterVaultItems>[1] {

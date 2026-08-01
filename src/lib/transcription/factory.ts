@@ -13,7 +13,7 @@ export function getTranscriptionProvider(): TranscriptionProvider {
     setGlobalDispatcher(dispatcher);
   }
 
-  const providerType = process.env.TRANSCRIPTION_PROVIDER || "openai";
+  const providerType = process.env.TRANSCRIPTION_PROVIDER || "deepgram";
 
   switch (providerType.toLowerCase()) {
     case "openai":

@@ -16,7 +16,8 @@ export interface RadarDatum {
 
 export interface RetentionDatum {
   date: string;
-  retention: number;
+  /** Retention percentage, or null on days with zero reviews (no data). */
+  retention: number | null;
 }
 
 export interface LeechItem {
@@ -28,6 +29,8 @@ export interface LeechItem {
 
 export interface DashboardData {
   countdownDays: number;
+  reached: boolean;
+  targetDateLabel: string;
   learntCount: number;
   progressPercent: number;
   totalHours: number;

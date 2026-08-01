@@ -121,7 +121,10 @@ export default function VaultListClient({
     resumePlayAll,
     startPlayAll,
     stopPlayAll,
-  } = useVaultPlayback(playbackItems);
+  } = useVaultPlayback(playbackItems, {
+    playAllFinished: (count) => t("playAllFinished", { count }),
+    playbackBlocked: t("playbackBlocked"),
+  });
 
   return (
     <div className={`space-y-4 ${playAllActive ? 'pb-20' : ''}`}>
@@ -160,7 +163,7 @@ export default function VaultListClient({
 
       {activeTrackName && (
         <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/15 rounded-lg dark:bg-primary/15 dark:border-primary/25">
-          <span className="text-sm text-primary dark:text-primary/25">
+          <span className="text-sm text-primary dark:text-primary">
             {t("filteredByTrack")} <strong>{activeTrackName}</strong>
           </span>
           <button

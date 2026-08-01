@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { badRequest, internalServerError, notFound } from "@/lib/api-response";
+import { badRequest, internalServerError } from "@/lib/api-response";
 import { formatZodError, vaultExportSchema } from "@/lib/api-schemas";
+import { toSafeHeaderFilename } from "@/lib/header-filename";
 
 /**
  * Export vault notes as text file grouped by tags/categories
@@ -87,7 +88,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (items.length === 0) {
-      return notFound("No notes found to export");
+      // Return an empty-but-valid export rather than 404: a successful query
+      // that matched zero rows is not a "not found" condition.
+      const emptyFilename = `DeepListener_Notes_${new Date().toISOString().split("T")[0]}.txt`;
+      return new NextResponse(
+        `DeepListener Vault Notes Export\nGenerated: ${new Date().toLocaleString()}\nTotal Notes: 0\n\nNo notes matched the selected filters.\n`,
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${emptyFilename}"`,
+          },
+        },
+      );
     }
 
     // Group items by tags (items can have multiple tags, so we'll create categories for each)
@@ -190,9 +203,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate filename
+    // Generate filename. Sanitize the tag suffix at the output boundary: tags
+    // are free text and could otherwise break the Content-Disposition header.
     const dateStr = new Date().toISOString().split("T")[0];
-    const tagSuffix = tags && tags.length > 0 ? `_${tags.join("-")}` : "";
+    const tagSuffix = tags && tags.length > 0 ? `_${toSafeHeaderFilename(tags.join("-"))}` : "";
     const filename = `DeepListener_Notes_${dateStr}${tagSuffix}.txt`;
 
     // Return as downloadable file

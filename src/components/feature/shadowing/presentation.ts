@@ -110,7 +110,7 @@ export function getPracticeModeButtonClassName(
 ) {
   if (mode === activeMode) {
     return mode === "shadowing"
-      ? "h-9 gap-1.5 px-4 bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 hover:text-white"
+      ? "h-9 gap-1.5 px-4 bg-primary text-white shadow-md shadow-primary/25 hover:bg-primary hover:text-white"
       : "h-9 gap-1.5 px-4 bg-emerald-600 text-white shadow-md shadow-emerald-200 hover:bg-emerald-700 hover:text-white";
   }
 

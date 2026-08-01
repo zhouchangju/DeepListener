@@ -65,13 +65,13 @@ export default function ShadowingVisualization({
 
       {mode === "recording" && (
         <div className="h-20 flex items-center justify-center gap-4">
-          <div className="flex items-center justify-center text-red-500 animate-pulse font-bold text-lg gap-2 bg-red-50 rounded-lg border border-red-100 px-6 py-2">
+          <div className="flex items-center justify-center text-destructive animate-pulse font-bold text-lg gap-2 bg-destructive/10 rounded-lg border border-destructive/20 px-6 py-2">
             <Mic className="h-6 w-6" /> {t("recording")}
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 border-border text-muted-foreground hover:text-red-600 hover:border-red-200"
+            className="gap-2 border-border text-muted-foreground hover:text-destructive hover:border-destructive/40"
             onClick={onRecAgain}
           >
             <RotateCcw className="h-4 w-4" /> {t("restart")}

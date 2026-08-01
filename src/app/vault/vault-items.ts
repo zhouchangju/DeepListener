@@ -76,7 +76,7 @@ export function getDifficultyStyle(difficulty: string) {
     case "VERY_HARD":
       return "bg-red-50 border-red-200";
     default:
-      return "hover:border-indigo-200";
+      return "hover:border-primary/25";
   }
 }
 

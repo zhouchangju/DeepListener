@@ -6,7 +6,11 @@ export class DeepgramProvider implements TranscriptionProvider {
   private deepgram;
 
   constructor() {
-    this.deepgram = createClient(process.env.DEEPGRAM_API_KEY || "");
+    const apiKey = process.env.DEEPGRAM_API_KEY;
+    if (!apiKey) {
+      throw new Error("Deepgram API key is not set. Set DEEPGRAM_API_KEY in your environment.");
+    }
+    this.deepgram = createClient(apiKey);
   }
 
   async transcribe(filePath: string): Promise<TranscriptionResponse> {
@@ -19,8 +23,8 @@ export class DeepgramProvider implements TranscriptionProvider {
         model: "nova-2",
         smart_format: true,
         punctuate: true,
-        paragraphs: true, 
-        utterances: true, 
+        paragraphs: true,
+        utterances: true,
       }
     );
 
@@ -32,13 +36,10 @@ export class DeepgramProvider implements TranscriptionProvider {
     const words = result.results?.channels[0]?.alternatives[0]?.words || [];
     const segments: TranscriptionSegment[] = [];
 
-    // Handle empty words array
+    // Surface an empty transcript as an explicit error so the caller does not
+    // create a track with zero sentences (which breaks review/vault flows).
     if (words.length === 0) {
-      return {
-        fullText: "",
-        segments: [],
-        rawJson: JSON.stringify(result),
-      };
+      throw new Error("Transcription returned an empty transcript. The audio may be silent or too short.");
     }
 
     let currentSentenceWords: string[] = [];

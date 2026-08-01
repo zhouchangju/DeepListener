@@ -74,12 +74,13 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
           <div className="flex-grow">
             <div className="flex justify-between items-start">
               <p className="text-lg font-medium leading-relaxed text-foreground">{item.sentence.text}</p>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-primary"
                   onClick={() => onEdit(item)}
+                  aria-label={t("editAction")}
                 >
                   <Edit3 className="h-4 w-4" />
                 </Button>
@@ -89,6 +90,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                   className="h-8 w-8 text-muted-foreground hover:text-amber-600"
                   onClick={() => onToggleArchive(item.id)}
                   title={item.isArchived ? t("unarchiveTitle") : t("archiveTitle")}
+                  aria-label={item.isArchived ? t("unarchiveTitle") : t("archiveTitle")}
                 >
                   {item.isArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                 </Button>
@@ -97,6 +99,7 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-red-600"
                   onClick={() => onDelete(item.id)}
+                  aria-label={t("deleteAction")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

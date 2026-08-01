@@ -42,11 +42,15 @@ export function calculateNextReview(
   // Initialize or load card
   const card = createEmptyCard();
 
-  // Load existing state if available
-  if (currentState.stability !== null && currentState.stability !== undefined) {
+  // Load existing state if available.
+  // FSRS defines difficulty on [1, 10]; the schema defaults `dr` to 0 for
+  // never-graded items (e.g. those created from the vault). A non-positive
+  // difficulty corrupts the seed computation for the entire card's future,
+  // so we ignore it and let createEmptyCard() supply the proper seed value.
+  if (currentState.stability !== null && currentState.stability !== undefined && currentState.stability > 0) {
     card.stability = currentState.stability;
   }
-  if (currentState.difficulty !== null && currentState.difficulty !== undefined) {
+  if (currentState.difficulty !== null && currentState.difficulty !== undefined && currentState.difficulty > 0) {
     card.difficulty = currentState.difficulty;
   }
   if (currentState.due) {
@@ -105,15 +109,21 @@ function mapRating(rating: ReviewRating): Grade {
  * Get human-readable interval description
  */
 export function getIntervalDescription(stability: number): string {
-  const days = stability;
+  // Guard against non-positive stability (corrupted or never-graded cards)
+  const days = Math.max(0, stability || 0);
+
+  if (days <= 0) {
+    return 'New';
+  }
 
   if (days < 1) {
-    const hours = Math.round(days * 24);
+    const hours = Math.max(1, Math.round(days * 24));
     return `${hours} hour${hours !== 1 ? 's' : ''}`;
   }
 
   if (days < 30) {
-    return `${Math.round(days)} day${days !== 1 ? 's' : ''}`;
+    const rounded = Math.round(days);
+    return `${rounded} day${rounded !== 1 ? 's' : ''}`;
   }
 
   if (days < 365) {

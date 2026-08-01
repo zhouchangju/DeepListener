@@ -48,9 +48,15 @@ export function TimeTrackingProvider({ children }: { children: React.ReactNode }
     if (mode === "IDLE") return;
 
     const tick = async () => {
+      // Skip the heartbeat while the tab is hidden: a backgrounded tab keeps
+      // no active user interaction, and browsers throttle setInterval so the
+      // 10s cadence would drift anyway. Audio keeps playing in the background
+      // for the user; we simply stop billing study time until they return.
+      if (document.hidden) return;
+
       const now = Date.now();
       const timeSinceActive = now - lastActiveRef.current;
-      
+
       // Check for audio playing
       let isAudioPlaying = false;
       const audios = document.querySelectorAll("audio");

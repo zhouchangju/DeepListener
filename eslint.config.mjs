@@ -30,6 +30,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Desktop Electron shell and disposable spikes are standalone Node/JS,
+    // not part of the shared src/ library. They live in their own package
+    // (desktop/) with its own tooling; spike dirs are throwaway.
+    "desktop/**",
+    "desktop-spike/**",
+    ".desktop-build/**",
+    // W0/W2 feasibility spike scripts and one-off probes (not library code).
+    "docs/desktop-w0/**",
+    "docs/agent-harness/**",
   ]),
 ]);
 
