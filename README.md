@@ -168,7 +168,8 @@ For an unpacked `.app` (faster iteration), use `npm run desktop:dist -- --dir`.
 
 ## Documentation
 
-- [Docs navigation map](./docs/README.md) — start here; separates current facts, maintenance, history, and audits.
+- [Docs navigation map](./docs/README.md) — start here; documents are tiered by authority (current product truth vs. historical decision logs).
+- [Support](./SUPPORT.md) — support scope, self-check checklist, and how to report issues.
 - [Changelog](./CHANGELOG.md) — long-term iteration log, organized by commit-history phases.
 - [Architecture](./docs/architecture.md) — routes, APIs, data model, upload/review flows, data-safety boundaries.
 - [Product Requirements (PRD)](./docs/requirement.md) — implemented behavior and module boundaries.
@@ -181,13 +182,11 @@ For an unpacked `.app` (faster iteration), use `npm run desktop:dist -- --dir`.
 
 ## Support
 
-DeepListener is a **solo-maintained, best-effort** self-hosted project with no SLA and no LTS branch; only the latest `main` and the latest tag receive fixes.
+DeepListener is a **solo-maintained, best-effort** project — see [SUPPORT.md](SUPPORT.md) for the full support scope, a pre-report self-check list, and where each kind of report should go.
 
-- Bugs and feature requests: open a GitHub issue with version/commit and reproduction steps.
+- Bugs and feature requests: [open an issue](https://github.com/zhouchangju/DeepListener/issues/new/choose) (templates provided).
 - Security reports: see [SECURITY.md](SECURITY.md) — **do not** use public issues for security reports.
 - Contributions: see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Running from source depends on FFmpeg, SQLite, and at least one transcription provider API key; configure them in your local `.env` (see `.env.example`). The remote sync scripts (`npm run sync` / `npm run sync:safe`) read their target from the `SYNC_REMOTE` / `SYNC_REMOTE_BASE` environment variables; the repository ships no deployment host.
 
 ## License
 
