@@ -69,3 +69,14 @@ docs/OMSCS
 
 # desktop build artifacts (standalone bundle + dmg + unpacked .app)
 .desktop-build/
+
+# disposable Electron feasibility spike (verdict archived under docs/review/;
+# production shell lives in desktop/). Kept ignored in case it is rebuilt locally.
+desktop-spike/
+
+# nested lockfiles — the root package-lock.json is the source of truth
+desktop/package-lock.json
+
+# local AI coding-tool state (not project content)
+.reasonix/
+.zcode/
