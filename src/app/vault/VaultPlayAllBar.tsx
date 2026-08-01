@@ -23,13 +23,16 @@ export function VaultPlayAllBar({
   onNext,
   onStop,
 }: VaultPlayAllBarProps) {
-  const currentItem = items[playAllIndex];
+  // Clamp the index so a stale playAllIndex (e.g. after the list shrank from
+  // a filter/page change) doesn't render an out-of-range fraction like "11/5".
+  const safeIndex = Math.min(playAllIndex, Math.max(0, items.length - 1));
+  const currentItem = items[safeIndex];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg px-4 py-3">
       <div className="container mx-auto flex items-center gap-4">
         <span className="text-sm font-medium text-muted-foreground flex-shrink-0">
-          {playAllIndex + 1} / {items.length}
+          {items.length === 0 ? "—" : `${safeIndex + 1} / ${items.length}`}
         </span>
         <div className="flex-grow min-w-0">
           {currentItem && (
@@ -54,7 +57,7 @@ export function VaultPlayAllBar({
             variant="outline"
             className="h-8 w-8"
             onClick={onNext}
-            disabled={playAllIndex >= items.length - 1}
+            disabled={safeIndex >= items.length - 1}
           >
             <SkipForward className="h-4 w-4" />
           </Button>

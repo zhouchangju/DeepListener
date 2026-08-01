@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import { formatZodError, trackPatchSchema } from "@/lib/api-schemas";
 import { resolveStoredUploadPath, resolveStoredVideoPath } from "@/lib/upload-policy";
-import { badRequest, internalServerError, notFound } from "@/lib/api-response";
+import { badRequest, internalServerErrorFrom, notFound } from "@/lib/api-response";
 
 // DELETE (保持不变)
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,8 +35,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     await prisma.track.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("Track delete error:", error);
-    return internalServerError();
+    return internalServerErrorFrom(error, "DB_CONSTRAINT");
   }
 }
 
@@ -55,7 +55,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json(track);
   } catch (error: unknown) {
-    console.error("Track update error:", error);
-    return internalServerError();
+    // P2025 = record not found; surface as 404 instead of a generic 500.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return notFound("Track not found");
+    }
+    return internalServerErrorFrom(error, "DB_CONSTRAINT");
   }
 }

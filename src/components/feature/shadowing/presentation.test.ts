@@ -168,7 +168,7 @@ test("dictation result visibility follows result state", () => {
 test("practice mode buttons expose a prominent active state", () => {
   assert.match(
     getPracticeModeButtonClassName("shadowing", "shadowing"),
-    /bg-indigo-600/
+    /bg-primary/
   );
   assert.match(
     getPracticeModeButtonClassName("dictation", "dictation"),

@@ -119,7 +119,7 @@ async function DashboardContent({
                         <div key={date} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-accent">
                             <div className="flex items-center gap-4">
                                 <div className="text-sm font-bold text-foreground w-24">{date}</div>
-                                <div className="text-lg font-bold text-primary">{formatDuration(data.total)}</div>
+                                <div className="text-lg font-bold text-primary tabular-nums">{formatDuration(data.total)}</div>
                             </div>
                             <div className="flex gap-3 text-xs text-muted-foreground">
                                 {data.types['LISTENING'] && (
@@ -129,7 +129,7 @@ async function DashboardContent({
                                     <span className="bg-primary/10 text-primary px-2 py-1 rounded">🎤 {formatDuration(data.types['SHADOWING'])}</span>
                                 )}
                                 {data.types['REVIEW'] && (
-                                    <span className="bg-amber-50 text-amber-600 px-2 py-1 rounded">📝 {formatDuration(data.types['REVIEW'])}</span>
+                                    <span className="bg-warning/15 text-warning px-2 py-1 rounded">📝 {formatDuration(data.types['REVIEW'])}</span>
                                 )}
                             </div>
                         </div>

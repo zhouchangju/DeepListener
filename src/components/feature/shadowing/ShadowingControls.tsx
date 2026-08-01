@@ -45,7 +45,7 @@ export default function ShadowingControls({
           <Button
             variant="secondary"
             size="lg"
-            className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 gap-2"
+            className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/30 gap-2"
             onClick={onRecAgain}
           >
             <Mic className="h-4 w-4" /> {t("recAgain")}

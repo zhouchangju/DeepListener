@@ -4,10 +4,14 @@ import { prisma } from '@/lib/prisma';
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import fs from 'fs';
+import { createReadStream } from 'fs';
 import { tmpdir } from 'os';
+import { Readable } from 'stream';
 import { badRequest, internalServerError } from '@/lib/api-response';
 import { formatZodError, libraryExportSchema } from '@/lib/api-schemas';
 import { formatIncompleteExportMessage, resolveExportSource, type ExportSourceIssue } from '@/lib/export-file-policy';
+import { withFfmpegLimit } from '@/lib/ffmpeg-limiter';
+import { toSafeHeaderFilename } from '@/lib/header-filename';
 import { buildFilteredTracksWhere } from './query';
 
 export const maxDuration = 300; // 5 minutes
@@ -87,8 +91,14 @@ export async function POST(req: NextRequest) {
 
     const { tracks, issues, totalItems } = await gatherTracks(where);
 
-    if (issues.length > 0) {
+    // Only fail when EVERY track has a problem. If even some tracks resolve,
+    // export the valid ones and log the issues so a single stale/broken track
+    // doesn't block exporting the rest of the library.
+    if (issues.length > 0 && tracks.length === 0) {
       return badRequest(formatIncompleteExportMessage('tracks', totalItems, issues));
+    }
+    if (issues.length > 0) {
+      console.warn('Library export skipped tracks with issues:', issues);
     }
 
     if (tracks.length === 0) {
@@ -108,7 +118,7 @@ export async function POST(req: NextRequest) {
         const globalIndex = i + batchIndex;
         const outputFile = path.join(tempDir!, `track_${globalIndex}.mp3`);
 
-        return new Promise<void>((resolve, reject) => {
+        return withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
           ffmpeg(track.audioPath)
             .audioBitrate('192k')
             .on('error', reject)
@@ -117,7 +127,7 @@ export async function POST(req: NextRequest) {
               resolve();
             })
             .save(outputFile);
-        });
+        }));
       });
 
       await Promise.all(batchPromises);
@@ -134,7 +144,7 @@ export async function POST(req: NextRequest) {
         const silenceFile = path.join(tempDir!, `silence_${i}.mp3`);
         
         // Generate 2 seconds of silence
-        await new Promise<void>((resolve, reject) => {
+        await withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
           ffmpeg(trackFiles[0]!) // Use any source for metadata
             .audioFilters([
               { filter: 'volume', options: '0' },
@@ -145,7 +155,7 @@ export async function POST(req: NextRequest) {
             .on('error', reject)
             .on('end', () => resolve())
             .save(silenceFile);
-        });
+        }));
 
         concatEntries.push(`file '${silenceFile}'`);
       }
@@ -155,7 +165,7 @@ export async function POST(req: NextRequest) {
 
     // Merge all files
     const outputFile = path.join(tempDir!, 'output.mp3');
-    await new Promise<void>((resolve, reject) => {
+    await withFfmpegLimit(() => new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(concatFilePath)
         .inputOptions(['-f concat', '-safe 0'])
@@ -163,23 +173,39 @@ export async function POST(req: NextRequest) {
         .on('error', reject)
         .on('end', () => resolve())
         .save(outputFile);
-    });
+    }));
 
-    const finalBuffer = await fs.promises.readFile(outputFile);
-
-    // Cleanup
-    if (tempDir) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+    // Stream the merged output instead of buffering it whole (large exports
+    // can OOM under concurrent requests).
+    const stat = await fs.promises.stat(outputFile);
 
     let filename = 'DeepListener_Library_Export.mp3';
     if (trackType) {
-        filename = `DeepListener_${trackType}_Export.mp3`;
+        // Sanitize at the output boundary: trackType is free text that could
+        // otherwise break the Content-Disposition header or inject extra headers.
+        const safeType = toSafeHeaderFilename(trackType);
+        filename = `DeepListener_${safeType}_Export.mp3`;
     }
 
-    return new Response(finalBuffer, {
+    // Hold the temp dir until the stream finishes draining, then clean up.
+    const fileStream = createReadStream(outputFile);
+    const webStream = Readable.toWeb(fileStream) as ReadableStream<Uint8Array>;
+    const tempDirRef = tempDir;
+    tempDir = null; // transferred ownership to the stream cleanup below
+    fileStream.on('close', () => {
+      if (tempDirRef) {
+        try {
+          fs.rmSync(tempDirRef, { recursive: true, force: true });
+        } catch (e) {
+          console.error('Failed to cleanup temp directory:', e);
+        }
+      }
+    });
+
+    return new Response(webStream, {
       headers: {
         'Content-Type': 'audio/mpeg',
+        'Content-Length': String(stat.size),
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });

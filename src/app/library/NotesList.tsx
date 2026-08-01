@@ -28,7 +28,7 @@ export default function NotesList({ tracks }: { tracks: TrackWithNote[] }) {
   return (
     <div className="grid grid-cols-1 gap-6">
       {tracksWithNotes.map((track) => (
-        <Card key={track.id} className="hover:shadow-md transition-shadow group overflow-hidden">
+        <Card key={track.id} className="hover:-translate-y-0.5 hover:shadow-card-hover transition-[transform,box-shadow] duration-200 ease-out group overflow-hidden">
           <CardHeader className="bg-muted/50 border-b border-border py-3 px-4 flex flex-row items-center justify-between">
             <Link href={`/practice/${track.id}`} className="hover:underline">
                 <CardTitle className="text-base font-semibold text-primary">

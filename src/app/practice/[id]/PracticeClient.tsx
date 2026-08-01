@@ -95,10 +95,29 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   // 预加载音频 Buffer，为了 Shadowing 模式下的极速切片
   useEffect(() => {
-    fetchAndDecodeAudio(track.audioUrl)
-      .then(buffer => setFullAudioBuffer(buffer))
-      .catch(err => console.error("Audio preload failed", err));
-  }, [track.audioUrl]);
+    let cancelled = false;
+    const preload = () => {
+      fetchAndDecodeAudio(track.audioUrl)
+        .then(buffer => {
+          if (!cancelled) setFullAudioBuffer(buffer);
+        })
+        .catch(err => {
+          // Previously this only logged to console, leaving the "Start
+          // shadowing" button spinning forever with no explanation — which
+          // blocks the core "capture in the moment of not-understanding"
+          // workflow. Surface it with a retry so the user can recover.
+          console.error("Audio preload failed", err);
+          if (cancelled) return;
+          toast.error(t("audioPreloadFailed"), {
+            action: { label: t("retry"), onClick: preload },
+          });
+        });
+    };
+    preload();
+    return () => {
+      cancelled = true;
+    };
+  }, [track.audioUrl, t]);
 
 
 
@@ -135,6 +154,14 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   const exportAudio = async () => {
     setIsExporting(true);
+    // Exports run ffmpeg server-side and can take a while on long tracks.
+    // Refresh the toast with elapsed time so it does not look frozen.
+    const toastId = toast.loading(t("exporting"));
+    const startedAt = Date.now();
+    const progressTimer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      toast.loading(t("exportingProgress", { elapsed }), { id: toastId });
+    }, 5000);
 
     try {
       const response = await fetch('/api/audio/export', {
@@ -149,11 +176,12 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
       await downloadResponseBlob(response, 'DeepListener_Export.mp3');
 
-      toast.success(t("audioExported"));
+      toast.success(t("audioExported"), { id: toastId });
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error instanceof Error ? error.message : t("audioExportFailed"));
+      toast.error(error instanceof Error ? error.message : t("audioExportFailed"), { id: toastId });
     } finally {
+      clearInterval(progressTimer);
       setIsExporting(false);
     }
   };
@@ -170,7 +198,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
         <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
+              className="text-muted-foreground"
               onClick={exportAudio}
               disabled={isExporting}
             >
@@ -179,8 +208,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
             </Button>
 
             <Button
-              variant="secondary"
-              className="bg-primary/15 text-primary hover:bg-primary/25 dark:bg-primary/15 dark:text-primary/25 dark:hover:bg-primary/25"
+              variant="default"
               disabled={!fullAudioBuffer} // 只有加载完了才能进跟读
               onClick={() => { setShadowIndex(0); setShadowingMode(true); }}
             >
@@ -253,6 +281,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
           onNext={() => setShadowIndex(prev => Math.min(prev + 1, track.sentences.length - 1))}
           onPrev={() => setShadowIndex(prev => Math.max(prev - 1, 0))}
           onCapture={handleCapture}
+          onRestart={() => setShadowIndex(0)}
         />
       )}
     </>

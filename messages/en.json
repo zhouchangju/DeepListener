@@ -20,7 +20,9 @@
     "setup": "Setup",
     "vault": "Vault",
     "analytics": "Analytics",
-    "review": "Review"
+    "review": "Review",
+    "menu": "Menu",
+    "streakTitle": "{count}-day streak — view analytics"
   },
   "language": {
     "switchToChinese": "Switch language to Chinese",
@@ -56,7 +58,8 @@
     "previous": "Back",
     "next": "Next",
     "skip": "Skip guide",
-    "finish": "Start learning"
+    "finish": "Start learning",
+    "goNow": "Go there now"
   },
   "landing": {
     "badge": "Local-first intensive listening",
@@ -73,15 +76,36 @@
     "ready": "Ready for your first listening session?",
     "readyText": "Run the read-only environment check before importing media.",
     "workflow": {
-      "listen": {"title": "Listen blind", "text": "Hide the transcript and find the exact moment your comprehension breaks."},
-      "decode": {"title": "Decode the sentence", "text": "Zoom, loop, slow down, and mark linking, reductions, vocabulary, or speed."},
-      "shadow": {"title": "Shadow the rhythm", "text": "Record your voice and compare timing against the original waveform."},
-      "review": {"title": "Review what mattered", "text": "Save difficult sentences and revisit them with FSRS scheduling."}
+      "listen": {
+        "title": "Listen blind",
+        "text": "Hide the transcript and find the exact moment your comprehension breaks."
+      },
+      "decode": {
+        "title": "Decode the sentence",
+        "text": "Zoom, loop, slow down, and mark linking, reductions, vocabulary, or speed."
+      },
+      "shadow": {
+        "title": "Shadow the rhythm",
+        "text": "Record your voice and compare timing against the original waveform."
+      },
+      "review": {
+        "title": "Review what mattered",
+        "text": "Save difficult sentences and revisit them with FSRS scheduling."
+      }
     },
     "values": {
-      "local": {"title": "Local-first", "text": "SQLite, uploads, and original video remain on the host running DeepListener."},
-      "byok": {"title": "BYOK", "text": "Only the transcription provider you select receives audio for transcription."},
-      "selfhosted": {"title": "Self-hosted boundary", "text": "No authentication is included; use it locally or behind a protected network."}
+      "local": {
+        "title": "Local-first",
+        "text": "SQLite, uploads, and original video remain on the host running DeepListener."
+      },
+      "byok": {
+        "title": "BYOK",
+        "text": "Only the transcription provider you select receives audio for transcription."
+      },
+      "selfhosted": {
+        "title": "Self-hosted boundary",
+        "text": "No authentication is included; use it locally or behind a protected network."
+      }
     },
     "atomLabel": "ATOMIC LISTENING • SENTENCE 07",
     "exampleText": "\"What makes natural speech difficult isn't always the vocabulary.\"",
@@ -151,6 +175,7 @@
     "checkSetup": "Check setup first",
     "setTo": "Set to {status}",
     "viewNotesMenu": "View Notes",
+    "actionsMenu": "Track actions",
     "edit": "Edit",
     "archiveAction": "Archive",
     "restoreAction": "Restore",
@@ -170,6 +195,8 @@
     "readyToPractice": "Ready to practice!",
     "uploadFailedHint": "Upload failed. Open Setup to check your provider and media tools.",
     "uploadFailed": "Upload failed",
+    "uploadingProgress": "Uploading… {elapsed}s",
+    "transcribingProgress": "Transcribing… {elapsed}s",
     "importMediaTitle": "Import local media",
     "importMediaDesc": "Drop a local audio, MP4, or WebM file here. Video stays local while its audio is prepared for listening practice.",
     "processing": "Processing...",
@@ -223,8 +250,11 @@
     "noteUnarchived": "Note unarchived",
     "archiveFailed": "Failed to archive note",
     "sessionCompleted": "Session completed!",
+    "playbackBlocked": "Audio playback was blocked by the browser. Click play again to start.",
+    "retry": "Retry",
     "exportDue": "Export Due ({count})",
     "exporting": "Exporting...",
+    "exportingProgress": "Exporting… {elapsed}s",
     "audioExported": "Audio exported successfully",
     "audioExportFailed": "Failed to export audio",
     "playsLabel": "Plays: {count}",
@@ -237,13 +267,18 @@
     "shortcutGuideTitle": "Keyboard shortcuts",
     "shortcutReplay": "Click the play button or press <kbd>R</kbd> to replay the audio",
     "shortcutToggle": "Press <kbd>Space</kbd> to show/hide the answer",
-    "shortcutGrade": "Press <kbd>1-4</kbd> to grade (Again/Hard/Good/Easy)"
+    "shortcutGrade": "Press <kbd>1-4</kbd> to grade (Again/Hard/Good/Easy)",
+    "completedTitle": "All caught up",
+    "completedBody": "You reviewed {count} sentences today. Your future self says thanks.",
+    "goLibrary": "Practice something new"
   },
   "vault": {
     "title": "Vault",
     "export": "Export",
     "exportNotes": "Export Notes",
     "playAll": "Play All",
+    "playAllFinished": "Finished playing {count} sentences",
+    "playbackBlocked": "Playback was blocked",
     "sortDate": "Date saved",
     "sortReviewDate": "Review date",
     "sortStability": "Stability",
@@ -300,6 +335,8 @@
     "loadNoteFailed": "Failed to load note",
     "archiveTitle": "Archive",
     "unarchiveTitle": "Unarchive",
+    "editAction": "Edit note",
+    "deleteAction": "Delete note",
     "filters": "Filters",
     "searchLabel": "Search",
     "searchPlaceholder": "Search in text, notes, or track title...",
@@ -402,6 +439,18 @@
     "errorAttributionDesc": "Analysis of common mistake types",
     "noErrorTags": "No error tags logged yet."
   },
+  "symphony": {
+    "title": "Symphony Dashboard",
+    "loading": "Loading Symphony status...",
+    "lastPoll": "Last Poll",
+    "never": "Never",
+    "activeAgents": "Active Agents",
+    "activeRuns": "Active Runs",
+    "noActive": "No active agents running.",
+    "running": "Running",
+    "started": "Started",
+    "workspace": "Workspace"
+  },
   "setup": {
     "title": "Setup",
     "eyebrow": "Local readiness check",
@@ -474,6 +523,14 @@
       "configuredPlaceholder": "•••••••• (configured — leave blank to keep)",
       "replaceHint": "A key is already configured for this provider. Enter a new one to replace it.",
       "getKeyHint": "Get a key from your provider's dashboard and paste it here.",
+      "howToGetKey": "How do I get a key?",
+      "howToGetKeyHint": "Not sure how to apply? Click here for steps and links.",
+      "howToTitle": "Get a {provider} API key",
+      "openConsole": "Open {provider} console",
+      "openConsoleHint": "Opens the official console in a new tab.",
+      "deepgramSteps": "1. Sign up at console.deepgram.com.\n2. New accounts usually receive free credit; check the Dashboard.\n3. Go to API Keys and click Create API Key.\n4. Copy the generated key and paste it into the field above.",
+      "openaiSteps": "1. Sign up and sign in at platform.openai.com.\n2. Add a payment method under Settings → Billing (Whisper is pay-as-you-go).\n3. Go to API Keys and click Create new secret key.\n4. Copy the generated key (starts with sk-) and paste it above.\nNote: Access from mainland China may require a proxy.",
+      "googleSteps": "1. Sign in with a Google account at aistudio.google.com.\n2. Accept the terms, then create a key on the Get API Key page.\n3. Copy the generated API key and paste it above.\nNote: Some regions may need a proxy to reach Google.",
       "hideBaseUrl": "Hide custom base URL",
       "useBaseUrl": "Use a custom OpenAI-compatible base URL",
       "baseUrlLabel": "Base URL",
@@ -498,13 +555,16 @@
     "viewNotes": "View Notes",
     "exportAudio": "Export Audio",
     "exporting": "Exporting...",
+    "exportingProgress": "Exporting… {elapsed}s",
     "startShadowing": "Shadowing",
     "loadingAudio": "Loading...",
     "blindModeTitle": "Blind Mode",
     "addedToVault": "Added to your Vault!",
     "saveVaultFailed": "Failed to save to vault",
     "audioExported": "Audio exported successfully",
-    "audioExportFailed": "Failed to export audio"
+    "audioExportFailed": "Failed to export audio",
+    "audioPreloadFailed": "Audio could not be loaded for shadowing.",
+    "retry": "Retry"
   },
   "feature": {
     "audioPlayer": {
@@ -526,7 +586,12 @@
       "notePlaceholder": "Add a note for this sentence…",
       "noNote": "No note yet",
       "saveNote": "Save note",
-      "clearSelection": "Clear Selection"
+      "clearSelection": "Clear Selection",
+      "sentenceShadowing": "Shadowing",
+      "sentenceCopy": "Copy Text",
+      "sentenceCaptured": "Already Saved",
+      "sentenceCapture": "Capture to Vault",
+      "copiedToast": "Copied to clipboard"
     },
     "shadowing": {
       "start": "Start Shadowing",
@@ -549,6 +614,8 @@
       "linking": "Linking",
       "reduction": "Reduction",
       "elision": "Elision",
+      "weak": "Weak",
+      "select": "Select",
       "clear": "Clear notations",
       "save": "Save notations"
     },
@@ -597,6 +664,10 @@
       "clickToReveal": "Click to reveal text",
       "editText": "Edit Text",
       "copyText": "Copy text",
+      "copiedToast": "Copied to clipboard",
+      "copyFailed": "Failed to copy",
+      "micDenied": "Microphone access denied.",
+      "sliceFailed": "Audio slice failed",
       "hintDictation": "Listen → Type → Check",
       "hintReviewing": "Compare waveforms & audio",
       "hintShadowing": "Listen → Record → Compare",
@@ -614,8 +685,10 @@
       "recording": "Recording...",
       "restart": "Restart",
       "yourVoice": "Your Voice",
-      "copiedToast": "Copied to clipboard",
-      "copyFailed": "Failed to copy"
+      "finishSession": "Finish session",
+      "completedTitle": "Track complete",
+      "completedBody": "You shadowed all {count} sentences. Nice work — consistency beats intensity.",
+      "practiceAgain": "Practice again"
     },
     "dictation": {
       "listeningLabel": "Listening...",
@@ -719,5 +792,38 @@
   "metadata": {
     "title": "DeepListener",
     "description": "Master English listening through atomic decoding."
+  },
+  "shortcuts": {
+    "open": "Keyboard shortcuts",
+    "title": "Keyboard shortcuts",
+    "description": "Shortcuts change depending on which page you're on.",
+    "review": {
+      "title": "Review",
+      "toggleAnswer": "Show / hide answer",
+      "playAudio": "Play sentence audio",
+      "grade": "Grade Again / Hard / Good / Easy"
+    },
+    "practice": {
+      "title": "Practice",
+      "playPause": "Play / pause",
+      "zoom": "Zoom waveform (mouse wheel)",
+      "pan": "Pan waveform (right-drag)",
+      "prevNext": "Previous / next sentence",
+      "toggleLoop": "Toggle loop",
+      "shadowing": "Shadowing from current sentence"
+    },
+    "shadowing": {
+      "title": "Shadowing",
+      "prevNext": "Previous / next sentence",
+      "play": "Play or stop",
+      "playOriginal": "Play original",
+      "capture": "Capture to vault",
+      "copy": "Copy sentence",
+      "close": "Close shadowing"
+    },
+    "global": {
+      "title": "Anywhere",
+      "toggleThis": "Open / close this panel"
+    }
   }
 }

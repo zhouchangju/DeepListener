@@ -151,6 +151,11 @@ export function buildVaultWhere(query: VaultQueryState): Prisma.ReviewItemWhereI
 }
 
 export function buildVaultExportWhere(query: VaultQueryState): Prisma.ReviewItemWhereInput {
+  // Export intentionally uses only the stable, structured filters (difficulty,
+  // track, date) and ignores list-only search/tags. Free-text search and tag
+  // toggles are transient UI state; exports are persistent artifacts that
+  // should reflect a reproducible scope. This divergence from buildVaultWhere
+  // is deliberate and covered by vault-query.test.ts.
   const where: Prisma.ReviewItemWhereInput = {
     isArchived: false,
   };

@@ -5,6 +5,10 @@ interface UseAudioInteractionsProps {
   isReady: boolean;
   setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
   onPlayPause: () => void;
+  onPrevSentence?: () => void;
+  onNextSentence?: () => void;
+  onToggleLoop?: () => void;
+  onShadowing?: () => void;
 }
 
 export function useAudioInteractions({
@@ -12,6 +16,10 @@ export function useAudioInteractions({
   isReady,
   setZoomLevel,
   onPlayPause,
+  onPrevSentence,
+  onNextSentence,
+  onToggleLoop,
+  onShadowing,
 }: UseAudioInteractionsProps) {
   const handlePlayPause = useEffectEvent(() => {
     onPlayPause();
@@ -24,19 +32,42 @@ export function useAudioInteractions({
     });
   });
 
-  // Keyboard (Space)
+  // Keyboard: Space play/pause, ←/→ sentence nav, L loop, S shadowing.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const isInput = ["INPUT", "TEXTAREA"].includes(target.tagName) || target.isContentEditable;
-      if (e.code === "Space" && !isInput) {
+      // Yield to editable controls (so Space types a space in inputs) and to
+      // any open dialog (so activating a focused button inside a modal does
+      // not also toggle audio playback). Includes role=textbox so rich-text
+      // editors behave the same way as native inputs.
+      const isEditable =
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+        target.isContentEditable ||
+        target.closest(
+          '[role="textbox"], [role="dialog"], [data-state="open"], dialog',
+        ) !== null;
+      if (isEditable || e.altKey || e.ctrlKey || e.metaKey) return;
+
+      if (e.code === "Space") {
         e.preventDefault();
         handlePlayPause();
+      } else if (e.key === "ArrowLeft" && onPrevSentence) {
+        e.preventDefault();
+        onPrevSentence();
+      } else if (e.key === "ArrowRight" && onNextSentence) {
+        e.preventDefault();
+        onNextSentence();
+      } else if ((e.key === "l" || e.key === "L") && onToggleLoop) {
+        e.preventDefault();
+        onToggleLoop();
+      } else if ((e.key === "s" || e.key === "S") && onShadowing) {
+        e.preventDefault();
+        onShadowing();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [onPrevSentence, onNextSentence, onToggleLoop, onShadowing]);
 
   // Mouse Wheel (Zoom/Pan)
   useEffect(() => {

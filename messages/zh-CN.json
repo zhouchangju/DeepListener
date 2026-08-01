@@ -20,7 +20,9 @@
     "setup": "设置",
     "vault": "收藏库",
     "analytics": "学习分析",
-    "review": "复习"
+    "review": "复习",
+    "menu": "菜单",
+    "streakTitle": "已连续学习 {count} 天 — 查看学习分析"
   },
   "language": {
     "switchToChinese": "切换为中文",
@@ -56,7 +58,8 @@
     "previous": "上一步",
     "next": "下一步",
     "skip": "跳过引导",
-    "finish": "开始学习"
+    "finish": "开始学习",
+    "goNow": "立即前往"
   },
   "landing": {
     "badge": "本地优先的精听训练",
@@ -73,15 +76,36 @@
     "ready": "准备开始第一次听力训练？",
     "readyText": "导入媒体前，先运行只读环境检查。",
     "workflow": {
-      "listen": {"title": "先盲听", "text": "隐藏文本，找出理解中断的确切位置。"},
-      "decode": {"title": "拆解句子", "text": "缩放、循环、减速，标记连读、弱读、词汇或语速。"},
-      "shadow": {"title": "跟读节奏", "text": "录下自己的声音，与原始波形比较时长。"},
-      "review": {"title": "复习重点", "text": "保存困难句子，并按 FSRS 计划复习。"}
+      "listen": {
+        "title": "先盲听",
+        "text": "隐藏文本，找出理解中断的确切位置。"
+      },
+      "decode": {
+        "title": "拆解句子",
+        "text": "缩放、循环、减速，标记连读、弱读、词汇或语速。"
+      },
+      "shadow": {
+        "title": "跟读节奏",
+        "text": "录下自己的声音，与原始波形比较时长。"
+      },
+      "review": {
+        "title": "复习重点",
+        "text": "保存困难句子，并按 FSRS 计划复习。"
+      }
     },
     "values": {
-      "local": {"title": "本地优先", "text": "SQLite、导入文件和原始视频都保留在运行 DeepListener 的设备上。"},
-      "byok": {"title": "自带密钥", "text": "只有你选择的转写服务商会接收音频用于转写。"},
-      "selfhosted": {"title": "自托管边界", "text": "不包含认证；请在本地或受保护的网络中使用。"}
+      "local": {
+        "title": "本地优先",
+        "text": "SQLite、导入文件和原始视频都保留在运行 DeepListener 的设备上。"
+      },
+      "byok": {
+        "title": "自带密钥",
+        "text": "只有你选择的转写服务商会接收音频用于转写。"
+      },
+      "selfhosted": {
+        "title": "自托管边界",
+        "text": "不包含认证；请在本地或受保护的网络中使用。"
+      }
     },
     "atomLabel": "ATOMIC LISTENING • SENTENCE 07",
     "exampleText": "“What makes natural speech difficult isn't always the vocabulary.”",
@@ -151,6 +175,7 @@
     "checkSetup": "先检查环境",
     "setTo": "设为{status}",
     "viewNotesMenu": "查看笔记",
+    "actionsMenu": "曲目操作",
     "edit": "编辑",
     "archiveAction": "归档",
     "restoreAction": "恢复",
@@ -170,6 +195,8 @@
     "readyToPractice": "可以开始练习了！",
     "uploadFailedHint": "上传失败。请打开“设置”检查服务商和媒体工具。",
     "uploadFailed": "上传失败",
+    "uploadingProgress": "上传中… {elapsed} 秒",
+    "transcribingProgress": "转录中… {elapsed} 秒",
     "importMediaTitle": "导入本地媒体",
     "importMediaDesc": "将本地音频、MP4 或 WebM 文件拖到此处。视频保留在本地，仅提取音频用于听力练习。",
     "processing": "处理中…",
@@ -223,8 +250,11 @@
     "noteUnarchived": "笔记已取消归档",
     "archiveFailed": "归档笔记失败",
     "sessionCompleted": "本次复习完成！",
+    "playbackBlocked": "浏览器阻止了音频播放。再次点击播放按钮即可开始。",
+    "retry": "重试",
     "exportDue": "导出到期音频（{count}）",
     "exporting": "导出中…",
+    "exportingProgress": "导出中… {elapsed} 秒",
     "audioExported": "音频导出成功",
     "audioExportFailed": "音频导出失败",
     "playsLabel": "播放：{count}",
@@ -237,13 +267,18 @@
     "shortcutGuideTitle": "快捷键指南",
     "shortcutReplay": "点击播放按钮或按 <kbd>R</kbd> 重播音频",
     "shortcutToggle": "按 <kbd>空格</kbd> 显示/隐藏答案",
-    "shortcutGrade": "按 <kbd>1-4</kbd> 评分（重来/困难/良好/简单）"
+    "shortcutGrade": "按 <kbd>1-4</kbd> 评分（重来/困难/良好/简单）",
+    "completedTitle": "今日复习完成",
+    "completedBody": "今天复习了 {count} 个句子。未来的你会感谢现在的坚持。",
+    "goLibrary": "去练点新内容"
   },
   "vault": {
     "title": "收藏库",
     "export": "导出",
     "exportNotes": "导出笔记",
     "playAll": "全部播放",
+    "playAllFinished": "已播放完 {count} 个句子",
+    "playbackBlocked": "播放被阻止",
     "sortDate": "保存日期",
     "sortReviewDate": "复习日期",
     "sortStability": "稳定性",
@@ -300,6 +335,8 @@
     "loadNoteFailed": "加载笔记失败",
     "archiveTitle": "归档",
     "unarchiveTitle": "取消归档",
+    "editAction": "编辑笔记",
+    "deleteAction": "删除笔记",
     "filters": "筛选",
     "searchLabel": "搜索",
     "searchPlaceholder": "搜索句子、笔记或素材标题…",
@@ -402,6 +439,18 @@
     "errorAttributionDesc": "常见错误类型分析",
     "noErrorTags": "还没有记录错误标签。"
   },
+  "symphony": {
+    "title": "Symphony 仪表盘",
+    "loading": "正在加载 Symphony 状态…",
+    "lastPoll": "上次轮询",
+    "never": "从未",
+    "activeAgents": "活跃 Agent",
+    "activeRuns": "进行中的运行",
+    "noActive": "没有正在运行的 Agent。",
+    "running": "运行中",
+    "started": "开始时间",
+    "workspace": "工作区"
+  },
   "setup": {
     "title": "设置",
     "eyebrow": "本地就绪检查",
@@ -474,6 +523,14 @@
       "configuredPlaceholder": "••••••••（已配置——留空则保持不变）",
       "replaceHint": "该服务商已配置密钥。输入新密钥即可替换。",
       "getKeyHint": "在服务商控制台获取密钥并粘贴到此处。",
+      "howToGetKey": "如何申请密钥？",
+      "howToGetKeyHint": "不知道怎么申请？点这里查看步骤和外链。",
+      "howToTitle": "申请 {provider} API 密钥",
+      "openConsole": "前往 {provider} 控制台",
+      "openConsoleHint": "在新标签页打开官方控制台。",
+      "deepgramSteps": "1. 访问 console.deepgram.com 注册账号。\n2. 新账号通常会赠送额度，可在 Dashboard 查看。\n3. 进入 API Keys 页面，点击 Create API Key。\n4. 复制生成的密钥，粘贴到上方输入框。",
+      "openaiSteps": "1. 访问 platform.openai.com 注册并登录。\n2. 在 Settings → Billing 绑定付款方式（Whisper 按用量计费）。\n3. 进入 API Keys 页面，点击 Create new secret key。\n4. 复制生成的密钥（sk- 开头），粘贴到上方输入框。\n注意：中国大陆访问可能需要代理。",
+      "googleSteps": "1. 访问 aistudio.google.com 登录 Google 账号。\n2. 同意服务条款，在 Get API Key 页面创建密钥。\n3. 复制生成的 API Key，粘贴到上方输入框。\n注意：部分地区可能需要代理访问。",
       "hideBaseUrl": "隐藏自定义 Base URL",
       "useBaseUrl": "使用自定义 OpenAI 兼容 Base URL",
       "baseUrlLabel": "Base URL",
@@ -498,13 +555,16 @@
     "viewNotes": "查看笔记",
     "exportAudio": "导出音频",
     "exporting": "导出中…",
+    "exportingProgress": "导出中… {elapsed} 秒",
     "startShadowing": "跟读",
     "loadingAudio": "加载中…",
     "blindModeTitle": "盲听模式",
     "addedToVault": "已加入收藏库！",
     "saveVaultFailed": "保存到收藏库失败",
     "audioExported": "音频导出成功",
-    "audioExportFailed": "音频导出失败"
+    "audioExportFailed": "音频导出失败",
+    "audioPreloadFailed": "无法加载跟读所需的音频。",
+    "retry": "重试"
   },
   "feature": {
     "audioPlayer": {
@@ -526,7 +586,12 @@
       "notePlaceholder": "为这个句子添加笔记…",
       "noNote": "暂无笔记",
       "saveNote": "保存笔记",
-      "clearSelection": "清除选区"
+      "clearSelection": "清除选区",
+      "sentenceShadowing": "跟读",
+      "sentenceCopy": "复制文本",
+      "sentenceCaptured": "已保存",
+      "sentenceCapture": "加入收藏库",
+      "copiedToast": "已复制到剪贴板"
     },
     "shadowing": {
       "start": "开始跟读",
@@ -549,6 +614,8 @@
       "linking": "连读",
       "reduction": "弱读",
       "elision": "省略",
+      "weak": "弱读",
+      "select": "选择",
       "clear": "清除标记",
       "save": "保存标记"
     },
@@ -597,6 +664,10 @@
       "clickToReveal": "点击显示文本",
       "editText": "编辑文本",
       "copyText": "复制文本",
+      "copiedToast": "已复制到剪贴板",
+      "copyFailed": "复制失败",
+      "micDenied": "麦克风访问被拒绝。",
+      "sliceFailed": "音频切片失败",
       "hintDictation": "听 → 写 → 核对",
       "hintReviewing": "对比波形与音频",
       "hintShadowing": "听 → 录 → 对比",
@@ -614,8 +685,10 @@
       "recording": "录音中…",
       "restart": "重新开始",
       "yourVoice": "我的声音",
-      "copiedToast": "已复制到剪贴板",
-      "copyFailed": "复制失败"
+      "finishSession": "完成本轨",
+      "completedTitle": "本轨完成",
+      "completedBody": "你完成了全部 {count} 句跟读。坚持比强度更重要，继续保持。",
+      "practiceAgain": "再练一遍"
     },
     "dictation": {
       "listeningLabel": "聆听中…",
@@ -719,5 +792,38 @@
   "metadata": {
     "title": "DeepListener",
     "description": "通过原子解码掌握英语听力。"
+  },
+  "shortcuts": {
+    "open": "键盘快捷键",
+    "title": "键盘快捷键",
+    "description": "不同页面的快捷键有所不同。",
+    "review": {
+      "title": "复习",
+      "toggleAnswer": "显示 / 隐藏答案",
+      "playAudio": "播放句子音频",
+      "grade": "评分 再次 / 困难 / 良好 / 简单"
+    },
+    "practice": {
+      "title": "练习",
+      "playPause": "播放 / 暂停",
+      "zoom": "缩放波形（鼠标滚轮）",
+      "pan": "平移波形（鼠标右键拖动）",
+      "prevNext": "上一句 / 下一句",
+      "toggleLoop": "切换循环",
+      "shadowing": "从当前句进入跟读"
+    },
+    "shadowing": {
+      "title": "跟读",
+      "prevNext": "上一句 / 下一句",
+      "play": "播放或停止",
+      "playOriginal": "播放原音",
+      "capture": "加入收藏库",
+      "copy": "复制句子",
+      "close": "关闭跟读"
+    },
+    "global": {
+      "title": "全局",
+      "toggleThis": "打开 / 关闭此面板"
+    }
   }
 }

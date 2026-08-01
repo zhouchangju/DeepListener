@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { NotationType } from "./types";
 import { cn } from "@/lib/utils";
 import { Zap, Link as LinkIcon, TrendingDown, CircleOff, MousePointer2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface NotationToolbarProps {
   activeTool: NotationType | null;
@@ -12,11 +13,13 @@ interface NotationToolbarProps {
 }
 
 export const NotationToolbar = ({ activeTool, onToolChange }: NotationToolbarProps) => {
+  const t = useTranslations("feature.notation");
+
   const tools: { type: NotationType; label: string; icon: React.ElementType; color: string }[] = [
-    { type: "stress", label: "Stress", icon: Zap, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
-    { type: "linking", label: "Linking", icon: LinkIcon, color: "text-amber-600 bg-amber-50 border-amber-200" },
-    { type: "reduction", label: "Weak", icon: TrendingDown, color: "text-slate-600 bg-slate-50 border-slate-200" },
-    { type: "elision", label: "Elision", icon: CircleOff, color: "text-rose-600 bg-rose-50 border-rose-200" },
+    { type: "stress", label: t("stress"), icon: Zap, color: "text-primary bg-primary/10 border-primary/25" },
+    { type: "linking", label: t("linking"), icon: LinkIcon, color: "text-amber-600 bg-amber-50 border-amber-200" },
+    { type: "reduction", label: t("weak"), icon: TrendingDown, color: "text-slate-600 bg-slate-50 border-slate-200" },
+    { type: "elision", label: t("elision"), icon: CircleOff, color: "text-rose-600 bg-rose-50 border-rose-200" },
   ];
 
   return (
@@ -31,15 +34,15 @@ export const NotationToolbar = ({ activeTool, onToolChange }: NotationToolbarPro
         onClick={() => onToolChange(null)}
       >
         <MousePointer2 className="w-3.5 h-3.5" />
-        Select
+        {t("select")}
       </Button>
-      
+
       <div className="w-px h-4 bg-border mx-1" />
 
       {tools.map((tool) => {
         const isActive = activeTool === tool.type;
         const Icon = tool.icon;
-        
+
         return (
           <Button
             key={tool.type}

@@ -1,15 +1,13 @@
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
+import { localDayDiff } from "@/lib/local-day";
 
-function startOfUtcDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setUTCHours(0, 0, 0, 0);
-  return copy;
-}
-
+/**
+ * Whole calendar days from today (local) to targetDate (local).
+ *
+ * Uses local-day keys so the countdown agrees with the dashboard's other
+ * local-day-based metrics (overdue/future bins, heatmap). Previously this
+ * used UTC midnights, which could disagree with the local "today" bucket by
+ * a day for users outside UTC.
+ */
 export function getCountdownDays(today: Date, targetDate: Date): number {
-  const todayStart = startOfUtcDay(today);
-  const targetStart = startOfUtcDay(targetDate);
-  const diffDays = Math.ceil((targetStart.getTime() - todayStart.getTime()) / MS_PER_DAY);
-
-  return Math.max(0, diffDays);
+  return Math.max(0, localDayDiff(today, targetDate));
 }

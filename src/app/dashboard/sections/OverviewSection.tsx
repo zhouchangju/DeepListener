@@ -32,24 +32,24 @@ export function OverviewSection({
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-primary to-purple-600 text-white border-none shadow-lg">
+        <Card className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground border-none shadow-card">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-primary/15 font-medium text-lg">
+            <CardTitle className="flex items-center gap-2 text-white/85 font-medium text-lg">
               <CalendarClock className="h-5 w-5" /> {t("countdownTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-bold">{countdownDays}</span>
-              <span className="text-xl text-primary/15">{reached ? t("reachedLabel") : t("daysLeft")}</span>
+              <span className="text-5xl font-bold tabular-nums">{countdownDays}</span>
+              <span className="text-xl text-white/80">{reached ? t("reachedLabel") : t("daysLeft")}</span>
             </div>
-            <div className="text-sm text-primary/25 mt-2">{t("targetDate", { date: targetDateLabel })}</div>
+            <div className="text-sm text-white/70 mt-2">{t("targetDate", { date: targetDateLabel })}</div>
           </CardContent>
         </Card>
 
         <Card className="border-primary/15 shadow-sm dark:border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary/15">
+            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary">
               <Trophy className="h-5 w-5 text-yellow-500" /> {t("progressTitle")}
             </CardTitle>
             <CardDescription>{t("progressTarget")}</CardDescription>
@@ -68,7 +68,7 @@ export function OverviewSection({
 
         <Card className="border-primary/15 shadow-sm dark:border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary/15">
+            <CardTitle className="flex items-center gap-2 text-primary dark:text-primary">
               <Clock className="h-5 w-5 text-blue-500" /> {t("c1Title")}
             </CardTitle>
             <CardDescription>{t("c1Target")}</CardDescription>

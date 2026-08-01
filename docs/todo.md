@@ -21,6 +21,7 @@
 - [x] **练习页编辑**：支持在播放页直接修改 Track 标题和元数据。
 - [x] **Shadowing 内部 Capture**：跟读模式下可直接打开笔记/收藏入口。
 - [x] **导出增强**：支持按到期、Track、过滤条件导出音频，并支持导出 Vault 文本笔记。
+- [x] **导入视频**：支持单文件导入 MP4/WebM、提取音轨、优先读取内嵌字幕并在练习页同步播放。
 
 ## 🚀 托福/C1 进阶功能 (New Ideas A2->C1)
 - [ ] **语境生词本 (Contextual Audio Vocab)**: 关联单词与 3-5秒音频切片，支持“只听声音”猜词复习模式。
@@ -33,10 +34,19 @@
 - [ ] **波形圈选偶发异常**：虽然已修复大部分，但在极快操作下仍有微小概率出现选区漂移。
 
 ## 📅 未来规划 (Roadmap)
-- [ ] **导入视频**：支持导入视频文件。
 - [ ] **复习策略调优**：继续微调 FSRS 参数、队列策略与复习统计。
 - [ ] **移动端适配优化**：针对手机触摸屏优化波形拖拽手感。
 - [ ] **数据云同步**：迁移至 Supabase。
 
+## 🖥️ 桌面发行计划（Active Initiative）
+
+方向已确定为 Electron 桌面壳层 + 复用现有 Next.js/Prisma 核心：先验证 macOS Apple Silicon，再进入签名/公证的 macOS beta，最后复用平台无关层支持 Windows x64。Server 版本继续保留。
+
+本文件不复制数百条执行任务，以免产生两个不一致的任务源：
+
+- 产品范围与验收口径：[desktop-client-prd.md](./desktop-client-prd.md)
+- OpenSpec 变更入口：[proposal.md](../openspec/changes/desktop-first-distribution/proposal.md)
+- 细粒度依赖、并行 lane、文件所有权与验证：[tasks.md](../openspec/changes/desktop-first-distribution/tasks.md)
+
 ---
-*Last Updated: 2026-04-04*
+*Last Updated: 2026-07-22*

@@ -21,6 +21,8 @@ interface ShadowingKeyboardOptions {
   onDictationSubmit: () => void;
   sentenceId: string;
   sentenceText: string;
+  /** Localized strings for clipboard toasts (previously hardcoded English). */
+  copyToasts?: { copied: string; failed: string };
 }
 
 function isEditableKeyTarget(target: EventTarget | null) {
@@ -48,6 +50,7 @@ export function useShadowingKeyboard({
   onDictationSubmit,
   sentenceId,
   sentenceText,
+  copyToasts,
 }: ShadowingKeyboardOptions) {
   return useCallback(
     (e: React.KeyboardEvent) => {
@@ -97,14 +100,16 @@ export function useShadowingKeyboard({
         onSetActiveTool(activeTool === "stress" ? null : "stress");
       } else if (e.key === "c" || e.key === "C") {
         e.preventDefault();
+        const copiedMsg = copyToasts?.copied ?? "Copied to clipboard";
+        const failedMsg = copyToasts?.failed ?? "Failed to copy";
         (async () => {
           try {
             const { toast } = await import("sonner");
             await navigator.clipboard.writeText(sentenceText);
-            toast.success("Copied to clipboard");
+            toast.success(copiedMsg);
           } catch {
             const { toast } = await import("sonner");
-            toast.error("Failed to copy");
+            toast.error(failedMsg);
           }
         })();
       } else if (e.key === "n" || e.key === "N") {
@@ -129,6 +134,7 @@ export function useShadowingKeyboard({
       onDictationPlay,
       onDictationSubmit,
       sentenceText,
+      copyToasts,
     ]
   );
 }

@@ -15,9 +15,40 @@ import {
   validateUploadFileMetadata,
 } from "@/lib/upload-policy";
 import { extractAudioFromVideo, readEmbeddedSubtitles } from "@/lib/media-processing";
-import { badRequest, internalServerError } from "@/lib/api-response";
+import { badRequest, jsonError } from "@/lib/api-response";
+import { toPublicUploadError } from "@/lib/upload-error";
 
 export const maxDuration = 900;
+
+/**
+ * Wrap a transcription call with a timeout. Provider SDKs can hang on
+ * network stalls; without a cap the request runs until the platform kills
+ * it at maxDuration, leaving the uploaded files orphaned on disk (the catch
+ * block never runs because the process is killed). Rejecting early lets the
+ * normal error path clean up the partial files.
+ */
+const TRANSCRIPTION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+async function transcribeWithTimeout(
+  provider: TranscriptionProvider,
+  audioPath: string
+): Promise<Awaited<ReturnType<TranscriptionProvider["transcribe"]>>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error("Transcription timed out. The provider did not respond in time.")),
+      TRANSCRIPTION_TIMEOUT_MS
+    );
+  });
+  try {
+    return await Promise.race([
+      provider.transcribe(audioPath),
+      timeout,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 interface UploadSource {
   name: string;
@@ -92,7 +123,7 @@ async function processFile(file: UploadSource, provider: TranscriptionProvider) 
     const embeddedSubtitles = mediaType === "VIDEO"
       ? await readEmbeddedSubtitles(mediaTarget.uploadPath)
       : null;
-    const transcription = embeddedSubtitles ?? await provider.transcribe(audioPath);
+    const transcription = embeddedSubtitles ?? await transcribeWithTimeout(provider, audioPath);
 
     return await prisma.track.create({
       data: {
@@ -142,10 +173,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(track);
   } catch (error: unknown) {
     console.error("Upload error:", error);
-    if (error instanceof Error && /Only audio|File is|File name|File is empty/.test(error.message)) {
-      return badRequest(error.message);
-    }
-    return internalServerError();
+    const publicError = toPublicUploadError(error);
+    return NextResponse.json(
+      { error: publicError.message, ...(publicError.code ? { code: publicError.code } : {}) },
+      { status: publicError.status },
+    );
   }
 }
 
@@ -177,9 +209,10 @@ export async function PUT(req: NextRequest) {
           fileName: file.name,
         });
       } catch (error) {
+        const publicError = toPublicUploadError(error);
         results.failed.push({
           fileName: file.name,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: publicError.message,
         });
       }
     }
@@ -187,6 +220,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(results);
   } catch (error: unknown) {
     console.error("Batch upload error:", error);
-    return internalServerError();
+    const publicError = toPublicUploadError(error);
+    return jsonError(publicError.message, publicError.status);
   }
 }

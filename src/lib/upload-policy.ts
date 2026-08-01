@@ -1,5 +1,11 @@
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import {
+  resolveLayout,
+  uploadsDirectory,
+  videosDirectory,
+  type RuntimeLayout,
+} from "./runtime-paths";
 
 export const MAX_AUDIO_UPLOAD_BYTES = 250 * 1024 * 1024;
 export const MAX_VIDEO_UPLOAD_BYTES = 1024 * 1024 * 1024;
@@ -35,8 +41,34 @@ interface UploadValidationResult {
 interface BuildUploadTargetOptions {
   originalName: string;
   uniqueId?: string;
+  /** @deprecated use layout; kept for backward compatibility with existing tests. */
   rootDir?: string;
   mediaKind?: UploadMediaKind;
+  /** Explicit runtime layout; defaults to the active resolveLayout(). */
+  layout?: RuntimeLayout;
+}
+
+/**
+ * Resolve the physical media directory for a kind. When `layout` is provided
+ * (Desktop explicit root), the media dir lives under <root>/media/{audio|video}.
+ * When only the legacy `rootDir` is provided, it resolves <root>/public/{uploads|videos}
+ * to preserve Server behavior. When neither is given, the active runtime layout
+ * is used (DEEPLISTENER_DATA_DIR → desktop, else cwd → legacy).
+ */
+function resolveMediaDir(
+  mediaKind: UploadMediaKind,
+  layout?: RuntimeLayout,
+  rootDir?: string,
+): string {
+  if (rootDir !== undefined) {
+    // Legacy/explicit root: keep public/{uploads|videos} shape for Server compat.
+    const publicFolder = mediaKind === "VIDEO" ? "videos" : "uploads";
+    return path.resolve(rootDir, "public", publicFolder);
+  }
+  const active = layout ?? resolveLayout();
+  return mediaKind === "VIDEO"
+    ? videosDirectory(active.root, active.mode)
+    : uploadsDirectory(active.root, active.mode);
 }
 
 export function sanitizeUploadFilename(originalName: string): string {
@@ -94,13 +126,14 @@ export function getMaxUploadBytes(mediaKind: UploadMediaKind): number {
 export function buildUploadTarget({
   originalName,
   uniqueId = uuidv4(),
-  rootDir = process.cwd(),
+  rootDir,
   mediaKind = "AUDIO",
+  layout,
 }: BuildUploadTargetOptions) {
   const safeName = sanitizeUploadFilename(originalName);
   const fileName = `${uniqueId}-${safeName}`;
   const publicFolder = mediaKind === "VIDEO" ? "videos" : "uploads";
-  const uploadDir = path.resolve(rootDir, "public", publicFolder);
+  const uploadDir = resolveMediaDir(mediaKind, layout, rootDir);
   const uploadPath = path.resolve(uploadDir, fileName);
 
   if (!uploadPath.startsWith(`${uploadDir}${path.sep}`)) {
@@ -116,10 +149,10 @@ export function buildUploadTarget({
   };
 }
 
-export function buildDerivedAudioTarget(videoFileName: string, rootDir = process.cwd()) {
+export function buildDerivedAudioTarget(videoFileName: string, rootDir?: string, layout?: RuntimeLayout) {
   const baseName = path.parse(videoFileName).name;
   const fileName = `${baseName}.mp3`;
-  const uploadDir = path.resolve(rootDir, "public", "uploads");
+  const uploadDir = resolveMediaDir("AUDIO", layout, rootDir);
   return {
     fileName,
     uploadDir,
@@ -128,25 +161,28 @@ export function buildDerivedAudioTarget(videoFileName: string, rootDir = process
   };
 }
 
-export function resolveStoredUploadPath(audioUrl: string, rootDir = process.cwd()): string | null {
+export function resolveStoredUploadPath(audioUrl: string, rootDir?: string, layout?: RuntimeLayout): string | null {
   if (!audioUrl.startsWith("/uploads/") && !audioUrl.startsWith("uploads/")) return null;
 
+  // Strip the "uploads/" prefix; the media dir is resolved by resolveMediaDir.
   const normalizedUrl = audioUrl.startsWith("/") ? audioUrl.slice(1) : audioUrl;
-  if (normalizedUrl.includes("..") || normalizedUrl.includes("\\")) return null;
+  const relative = normalizedUrl.replace(/^uploads\//, "");
+  if (relative.includes("..") || relative.includes("\\") || relative.includes("\0")) return null;
 
-  const publicDir = path.resolve(rootDir, "public");
-  const resolvedPath = path.resolve(publicDir, normalizedUrl);
+  const uploadDir = resolveMediaDir("AUDIO", layout, rootDir);
+  const resolvedPath = path.resolve(uploadDir, relative);
 
-  if (!resolvedPath.startsWith(`${publicDir}${path.sep}`)) return null;
+  if (!resolvedPath.startsWith(`${uploadDir}${path.sep}`)) return null;
 
   return resolvedPath;
 }
 
-export function resolveStoredVideoPath(videoUrl: string, rootDir = process.cwd()): string | null {
+export function resolveStoredVideoPath(videoUrl: string, rootDir?: string, layout?: RuntimeLayout): string | null {
   if (!videoUrl.startsWith("/videos/") && !videoUrl.startsWith("videos/")) return null;
   const normalizedUrl = videoUrl.startsWith("/") ? videoUrl.slice(1) : videoUrl;
-  if (normalizedUrl.includes("..") || normalizedUrl.includes("\\")) return null;
-  const publicDir = path.resolve(rootDir, "public");
-  const resolvedPath = path.resolve(publicDir, normalizedUrl);
-  return resolvedPath.startsWith(`${path.resolve(publicDir, "videos")}${path.sep}`) ? resolvedPath : null;
+  const relative = normalizedUrl.replace(/^videos\//, "");
+  if (relative.includes("..") || relative.includes("\\") || relative.includes("\0")) return null;
+  const videoDir = resolveMediaDir("VIDEO", layout, rootDir);
+  const resolvedPath = path.resolve(videoDir, relative);
+  return resolvedPath.startsWith(`${videoDir}${path.sep}`) ? resolvedPath : null;
 }

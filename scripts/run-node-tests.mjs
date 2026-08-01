@@ -22,6 +22,14 @@ function collectTestFiles(dir) {
   return files;
 }
 
+// `node --test` interprets each trailing argument as a glob(7) pattern, so a
+// path containing glob metacharacters — notably Next.js catch-all route dirs
+// like `[...path]` — is silently skipped. Escape each collected path so it is
+// matched literally while leaving ordinary (metacharacter-free) paths intact.
+function escapeForTestGlob(filePath) {
+  return filePath.replace(/[?*[\]{}]/g, (ch) => `[${ch}]`);
+}
+
 const testRoot = path.join(process.cwd(), "src");
 const testFiles = collectTestFiles(testRoot).sort();
 
@@ -30,7 +38,9 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...testFiles], {
+const escapedTestFiles = testFiles.map(escapeForTestGlob);
+
+const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...escapedTestFiles], {
   stdio: "inherit",
 });
 

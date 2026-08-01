@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatZodError, sentencePatchSchema } from "@/lib/api-schemas";
-import { badRequest, internalServerError } from "@/lib/api-response";
+import { badRequest, internalServerError, notFound } from "@/lib/api-response";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,6 +19,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json(sentence);
   } catch (error: unknown) {
+    // P2025 = record not found; surface as 404 instead of a generic 500.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return notFound("Sentence not found");
+    }
     console.error("Sentence update error:", error);
     return internalServerError();
   }

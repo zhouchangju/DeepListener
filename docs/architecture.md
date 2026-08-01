@@ -88,7 +88,7 @@ flowchart LR
 
 | Route | Current purpose | Main files |
 | --- | --- | --- |
-| `/` | Redirects to `/library`; there is no separate landing page. | `src/app/page.tsx` |
+| `/` | Product landing page explaining the sentence-level learning loop, local-first boundary, and first-use entry points. | `src/app/page.tsx` |
 | `/setup` | Read-only environment readiness checks for Node.js, SQLite initialization, media storage, FFmpeg, provider configuration, and network exposure. | `src/app/setup/page.tsx`, `src/lib/setup-readiness.ts` |
 | `/library` | Upload, archive, filter, note, select, batch-play, and export tracks. | `src/app/library/**` |
 | `/practice/[id]` | Sentence-level audio/video practice, waveform, blind mode, diagnosis capture, generic track notes, shadowing. | `src/app/practice/[id]/**`, `src/components/feature/AudioPlayer.tsx` |
@@ -284,3 +284,27 @@ Do not delete, overwrite, migrate, or sync these without explicit user confirmat
 | Docs-only change | Markdown link/path spot check, then broader gates only when docs affect commands or runtime assumptions |
 
 For non-trivial refactors, performance work, migrations, deployment/basePath work, sync changes, Prisma/data changes, audio export/transcription changes, quality-gate hardening, or workflow changes, read [agent-harness/README.md](./agent-harness/README.md) before editing.
+
+## Planned Desktop Target Architecture
+
+The desktop client is an approved target state, not part of the current runtime shown above. The planned boundary is:
+
+```mermaid
+flowchart LR
+  DesktopUI["Electron window"] --> Loopback["Authenticated loopback origin"]
+  Loopback --> Standalone["Packaged Next.js standalone service"]
+  Standalone --> Core["Existing routes and domain logic"]
+  Core --> DataRoot["Versioned user data root<br/>SQLite + media + backups"]
+  Standalone --> Adapters["Platform adapters<br/>paths / secrets / FFmpeg / lifecycle"]
+  Server["Existing browser / Server edition"] --> Core
+```
+
+Key target-state constraints:
+
+- Electron owns process lifecycle, window security, single-instance behavior, diagnostics, update orchestration, and platform integration; it does not duplicate the learning domain.
+- The packaged Next.js service binds to loopback only, uses a random available port, and requires a per-launch authentication token.
+- Runtime state moves behind explicit data-root and platform-adapter contracts; source-relative `prisma/dev.db` and `public/**` paths cannot become implicit desktop storage.
+- macOS Apple Silicon is the first feasibility target. A signed/notarized macOS beta and then Windows x64 are promotion stages, not simultaneous launch commitments.
+- Server behavior stays supported while shared contracts are extracted.
+
+See the [desktop client PRD](./desktop-client-prd.md) and the active [OpenSpec design](../openspec/changes/desktop-first-distribution/design.md) for requirements, alternatives, evidence gates, and implementation ownership.

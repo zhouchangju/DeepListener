@@ -33,7 +33,7 @@ export default async function SetupPage() {
     <div className="container mx-auto max-w-5xl px-4 py-10 md:py-16">
       <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div className="max-w-2xl">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary dark:text-primary/50">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary dark:text-primary">
             <ShieldCheck className="h-4 w-4" />
             {t("eyebrow")}
           </div>

@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  Product: DeepListener, a local-first, single-user English intensive-listening application.
+  Current stack: Next.js 16 App Router, React 19, TypeScript, Prisma 5, SQLite, WaveSurfer.js, FFmpeg/ffprobe, OpenAI/Deepgram/Google transcription providers.
+  Current runtime: self-hosted Node.js application with media under public/uploads and public/videos and the default database at prisma/dev.db.
+  Target distribution: keep the self-hosted Server edition and add an Electron Desktop edition; validate macOS Apple Silicon first, then add macOS release hardening and Windows x64 without forking business logic.
+  Product boundary: local-first, bring-your-own-media, bring-your-own-provider-key, no multi-user service, no public-internet exposure by default.
+  Safety: never delete, overwrite, migrate, or sync prisma/dev.db, public/uploads, public/videos, or .env files without explicit authorization and backup/rollback evidence.
+  Verification: use targeted node --import tsx --test checks first, then npm run verify for code changes; desktop releases require real installer, restart, migration, backup/restore, and media-path tests on the target OS.
+  Documentation: docs/requirement.md and docs/architecture.md describe current implementation. Planned behavior belongs in an active OpenSpec change and a clearly labeled target-state PRD.
+
+rules:
+  proposal:
+    - State the user-value hypothesis, the smallest feasibility test, data-safety impact, rollback path, and explicit non-goals.
+    - Separate current facts from assumptions and target-state decisions.
+  specs:
+    - Give every requirement a stable identifier and at least one Given/When/Then scenario.
+    - Include normal, edge, and likely failure paths for data, media, credentials, migration, and release behavior.
+  design:
+    - Document process boundaries, trust boundaries, data locations, migration/rollback, platform abstraction, and rejected alternatives.
+    - Put uncertainty-reducing spikes before broad implementation and state what evidence would invalidate the design.
+  tasks:
+    - Keep each task independently reviewable and normally no larger than one focused agent turn or half a working day.
+    - For every task, include requirement IDs, dependencies, parallel wave/lane, owned files or responsibility, verification, and completion evidence.
+    - Do not schedule two parallel tasks that own overlapping files or the same schema/migration surface.

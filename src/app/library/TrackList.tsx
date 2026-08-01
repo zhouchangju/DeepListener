@@ -170,7 +170,7 @@ export default function TrackList({
 
           const cardContent = (
             <Card
-              className={`hover:shadow-md transition-shadow relative group ${
+              className={`hover:-translate-y-0.5 hover:shadow-card-hover transition-[transform,box-shadow] duration-200 ease-out relative group ${
               track.status === "LEARNT" ? "bg-green-50/30 dark:bg-green-500/10" : "hover:bg-slate-50 dark:hover:bg-accent/60"
             } ${selectionMode ? "cursor-default" : "cursor-pointer"} ${
               isSelected ? "ring-2 ring-primary" : ""
@@ -220,7 +220,7 @@ export default function TrackList({
                         {statusT(STATUS_MESSAGE_KEYS[(track.status as TrackStatus)] ?? "intensive")}
                      </span>
                     {track.trackType && track.trackType !== "Other" && (
-                       <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium border border-primary/15 dark:bg-primary/15 dark:border-primary/25 dark:text-primary/25">
+                       <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium border border-primary/15 dark:bg-primary/15 dark:border-primary/25 dark:text-primary">
                           {track.trackType}
                        </span>
                     )}
@@ -236,9 +236,17 @@ export default function TrackList({
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                          // Visible on touch (where there is no hover) and on
+                          // desktop whenever the card is hovered OR the button
+                          // receives keyboard focus. Previously this was
+                          // hover-only, which made the rename/archive/delete
+                          // menu unreachable via keyboard and invisible on
+                          // touch devices — even though README claims full
+                          // mobile support.
+                          className="h-8 w-8 text-muted-foreground hover:text-primary focus-visible:opacity-100 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           disabled={loadingIds.has(track.id)}
+                          aria-label={t("actionsMenu")}
                         >
                           <MoreVertical className="h-4 w-4" aria-hidden="true" />
                         </Button>

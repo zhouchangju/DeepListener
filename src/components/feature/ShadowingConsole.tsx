@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Edit3, Check, Copy } from "lucide-react";
+import { Edit3, Check, Copy, CheckCircle2, RotateCcw } from "lucide-react";
 import { useShadowingWorkflow } from "./shadowing/useShadowingWorkflow";
 import {
   getDictationDraftStateForSentence,
@@ -40,6 +40,8 @@ interface ShadowingConsoleProps {
   onNext: () => void;
   onPrev: () => void;
   onCapture: (sentenceId: string) => void;
+  /** Optional: jump back to sentence 0 (used by the session-summary "practice again"). */
+  onRestart?: () => void;
 }
 
 function parseSentenceFormatting(formatting?: string | null): SentenceFormatting {
@@ -64,6 +66,7 @@ export default function ShadowingConsole({
   onNext,
   onPrev,
   onCapture,
+  onRestart,
 }: ShadowingConsoleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -85,11 +88,13 @@ export default function ShadowingConsole({
   );
   const [isEditingText, setIsEditingText] = useState(false);
   const [tempText, setTempText] = useState(sentence.text);
+  const [completed, setCompleted] = useState(false);
 
   const { mode, originalBlob, isOriginalBlobReady, userBlob, isLooping, startFlow, playOriginal, handleRecAgain, stopAll, toggleLoop } = useShadowingWorkflow({
     sentence,
     fullAudioBuffer,
     playbackRate,
+    messages: { sliceFailed: t("sliceFailed"), micDenied: t("micDenied") },
   });
   const activeDictationDraft = getDictationDraftStateForSentence(dictationDraft, sentence);
 
@@ -100,6 +105,7 @@ export default function ShadowingConsole({
     setIsEditingText(false);
     setIsTextRevealed(false);
     setDictationDraft(getInitialDictationDraftState(sentence));
+    setCompleted(false);
   }
 
   useEffect(() => {
@@ -164,6 +170,14 @@ export default function ShadowingConsole({
   const handleNext = () => { stopAll(); if (currentIndex < totalCount - 1) onNext(); };
   const handlePrev = () => { stopAll(); if (currentIndex > 0) onPrev(); };
   const handleClose = () => { stopAll(); onClose(); };
+  // Completion moment: finishing the last sentence shows a calm session
+  // summary instead of silently dead-ending on a disabled "next" button.
+  const handleFinish = () => { stopAll(); setCompleted(true); };
+  const handlePracticeAgain = () => {
+    stopAll();
+    setCompleted(false);
+    onRestart?.();
+  };
 
   const handlePracticeModeChange = (nextMode: ShadowingPracticeMode) => {
     if (practiceMode === nextMode) return;
@@ -216,6 +230,7 @@ export default function ShadowingConsole({
     onDictationSubmit: handleDictationSubmit,
     sentenceId: sentence.id,
     sentenceText: sentence.text,
+    copyToasts: { copied: t("copiedToast"), failed: t("copyFailed") },
   });
 
   return (
@@ -235,6 +250,26 @@ export default function ShadowingConsole({
           onClose={handleClose}
         />
 
+        {completed ? (
+          <div className="flex-grow flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in-95 duration-300">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle2 className="h-8 w-8 text-success" aria-hidden="true" />
+            </div>
+            <h2 className="text-2xl font-bold">{t("completedTitle")}</h2>
+            <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+              {t("completedBody", { count: totalCount })}
+            </p>
+            <div className="mt-8 flex gap-3">
+              {onRestart && (
+                <Button variant="outline" onClick={handlePracticeAgain}>
+                  <RotateCcw className="h-4 w-4 mr-2" /> {t("practiceAgain")}
+                </Button>
+              )}
+              <Button onClick={handleClose}>{commonT("finish")}</Button>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="flex-grow flex flex-col items-center p-8 space-y-8 w-full relative">
           <div className="flex-grow flex flex-col items-center justify-center w-full relative gap-8">
             {practiceMode === "dictation" ? (
@@ -325,8 +360,14 @@ export default function ShadowingConsole({
           <div className="text-muted-foreground text-sm flex items-center">
             {practiceMode === "dictation" ? t("hintDictation") : mode === "reviewing" ? t("hintReviewing") : t("hintShadowing")}
           </div>
-          <Button variant="ghost" onClick={handleNext} disabled={currentIndex === totalCount - 1}>{commonT("next")}</Button>
+          {currentIndex === totalCount - 1 ? (
+            <Button variant="ghost" onClick={handleFinish} className="text-primary">{t("finishSession")}</Button>
+          ) : (
+            <Button variant="ghost" onClick={handleNext}>{commonT("next")}</Button>
+          )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

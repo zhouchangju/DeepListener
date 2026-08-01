@@ -223,10 +223,10 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
                 <Filter className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("filterBy")}</span>
             </div>
-            
+
             <select
                 aria-label={t("filterType")}
-                className="text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
+                className="min-w-[8rem] flex-1 sm:flex-initial text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
                 value={filterType || ""}
                 onChange={(e) => setFilterType(e.target.value || null)}
             >
@@ -236,7 +236,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
 
             <select
                 aria-label={t("filterTopic")}
-                className="text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
+                className="min-w-[8rem] flex-1 sm:flex-initial text-sm border border-input rounded-md px-2 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
                 value={filterTopic || ""}
                 onChange={(e) => setFilterTopic(e.target.value || null)}
             >
@@ -245,19 +245,19 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
             </select>
 
             {/* Date Range Filters */}
-            <div className="flex items-center gap-1.5 bg-background border border-input rounded-md px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-background border border-input rounded-md px-2 py-1 w-full sm:w-auto">
                 <input
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="text-xs bg-transparent border-none outline-none focus:ring-0 w-[110px]"
+                    className="text-xs bg-transparent border-none outline-none focus:ring-0 flex-1 min-w-0 sm:w-[110px] sm:flex-initial"
                 />
                 <span className="text-muted-foreground">~</span>
                 <input
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="text-xs bg-transparent border-none outline-none focus:ring-0 w-[110px]"
+                    className="text-xs bg-transparent border-none outline-none focus:ring-0 flex-1 min-w-0 sm:w-[110px] sm:flex-initial"
                 />
             </div>
 

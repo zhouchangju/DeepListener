@@ -79,14 +79,23 @@ export function useWaveSurfer({
     if (!container || !timeline) return;
     if (mediaRef && !peaks) return;
 
+    const cssVar = (name: string, fallback: string) =>
+      typeof window !== "undefined"
+        ? getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+        : fallback;
+
+    const progressColor = cssVar("--primary", "#4f46e5");
+    const waveColor = cssVar("--border", "#cbd5e1");
+    const cursorColor = cssVar("--destructive", "#f43f5e");
+
     const ws = WaveSurfer.create({
       container,
       media: mediaRef?.current ?? undefined,
       peaks,
       duration: mediaDuration,
-      waveColor: "#cbd5e1",
-      progressColor: "#4f46e5",
-      cursorColor: "#f43f5e",
+      waveColor,
+      progressColor,
+      cursorColor,
       cursorWidth: 2,
       barWidth: 2,
       barGap: 1,
@@ -95,13 +104,14 @@ export function useWaveSurfer({
       autoCenter: true,
       plugins: [
         TimelinePlugin.create({ container: timeline }),
-        Minimap.create({ height: 20, waveColor: "#eee", progressColor: "#4f46e5" }),
+        Minimap.create({ height: 20, waveColor: "#cbd5e1", progressColor }),
       ],
     });
 
     const regions = ws.registerPlugin(RegionsPlugin.create());
     regionsRef.current = regions;
-    regions.enableDragSelection({ color: "rgba(79, 70, 229, 0.15)" });
+    const regionColor = cssVar("--primary", "#4f46e5");
+    regions.enableDragSelection({ color: regionColor ? `${regionColor}26` : "rgba(79, 70, 229, 0.15)" });
 
     // Region Events
     regions.on("region-created", (region) => {

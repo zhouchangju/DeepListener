@@ -9,13 +9,22 @@ import {
 
 type Mode = "idle" | "playing_original" | "recording" | "reviewing";
 
+export interface ShadowingWorkflowMessages {
+  /** Toast shown when slicing the original audio fails. */
+  sliceFailed?: string;
+  /** Toast shown when microphone permission is denied. */
+  micDenied?: string;
+}
+
 interface UseShadowingWorkflowProps {
   sentence: { id?: string; text: string; startTime: number; endTime: number };
   fullAudioBuffer: AudioBuffer;
   playbackRate: number;
+  /** Localized toast messages (previously hardcoded English). */
+  messages?: ShadowingWorkflowMessages;
 }
 
-export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }: UseShadowingWorkflowProps) {
+export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate, messages }: UseShadowingWorkflowProps) {
   const [modeState, setModeState] = useState<{ sliceKey: string; value: Mode }>({
     sliceKey: "",
     value: "idle",
@@ -39,7 +48,16 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
   const isLoopingRef = useRef(false);
   const activeSentenceIdRef = useRef<string | undefined>(undefined);
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { startRecording, stopRecording } = useAudioRecorder();
+  // Mirror messages in a ref so the slice effect does not need to depend on
+  // the messages object identity (which changes every render and would
+  // re-trigger the audio slice needlessly). The ref always reads the latest.
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  const { startRecording, stopRecording } = useAudioRecorder(
+    messages?.micDenied ? { micDenied: messages.micDenied } : undefined,
+  );
   const sliceKey = getShadowingAudioSliceKey(sentence);
   const displayedOriginalAudio = getDisplayedShadowingOriginalAudio(
     originalBlobState,
@@ -122,7 +140,7 @@ export function useShadowingWorkflow({ sentence, fullAudioBuffer, playbackRate }
       } catch (error) {
         setOriginalBlobForCurrentSlice(null);
         console.error("Slice failed", error);
-        toast.error("Audio slice failed");
+        toast.error(messagesRef.current?.sliceFailed ?? "Audio slice failed");
       }
     }, 0);
 
