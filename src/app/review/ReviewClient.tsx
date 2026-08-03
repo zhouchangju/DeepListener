@@ -89,6 +89,12 @@ export default function ReviewClient({
   // the pre-transition state and skip/duplicate cards.
   const itemsRef = useRef(items);
   const currentIndexRef = useRef(currentIndex);
+  // Mirror showAnswer so the keyboard handler (registered once) and
+  // handleGrade can read the freshest value. Grading before the answer is
+  // revealed would record an FSRS rating for a card the user never tested,
+  // corrupting the schedule. Both the on-screen buttons and the 1-4 keys
+  // funnel through handleGrade, so guarding there covers both paths.
+  const showAnswerRef = useRef(showAnswer);
   // Re-entry guard: while a grade is in flight, ignore subsequent grades so
   // the FSRS progression and the UI transition stay in sync.
   const gradingRef = useRef(false);
@@ -99,6 +105,9 @@ export default function ReviewClient({
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
+  useEffect(() => {
+    showAnswerRef.current = showAnswer;
+  }, [showAnswer]);
 
   useEffect(() => {
     setReviewed(reviewedCount);
@@ -135,6 +144,15 @@ export default function ReviewClient({
 
   const handleGrade = async (quality: ReviewQuality) => {
     if (gradingRef.current) return;
+    // Require the answer to be revealed before grading. FSRS ratings must
+    // reflect whether the user could actually recall the sentence; grading a
+    // card whose answer was never shown produces meaningless schedule data.
+    // The 1-4 keys and the on-screen grade buttons both call handleGrade, so
+    // this single guard covers both entry points.
+    if (!showAnswerRef.current) {
+      toast(t("revealBeforeGrade"));
+      return;
+    }
     const latestItems = itemsRef.current;
     const latestIndex = currentIndexRef.current;
     const itemToGrade = latestItems[latestIndex];
@@ -279,7 +297,10 @@ export default function ReviewClient({
         setRemaining((prev) => Math.max(0, prev - 1));
       }
 
-      const transition = removeCurrentReviewItem({ items, currentIndex });
+      // Read the freshest items/index from refs (like handleGrade) so a
+      // concurrent grade that landed during the archive POST cannot make this
+      // transition operate on a stale snapshot and restore or skip a card.
+      const transition = removeCurrentReviewItem({ items: itemsRef.current, currentIndex: currentIndexRef.current });
       setItems(transition.items);
       setCurrentIndex(transition.currentIndex);
 

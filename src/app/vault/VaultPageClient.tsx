@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ExportButtons from "./ExportButtons";
 import VaultListClient from "./VaultListClient";
@@ -56,6 +56,11 @@ export default function VaultPageClient({
 }: VaultPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Bumped on every query change so the list component can stop any in-flight
+  // play-all session. ExportButtons (difficulty/track/date filters) updates the
+  // query through this same path, so a single version signal covers both the
+  // filters here and the ones inside VaultListClient.
+  const [queryVersion, setQueryVersion] = useState(0);
 
   const updateQuery = useCallback((updates: VaultQueryUpdate) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -74,6 +79,7 @@ export default function VaultPageClient({
 
     const queryString = next.toString();
     router.replace(queryString ? `/vault?${queryString}` : "/vault");
+    setQueryVersion((v) => v + 1);
   }, [query, router, searchParams]);
 
   return (
@@ -99,6 +105,7 @@ export default function VaultPageClient({
         filteredCount={filteredCount}
         totalCount={totalCount}
         query={query}
+        queryVersion={queryVersion}
         onQueryChange={updateQuery}
       />
     </>

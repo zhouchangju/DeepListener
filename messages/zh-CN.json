@@ -13,7 +13,9 @@
     "noResults": "无结果",
     "confirm": "确认",
     "previous": "上一步",
-    "clear": "清除"
+    "clear": "清除",
+    "externalLinkBlocked": "已拦截外部链接",
+    "externalLinkBlockedDetail": "桌面应用不允许打开此目标地址。"
   },
   "nav": {
     "library": "资料库",
@@ -246,6 +248,7 @@
     "againSoon15": "15 分钟后将再次复习",
     "batchCompleted": "本批完成！正在加载更多…",
     "saveProgressFailed": "保存进度失败",
+    "revealBeforeGrade": "请先显示答案（空格键）再评分。",
     "noteArchived": "笔记已归档",
     "noteUnarchived": "笔记已取消归档",
     "archiveFailed": "归档笔记失败",
@@ -464,8 +467,9 @@
     "resolveFirst": "请先完成设置项",
     "openLibrary": "打开资料库",
     "nextPrefix": "下一步：",
-    "providerNote": "只有在导入媒体时才会实际检测服务商连通性，因为实时探测会发起带密钥的外部请求，并可能产生费用。",
+    "providerNote": "只有在导入媒体时才会实际检测服务商连通性，因为实时探测会发起带密钥的外部请求，并可能产生费用。本页面不会上传你的媒体。",
     "ready": "就绪",
+    "configured": "已配置",
     "action": "需要处理",
     "limited": "受限",
     "safetyNotice": {
@@ -507,14 +511,14 @@
         "unsupportedDetail": "“{provider}”不是受支持的服务商。",
         "unsupportedFix": "请将 TRANSCRIPTION_PROVIDER 设置为 deepgram、openai 或 google。",
         "missingDetail": "已选择 {provider}，但未配置 {keyName}。",
-        "missingFix": "请将 {keyName} 添加到本地 .env。DeepListener 不会在浏览器中显示或存储密钥。",
-        "readyDetail": "已选择 {provider}，密钥已配置。密钥内容不会在此显示。"
+        "missingFix": "请使用下方“配置服务商”保存 {keyName}，或在启动 DeepListener 前设置本地环境变量。密钥不会在浏览器中显示或存储。",
+        "readyDetail": "已选择 {provider}，密钥已配置。这只证明本地配置存在；认证、额度、代理、模型权限和长媒体成功率要到导入媒体时才会检查。密钥内容不会在此显示。"
       }
     },
     "providerDialog": {
       "configure": "配置服务商",
       "title": "配置转写服务商",
-      "description": "选择语音转写服务商并输入 API 密钥。密钥仅保存在本地，之后不再显示。",
+      "description": "选择语音转写服务商并输入 API 密钥。桌面版保存在 macOS 钥匙串，其他本地运行保存在受保护文件中。保存密钥不会上传媒体或测试连通性，之后也不会再次显示密钥。",
       "providerLabel": "服务商",
       "deepgramHint": "推荐的语音转文字服务。",
       "openaiHint": "Whisper / gpt-4o-transcribe。",
@@ -560,6 +564,10 @@
     "loadingAudio": "加载中…",
     "blindModeTitle": "盲听模式",
     "addedToVault": "已加入收藏库！",
+    "captureHandoff": "已保存。你可以继续：",
+    "openTrackVault": "在收藏库查看本素材",
+    "openReview": "开始复习",
+    "dismissHandoff": "关闭",
     "saveVaultFailed": "保存到收藏库失败",
     "audioExported": "音频导出成功",
     "audioExportFailed": "音频导出失败",

@@ -13,7 +13,9 @@
     "noResults": "No results",
     "confirm": "Confirm",
     "previous": "Previous",
-    "clear": "Clear"
+    "clear": "Clear",
+    "externalLinkBlocked": "External link blocked",
+    "externalLinkBlockedDetail": "This destination is not approved for the desktop app."
   },
   "nav": {
     "library": "Library",
@@ -246,6 +248,7 @@
     "againSoon15": "Will review again in 15 minutes",
     "batchCompleted": "Batch completed! Loading more...",
     "saveProgressFailed": "Failed to save progress",
+    "revealBeforeGrade": "Reveal the answer first (Space) before grading.",
     "noteArchived": "Note archived",
     "noteUnarchived": "Note unarchived",
     "archiveFailed": "Failed to archive note",
@@ -464,8 +467,9 @@
     "resolveFirst": "Resolve setup actions first",
     "openLibrary": "Open Library",
     "nextPrefix": "Next:",
-    "providerNote": "Provider connectivity is intentionally checked only when you import media, because a live probe would send a credentialed external request and may incur cost.",
+    "providerNote": "Provider connectivity is intentionally checked only when you import media, because a live probe would send a credentialed external request and may incur cost. This page never uploads your media.",
     "ready": "Ready",
+    "configured": "Configured",
     "action": "Action needed",
     "limited": "Limited",
     "safetyNotice": {
@@ -507,14 +511,14 @@
         "unsupportedDetail": "\"{provider}\" is not a supported provider.",
         "unsupportedFix": "Set TRANSCRIPTION_PROVIDER to deepgram, openai, or google.",
         "missingDetail": "{provider} is selected, but {keyName} is not configured.",
-        "missingFix": "Add {keyName} to your local .env. DeepListener never displays or stores the key in the browser.",
-        "readyDetail": "{provider} is selected and its key is present. The key value is never shown here."
+        "missingFix": "Use Configure provider below to save {keyName}, or set it in your local environment before starting DeepListener. The key is never displayed or stored in the browser.",
+        "readyDetail": "{provider} is selected and its key is present. This confirms configuration only; authentication, quota, proxy, model access, and long-media success are checked when you import media. The key value is never shown here."
       }
     },
     "providerDialog": {
       "configure": "Configure provider",
       "title": "Configure transcription provider",
-      "description": "Choose a speech-to-text provider and enter its API key. The key is stored locally and never shown again.",
+      "description": "Choose a speech-to-text provider and enter its API key. Desktop builds store it in macOS Keychain; other local runs use a protected file. Saving the key does not send media or test connectivity. It is never shown again.",
       "providerLabel": "Provider",
       "deepgramHint": "Recommended for speech-to-text.",
       "openaiHint": "Whisper / gpt-4o-transcribe.",
@@ -560,6 +564,10 @@
     "loadingAudio": "Loading...",
     "blindModeTitle": "Blind Mode",
     "addedToVault": "Added to your Vault!",
+    "captureHandoff": "Saved. Choose where to continue:",
+    "openTrackVault": "Open this Track in Vault",
+    "openReview": "Start Review",
+    "dismissHandoff": "Dismiss",
     "saveVaultFailed": "Failed to save to vault",
     "audioExported": "Audio exported successfully",
     "audioExportFailed": "Failed to export audio",

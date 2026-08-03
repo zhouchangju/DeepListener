@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Archive, ArchiveRestore, X } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ interface VaultListClientProps {
   filteredCount: number;
   totalCount: number;
   query: VaultQueryState;
+  queryVersion: number;
   onQueryChange: (updates: VaultQueryUpdate) => void;
 }
 
@@ -48,6 +49,7 @@ export default function VaultListClient({
   filteredCount,
   totalCount,
   query,
+  queryVersion,
   onQueryChange,
 }: VaultListClientProps) {
   const [editingItem, setEditingItem] = useState<VaultItem | null>(null);
@@ -62,7 +64,7 @@ export default function VaultListClient({
   const pageEnd = Math.min(query.page * query.pageSize, filteredCount);
 
   const clearFilters = () => {
-    onQueryChange({
+    handleQueryChange({
       selectedDifficulties: [],
       selectedTags: [],
       searchQuery: "",
@@ -126,6 +128,23 @@ export default function VaultListClient({
     playbackBlocked: t("playbackBlocked"),
   });
 
+  // Any query change swaps the filtered list underneath the play-all session
+  // (the hook intentionally does not invalidate playback on list changes — see
+  // useVaultPlayback notes). Stop playback so the play bar index and the audio
+  // element never point into a list that no longer matches what is on screen.
+  // The version effect covers query changes from ExportButtons too, which do
+  // not flow through this component's own onQueryChange wiring.
+  const handleQueryChange = (updates: VaultQueryUpdate) => {
+    stopPlayAll();
+    onQueryChange(updates);
+  };
+
+  useEffect(() => {
+    if (queryVersion > 0) {
+      stopPlayAll();
+    }
+  }, [queryVersion, stopPlayAll]);
+
   return (
     <div className={`space-y-4 ${playAllActive ? 'pb-20' : ''}`}>
       {/* Archive Toggle Filter */}
@@ -154,7 +173,7 @@ export default function VaultListClient({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onQueryChange({ showArchived: !query.showArchived })}
+            onClick={() => handleQueryChange({ showArchived: !query.showArchived })}
           >
             {query.showArchived ? t("showActive") : t("showArchived")}
           </Button>
@@ -167,7 +186,7 @@ export default function VaultListClient({
             {t("filteredByTrack")} <strong>{activeTrackName}</strong>
           </span>
           <button
-            onClick={() => onQueryChange({ initialTrackId: null })}
+            onClick={() => handleQueryChange({ initialTrackId: null })}
             className="ml-auto text-primary/70 hover:text-primary transition-colors"
             title={t("clearTrackFilter")}
           >
@@ -191,10 +210,10 @@ export default function VaultListClient({
         totalCount={totalCount}
         onToggleFilters={() => setShowFilters(!showFilters)}
         onClearFilters={clearFilters}
-        onSearchQueryChange={(searchQuery) => onQueryChange({ searchQuery })}
-        onSelectedDifficultiesChange={(selectedDifficulties) => onQueryChange({ selectedDifficulties })}
-        onSelectedTagsChange={(selectedTags) => onQueryChange({ selectedTags })}
-        onSortByChange={(sortBy: SortOption) => onQueryChange({ sortBy })}
+        onSearchQueryChange={(searchQuery) => handleQueryChange({ searchQuery })}
+        onSelectedDifficultiesChange={(selectedDifficulties) => handleQueryChange({ selectedDifficulties })}
+        onSelectedTagsChange={(selectedTags) => handleQueryChange({ selectedTags })}
+        onSortByChange={(sortBy: SortOption) => handleQueryChange({ sortBy })}
       />
 
       {filteredItems.map((item) => (
@@ -247,7 +266,7 @@ export default function VaultListClient({
               variant="outline"
               size="sm"
               disabled={query.page <= 1}
-              onClick={() => onQueryChange({ page: query.page - 1 })}
+              onClick={() => handleQueryChange({ page: query.page - 1 })}
             >
               {t("previous")}
             </Button>
@@ -258,7 +277,7 @@ export default function VaultListClient({
               variant="outline"
               size="sm"
               disabled={query.page >= totalPages}
-              onClick={() => onQueryChange({ page: query.page + 1 })}
+              onClick={() => handleQueryChange({ page: query.page + 1 })}
             >
               {t("next")}
             </Button>

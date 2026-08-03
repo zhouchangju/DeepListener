@@ -86,7 +86,12 @@ function bufferToWav(buffer: AudioBuffer): Blob {
     for (i = 0; i < numOfChan; i++) {
       // interleave channels
       sample = Math.max(-1, Math.min(1, channels[i][pos])); // clamp
-      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // scale to 16-bit signed int
+      // Scale to 16-bit signed int. Negative samples map to [-32768, 0) via
+      // *32768, positive samples to [0, 32767] via *32767 so full-scale positive
+      // (1.0) does not wrap to -32768. The previous expression was parsed as
+      // `(0.5 + sample) < 0 ? ...` due to operator precedence, so samples in
+      // (-0.5, 0] wrongly used *32767 and the +0.5 rounding never applied.
+      sample = (sample < 0 ? sample * 32768 : sample * 32767) | 0;
       view.setInt16(44 + offset, sample, true); // write 16-bit sample
       offset += 2;
     }
