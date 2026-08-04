@@ -10,6 +10,7 @@ import {
   saveProviderConfig,
   getProviderSummary,
   secretsPath,
+  secretBackend,
 } from "./secrets-store";
 
 function freshRoot(): string {
@@ -45,6 +46,19 @@ test("secretsPath resolves under settings/ in the data root", () => {
     const p = secretsPath();
     assert.equal(p, join(root, "settings", "secrets.json"));
   });
+});
+
+test("secret backend is file-backed unless the macOS desktop explicitly opts into Keychain", () => {
+  assert.equal(secretBackend({ DEEPLISTENER_SECRET_BACKEND: "keychain" }), process.platform === "darwin" ? "keychain" : "file");
+  assert.equal(secretBackend({}), "file");
+});
+
+test("Keychain migration removes the legacy plaintext file after secure write", () => {
+  const source = readFileSync(new URL("./secrets-store.ts", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /await writeKeychainSecret\(payload\);[\s\S]{0,260}await unlink\(secretsPath\(\)\)/,
+  );
 });
 
 test("readSecretsFile returns {} when the file is missing (ENOENT)", async () => {

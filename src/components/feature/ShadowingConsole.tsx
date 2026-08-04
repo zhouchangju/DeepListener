@@ -137,10 +137,11 @@ export default function ShadowingConsole({
       const res = await fetch(`/api/sentence/${sentence.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: tempText, formatting: null }),
+        body: JSON.stringify({ text: tempText, formatting: JSON.stringify(localFormatting) }),
       });
       await requireOkResponse(res, t("saveTextFailed"));
-      setLocalFormatting({});
+      // Preserve the current notation indices. We do not guess token-index
+      // migrations here, but silently deleting the user's marks is worse.
       setIsEditingText(false);
       router.refresh();
       toast.success(t("textUpdated"));
@@ -235,7 +236,7 @@ export default function ShadowingConsole({
 
   return (
     <div className={getShadowingOverlayClassName()} tabIndex={-1} ref={containerRef} onKeyDown={handleKeyDown}>
-      <div className="w-full max-w-3xl bg-card text-card-foreground rounded-2xl shadow-2xl shadow-black/30 overflow-hidden flex flex-col min-h-[500px] border border-border">
+      <div className="flex max-h-[calc(100dvh-2rem)] min-h-0 w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl shadow-black/30 custom-scrollbar sm:min-h-[500px]">
         <ShadowingHeader
           practiceMode={practiceMode}
           currentIndex={currentIndex}

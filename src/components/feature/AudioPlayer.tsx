@@ -264,7 +264,7 @@ export default function AudioPlayer({
   };
 
   return (
-    <div className="flex flex-col gap-0 w-full max-w-5xl mx-auto bg-card text-card-foreground rounded-2xl shadow-xl shadow-slate-200/60 border border-border overflow-hidden dark:shadow-black/30">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-xl shadow-slate-200/60 dark:shadow-black/30">
       {videoUrl && (
         <>
           <video

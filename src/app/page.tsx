@@ -1,21 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BrainCircuit, Headphones, Mic2, Repeat2, ShieldCheck, Sparkles, Waves } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ArrowRight, BrainCircuit, Headphones, Loader2, Mic2, PlayCircle, Repeat2, ShieldCheck, Sparkles, Waves } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireOkResponse } from "@/lib/client-response";
 import { translations } from "./landing-translations";
 
 export default function HomePage() {
   const locale = useLocale();
+  const router = useRouter();
   const copy = locale === "zh-CN" ? translations["zh-CN"] : translations.en;
+  const [demoLoading, setDemoLoading] = useState(false);
   const workflow = [
     { icon: Headphones, title: copy.workflow.listen.title, text: copy.workflow.listen.text },
     { icon: Waves, title: copy.workflow.decode.title, text: copy.workflow.decode.text },
     { icon: Mic2, title: copy.workflow.shadow.title, text: copy.workflow.shadow.text },
     { icon: Repeat2, title: copy.workflow.review.title, text: copy.workflow.review.text },
   ];
+
+  const handleTryDemo = async () => {
+    setDemoLoading(true);
+    try {
+      const response = await fetch("/api/demo", { method: "POST" });
+      await requireOkResponse(response, copy.demoFailed);
+      const data = (await response.json()) as { trackId?: unknown };
+      if (typeof data.trackId !== "string" || data.trackId.length === 0) {
+        throw new Error(copy.demoFailed);
+      }
+      router.push(`/practice/${data.trackId}?demo=1`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : copy.demoFailed);
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   return (
     <div className="overflow-hidden">
@@ -24,7 +47,7 @@ export default function HomePage() {
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_42%),radial-gradient(circle_at_80%_30%,rgba(14,165,233,0.12),transparent_35%)]"
           aria-hidden="true"
         />
-        <div className="container relative mx-auto grid min-h-[620px] max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-[1.08fr_0.92fr] lg:py-28">
+        <div className="container relative mx-auto grid min-h-[60vh] max-w-6xl items-center gap-12 px-4 py-12 lg:grid-cols-[1.08fr_0.92fr] lg:py-28">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary dark:border-primary/25 dark:bg-primary/10 dark:text-primary">
               <Sparkles className="h-4 w-4" /> {copy.badge}
@@ -35,14 +58,18 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
               {copy.intro}
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-12 px-6">
-                <Link href="/setup">{copy.setup} <ArrowRight /></Link>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button size="lg" className="h-12 px-6" onClick={handleTryDemo} disabled={demoLoading}>
+                {demoLoading ? <Loader2 className="animate-spin" /> : <PlayCircle />} {demoLoading ? copy.demoLoading : copy.demo}
               </Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-6">
+                <Link href="/setup">{copy.setup} <ArrowRight /></Link>
+              </Button>
+              <Button asChild size="lg" variant="ghost" className="h-12 px-6">
                 <Link href="/library">{copy.library}</Link>
               </Button>
             </div>
+            <p className="mt-3 text-sm text-muted-foreground">{copy.demoNote}</p>
             <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-emerald-600" /> {copy.privacy}
             </p>

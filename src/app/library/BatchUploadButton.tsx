@@ -134,7 +134,7 @@ export default function BatchUploadButton() {
 
       {/* Progress Display */}
       {progress.length > 0 && (
-        <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+        <div className="mt-4 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
           <div className="text-sm font-medium text-foreground sticky top-0 bg-background py-2 border-b border-border">
             {t("uploadProgress", { done: progress.filter((p) => p.status === "success").length, total: progress.length })}
           </div>

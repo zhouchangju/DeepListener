@@ -76,7 +76,7 @@ async function serveMedia(
 
   let size: number;
   try {
-    size = (await stat(resolved.path)).size;
+    size = (await stat(/* turbopackIgnore: true */ resolved.path)).size;
   } catch {
     return new NextResponse(null, { status: 404 });
   }
@@ -103,7 +103,10 @@ async function serveMedia(
     if (!includeBody) {
       return new NextResponse(null, { status: 206, headers });
     }
-    const nodeStream = createReadStream(resolved.path, { start, end });
+    const nodeStream = createReadStream(
+      /* turbopackIgnore: true */ resolved.path,
+      { start, end },
+    );
     return new NextResponse(nodeStreamToWeb(nodeStream), { status: 206, headers });
   }
 
@@ -113,7 +116,7 @@ async function serveMedia(
   if (!includeBody) {
     return new NextResponse(null, { status: 200, headers });
   }
-  const nodeStream = createReadStream(resolved.path);
+  const nodeStream = createReadStream(/* turbopackIgnore: true */ resolved.path);
   return new NextResponse(nodeStreamToWeb(nodeStream), { status: 200, headers });
 }
 

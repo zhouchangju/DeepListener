@@ -38,6 +38,7 @@ const desktopDir = path.join(repo, "desktop");
 const args = process.argv.slice(2);
 const skipPackage = args.includes("--no-package");
 const dirOnly = args.includes("--dir");
+const alpha = args.includes("--alpha");
 
 function log(msg) {
   process.stdout.write(`[desktop-dist] ${msg}\n`);
@@ -51,6 +52,14 @@ function run(cmd, cmdArgs, opts) {
   const r = spawnSync(cmd, cmdArgs, { stdio: "inherit", ...opts });
   if (r.status !== 0) fail(`${cmd} ${cmdArgs.join(" ")} failed (exit ${r.status})`);
 }
+
+// Public release builds fail closed until redistributable FFmpeg and a real
+// licensed spoken demo are present. `--alpha` keeps the current host-dependent
+// development path available without weakening the release check.
+run(process.execPath, [
+  path.join(repo, "scripts", "desktop-preflight.mjs"),
+  ...(alpha ? ["--allow-system-ffmpeg", "--allow-synthetic-demo"] : []),
+], { cwd: repo });
 
 // --- 1. build standalone bundle (unless skipped) -----------------------
 if (!skipPackage) {

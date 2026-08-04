@@ -69,6 +69,9 @@ export default async function SetupPage() {
         {checks.map((check) => {
           const style = statusStyles[check.status];
           const Icon = check.status === "ready" ? CheckCircle2 : check.status === "action" ? AlertTriangle : CircleDashed;
+          const statusLabel = check.id === "provider" && check.status === "ready"
+            ? t("configured")
+            : t(check.status);
           return (
             <Card key={check.id} className="gap-4 py-5">
               <CardHeader className="gap-3 px-5">
@@ -76,7 +79,7 @@ export default async function SetupPage() {
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Icon className="h-5 w-5 text-muted-foreground" /> {t(`readiness.${check.id}.label` as SetupKey)}
                   </CardTitle>
-                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${style.className}`}>{t(check.status)}</span>
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${style.className}`}>{statusLabel}</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 px-5 text-sm">

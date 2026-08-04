@@ -152,7 +152,7 @@ export function StudyHeatmap({ data }: { data: Record<string, number> }) {
     <div className="flex flex-col lg:flex-row gap-8 items-start lg:items-center">
       {/* Main Heatmap Container */}
       <div className="flex-1 w-full overflow-hidden">
-        <div className="flex items-start gap-2 overflow-x-auto pb-4 scrollbar-hide">
+        <div className="flex items-start gap-2 overflow-x-auto pb-4 no-scrollbar">
           <div className="flex flex-col gap-1 mt-6 sticky left-0 bg-card pr-2 z-10">
             {dayLabels.map((label, i) => (
               <div key={i} className="h-3 text-[10px] text-muted-foreground flex items-center leading-none uppercase font-semibold">

@@ -37,7 +37,7 @@ export interface DictationDraftState {
 }
 
 export function getShadowingOverlayClassName() {
-  return "fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4 outline-none";
+  return "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/95 p-4 outline-none sm:items-center";
 }
 
 export function shouldRenderOriginalWavePlayer(

@@ -1,9 +1,58 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+
+interface DeepListenerBridge {
+  onExternalBlocked?: (callback: (payload: { url?: string }) => void) => () => void;
+}
 
 export default function PWARegistration() {
+  const t = useTranslations("common");
+
   useEffect(() => {
+    // Electron serves the app from http://127.0.0.1 but ships a frozen,
+    // standalone bundle. Registering /sw.js there would re-cache stale
+    // assets from a prior version and force a surprise `location.reload()`
+    // on activation, so skip registration entirely inside Electron. The
+    // preload bridge (desktop/preload.js) only exists in that context, so
+    // its presence is a reliable Electron detector.
+    const bridge = (window as Window & { deepListener?: DeepListenerBridge }).deepListener;
+    if (bridge) {
+      const unsubscribe = bridge.onExternalBlocked?.(({ url }) => {
+        toast.warning(t("externalLinkBlocked"), {
+          description: url || t("externalLinkBlockedDetail"),
+        });
+      });
+
+      if ("serviceWorker" in navigator) {
+        void navigator.serviceWorker
+          .getRegistrations()
+          .then((registrations) =>
+            Promise.all(registrations.map((registration) => registration.unregister())),
+          )
+          .catch((error) => {
+            console.warn("Failed to unregister Electron service workers:", error);
+          });
+      }
+      if ("caches" in window) {
+        void window.caches
+          .keys()
+          .then((keys) =>
+            Promise.all(
+              keys
+                .filter((key) => key.startsWith("deeplistener-"))
+                .map((key) => window.caches.delete(key)),
+            ),
+          )
+          .catch((error) => {
+            console.warn("Failed to clear Electron PWA caches:", error);
+          });
+      }
+      return () => unsubscribe?.();
+    }
+
     if (
       "serviceWorker" in navigator &&
       (window.location.protocol === "http:" || window.location.protocol === "https:")
@@ -33,7 +82,7 @@ export default function PWARegistration() {
           });
       });
     }
-  }, []);
+  }, [t]);
 
   return null;
 }

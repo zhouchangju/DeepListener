@@ -14,6 +14,7 @@ test("github actions CI workflow exists and runs the core verification steps", (
   assert.match(workflow, /pull_request:/);
   assert.match(workflow, /push:/);
   assert.match(workflow, /npm ci/);
+  assert.match(workflow, /node-version:\s*22/);
   assert.match(workflow, /npm run lint/);
   assert.match(workflow, /npm run test:ci/);
   assert.match(workflow, /npm run build/);
@@ -36,6 +37,28 @@ test("package build script uses the repo build wrapper", () => {
   };
 
   assert.equal(packageJson.scripts?.build, "node scripts/next-build.mjs");
+});
+
+test("desktop release scripts expose a fail-closed preflight and explicit alpha escape hatch", () => {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const desktopDistPath = path.join(process.cwd(), "scripts", "desktop-dist.mjs");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const desktopDist = readFileSync(desktopDistPath, "utf8");
+
+  assert.equal(packageJson.scripts?.["desktop:preflight"], "node scripts/desktop-preflight.mjs");
+  assert.match(desktopDist, /desktop-preflight\.mjs/);
+  assert.match(desktopDist, /--allow-system-ffmpeg/);
+  assert.match(desktopDist, /--allow-synthetic-demo/);
+});
+
+test("legacy DB repair is exposed as an explicit command", () => {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  assert.equal(packageJson.scripts?.["db:repair-legacy"], "node scripts/repair-legacy-db.mjs");
 });
 
 test("repository uses npm as the single CI package manager", () => {
@@ -63,7 +86,9 @@ test("next build has a wasm swc fallback for restricted local Node runtimes", ()
   assert.equal(packageJson.devDependencies?.["lightningcss-wasm"], "1.30.2");
   assert.match(buildScript, /NEXT_TEST_WASM_DIR/);
   assert.match(buildScript, /path\.join\(projectRoot, "\.next", "standalone"\)/);
-  assert.match(buildScript, /rmSync\(standaloneOutputDir/);
+  assert.match(buildScript, /renameSync\(standaloneOutputDir, staleOutputDir\)/);
+  assert.match(buildScript, /rmSync\(staleOutputDir/);
+  assert.match(buildScript, /path\.join\(staleOutputDir, "\.DS_Store"\)/);
 });
 
 test("custom eslint rules declare direct plugin dependencies", () => {

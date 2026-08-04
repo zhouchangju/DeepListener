@@ -25,6 +25,9 @@
     "url": "https://github.com/zhouchangju/DeepListener/issues"
   },
   "author": "zhouchangju",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/next-build.mjs",
@@ -34,7 +37,9 @@
     "verify": "npm run lint && npm run test:ci && npm run build",
     "verify:quick": "npm run lint && npm run test:ci",
     "desktop:package": "node scripts/desktop-package.mjs",
+    "desktop:preflight": "node scripts/desktop-preflight.mjs",
     "desktop:dist": "node scripts/desktop-dist.mjs",
+    "db:repair-legacy": "node scripts/repair-legacy-db.mjs",
     "sync": "bash scripts/sync-uploads-and-db.sh",
     "sync:safe": "bash scripts/sync-safe.sh",
     "symphony": "./bin/symphony",

@@ -116,7 +116,7 @@ export default function AppShell({ children }: AppShellProps) {
           </div>
         </div>
       </nav>
-      <main className="min-h-[calc(100vh-64px)] bg-muted/30">{children}</main>
+      <main className="h-[calc(100vh-64px)] overflow-y-auto overflow-x-hidden bg-muted/30">{children}</main>
       <OnboardingGuide
         // Remount when the guide opens so internal step state resets to 0
         // without a reset effect (avoids the react-hooks cascading-render

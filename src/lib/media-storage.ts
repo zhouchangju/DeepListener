@@ -127,10 +127,10 @@ export async function resolveExistingMedia(
   let canonicalFile: string;
   let canonicalDir: string;
   try {
-    canonicalFile = await realpath(resolved.path);
+    canonicalFile = await realpath(/* turbopackIgnore: true */ resolved.path);
     // The media directory itself is resolved canonically too, so a symlinked
     // root (e.g. /var -> /private/var on macOS) does not cause false negatives.
-    canonicalDir = await realpath(dir);
+    canonicalDir = await realpath(/* turbopackIgnore: true */ dir);
   } catch {
     return { ok: false, reason: "not-found" };
   }

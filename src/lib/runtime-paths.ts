@@ -190,7 +190,9 @@ export function resolveStoredMediaPath(
     return null;
   }
   const dir = mediaDirectoryFor(kind === "uploads" ? "audio" : "video", layout.root, layout.mode);
-  const resolved = path.resolve(dir, relative);
+  // Runtime media belongs to the user's writable data root and must never be
+  // pulled into Next's standalone output-file trace.
+  const resolved = path.resolve(/* turbopackIgnore: true */ dir, relative);
   // Containment check: resolved path must stay under the media directory.
   if (!resolved.startsWith(`${dir}${path.sep}`) && resolved !== dir) {
     return null;

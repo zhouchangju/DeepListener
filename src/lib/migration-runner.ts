@@ -82,9 +82,11 @@ const defaultOpener: SqliteOpener = async (dbFilePath: string) => {
 
 /** Resolve the bundled migrations directory (frozen; this module only reads it). */
 function bundledMigrationsDir(): string {
-  // The frozen inputs live at <repo>/prisma/migrations. From this module
-  // (src/lib/) that resolves to ../../prisma/migrations.
-  return path.resolve(import.meta.dirname ?? ".", "..", "..", "prisma", "migrations");
+  // Both repository development and the packaged standalone service run with
+  // their respective root as cwd. The packaging pipeline copies migrations to
+  // <standalone>/prisma/migrations, so cwd is a stable boundary after Next.js
+  // compiles this module and import.meta.dirname no longer points at src/lib.
+  return path.resolve(process.cwd(), "prisma", "migrations");
 }
 
 /**
@@ -324,8 +326,22 @@ export async function ensureDatabaseReady(
   opener: SqliteOpener = defaultOpener,
   migrationsDir: string = bundledMigrationsDir(),
 ): Promise<
-  | { ok: true; migration: MigrationResult; backup: BackupResult }
-  | { ok: false; stage: "backup" | "migrate"; backup?: BackupResult; migration?: MigrationResult }
+  | {
+      ok: true;
+      migration: Extract<MigrationResult, { ok: true }>;
+      backup: Extract<BackupResult, { ok: true }>;
+    }
+  | {
+      ok: false;
+      stage: "backup";
+      backup: Extract<BackupResult, { ok: false }>;
+    }
+  | {
+      ok: false;
+      stage: "migrate";
+      backup: Extract<BackupResult, { ok: true }>;
+      migration: Extract<MigrationResult, { ok: false }>;
+    }
 > {
   const backup = await preflightBackup(dbFilePath, backupDir);
   if (!backup.ok) {

@@ -2,9 +2,10 @@
 
 import path from "node:path";
 import process from "node:process";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { rmSync } from "node:fs";
+import { existsSync, renameSync, rmSync } from "node:fs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, "..");
@@ -15,16 +16,38 @@ const existingNodeOptions = process.env.NODE_OPTIONS?.trim();
 const nodeOptions = [existingNodeOptions, "--require", registerPath].filter(Boolean).join(" ");
 const standaloneOutputDir = path.join(projectRoot, ".next", "standalone");
 
-// `next dev` and repeated standalone builds share `.next`. A stale traced
-// node_modules tree can make Next's own cleanup fail with ENOTEMPTY before the
-// build starts. Only remove the generated standalone subtree; keep dev output
-// and caches intact.
-rmSync(standaloneOutputDir, {
-  recursive: true,
-  force: true,
-  maxRetries: 3,
-  retryDelay: 100,
-});
+// `next dev` and repeated standalone builds share `.next`. Finder may recreate
+// `.DS_Store` while `rmSync` walks a large traced node_modules tree, leaving an
+// ENOTEMPTY directory behind. Atomically move the generated subtree out of
+// `.next` first so Next always sees a clean destination, then delete the stale
+// tree from the OS temp directory. Dev output and caches remain untouched.
+if (existsSync(standaloneOutputDir)) {
+  const staleOutputDir = path.join(
+    os.tmpdir(),
+    `deeplistener-next-standalone-${process.pid}-${Date.now()}`,
+  );
+  renameSync(standaloneOutputDir, staleOutputDir);
+  let cleanupError;
+  for (let attempt = 0; attempt < 3 && existsSync(staleOutputDir); attempt += 1) {
+    try {
+      rmSync(staleOutputDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 100,
+      });
+      cleanupError = undefined;
+    } catch (error) {
+      cleanupError = error;
+      // Finder can recreate this after the recursive walk has emptied the
+      // directory. Remove it explicitly before the next bounded retry.
+      rmSync(path.join(staleOutputDir, ".DS_Store"), { force: true });
+    }
+  }
+  if (existsSync(staleOutputDir)) {
+    console.warn(`[next-build] deferred stale standalone cleanup: ${cleanupError?.message}`);
+  }
+}
 
 // Turbopack uses the native compiler path on supported developer machines.
 // Keep the WASM environment fallback below for restricted runtimes and the

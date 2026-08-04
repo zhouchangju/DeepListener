@@ -111,6 +111,17 @@ function userTables(dbPath: string): string[] {
   }
 }
 
+/** Column names for a migrated table, used to catch schema/migration drift. */
+function tableColumns(dbPath: string, tableName: string): string[] {
+  const db = new DatabaseSync(dbPath);
+  try {
+    const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+    return rows.map((row) => row.name);
+  } finally {
+    db.close();
+  }
+}
+
 test("node:sqlite driver is available in this runtime", async () => {
   assert.equal(await isNodeSqliteAvailable(), true);
 });
@@ -139,6 +150,14 @@ test("fresh DB: migrate creates all business tables and records every migration"
       "_ErrorTagToReviewItem",
     ]) {
       assert.ok(tables.includes(expected), `missing table ${expected}; have ${tables.join(",")}`);
+    }
+
+    const reviewItemColumns = tableColumns(env.dbPath, "ReviewItem");
+    for (const expected of ["state", "reps", "lapses", "lastReview"]) {
+      assert.ok(
+        reviewItemColumns.includes(expected),
+        `migration history is missing ReviewItem.${expected}; have ${reviewItemColumns.join(",")}`,
+      );
     }
 
     // Tracking table records the same set.

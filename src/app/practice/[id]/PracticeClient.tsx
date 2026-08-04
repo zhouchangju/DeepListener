@@ -11,7 +11,7 @@ import { shouldRenderBackgroundAudioPlayer, shouldRenderTrackNotes } from "@/com
 
 import { Button } from "@/components/ui/button";
 
-import { Eye, EyeOff, Mic2, Loader2, Edit3, Download } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Mic2, Loader2, Edit3, Download } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import NoteEditor from "@/components/feature/NoteEditor";
 import RenameTrackModal from "@/components/feature/RenameTrackModal";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
@@ -57,11 +58,12 @@ interface Track {
 
 interface PracticeClientProps {
   track: Track;
+  initialBlindMode?: boolean;
 }
 
 
 
-export default function PracticeClient({ track }: PracticeClientProps) {
+export default function PracticeClient({ track, initialBlindMode = false }: PracticeClientProps) {
   const router = useRouter();
   const t = useTranslations("practice");
   const { setMode } = useTimeTracking();
@@ -72,8 +74,9 @@ export default function PracticeClient({ track }: PracticeClientProps) {
   }, [setMode]);
 
   const [capturingSentenceId, setCapturingSentenceId] = useState<string | null>(null);
+  const [captureHandoffVisible, setCaptureHandoffVisible] = useState(false);
 
-  const [blindMode, setBlindMode] = useState(false);
+  const [blindMode, setBlindMode] = useState(initialBlindMode);
 
   const [shadowingMode, setShadowingMode] = useState(false);
 
@@ -145,6 +148,7 @@ export default function PracticeClient({ track }: PracticeClientProps) {
       await requireOkResponse(res, t("saveVaultFailed"));
 
       toast.success(t("addedToVault"));
+      setCaptureHandoffVisible(true);
       setCapturingSentenceId(null);
       router.refresh();
     } catch (error) {
@@ -188,7 +192,8 @@ export default function PracticeClient({ track }: PracticeClientProps) {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex min-h-full flex-col md:h-full md:min-h-0 md:overflow-hidden">
+      <div className="mb-3 flex flex-shrink-0 flex-wrap items-center justify-between gap-2 md:mb-4">
         <div className="flex items-center gap-2">
            <h1 className="text-xl font-bold truncate max-w-[300px] md:max-w-md" title={track.title}>{track.title}</h1>
            <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
@@ -196,7 +201,10 @@ export default function PracticeClient({ track }: PracticeClientProps) {
            </Button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" asChild>
+              <Link href={`/vault?trackId=${track.id}`}>{t("viewNotes")}</Link>
+            </Button>
             <Button
               variant="ghost"
               className="text-muted-foreground"
@@ -227,12 +235,30 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         </div>
       </div>
 
+      {captureHandoffVisible && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-100" role="status" aria-live="polite">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="font-medium">{t("captureHandoff")}</span>
+          <Link className="font-semibold underline underline-offset-2" href={`/vault?trackId=${track.id}`}>
+            {t("openTrackVault")}
+          </Link>
+          <Link className="font-semibold underline underline-offset-2" href="/review">
+            {t("openReview")}
+          </Link>
+          <Button variant="ghost" size="sm" className="ml-auto h-7 px-2 text-emerald-900 hover:bg-emerald-100 dark:text-emerald-100 dark:hover:bg-emerald-500/20" onClick={() => setCaptureHandoffVisible(false)}>
+            {t("dismissHandoff")}
+          </Button>
+        </div>
+      )}
+
+      <div className="grid flex-1 gap-3 md:min-h-0 md:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] md:gap-4">
       {shouldRenderBackgroundAudioPlayer(shadowingMode) && (
-        <AudioPlayer 
-          audioUrl={track.audioUrl} 
+        <div className="flex min-h-[480px] flex-col md:min-h-0 [&>div]:min-h-0 [&>div]:flex-1">
+        <AudioPlayer
+          audioUrl={track.audioUrl}
           videoUrl={track.videoUrl}
           audioBuffer={fullAudioBuffer}
-          sentences={track.sentences} 
+          sentences={track.sentences}
           onCapture={handleCapture}
           blindMode={blindMode}
           onShadowing={(index) => {
@@ -240,17 +266,20 @@ export default function PracticeClient({ track }: PracticeClientProps) {
             setShadowingMode(true);
           }}
         />
+        </div>
       )}
 
       {shouldRenderTrackNotes(shadowingMode) && (
-        <>
+        <div className="h-[260px] min-h-0 md:h-full">
           <NoteEditor
             trackId={track.id}
             initialNote={note}
             onSaved={(content) => setNote(content)}
           />
-        </>
+        </div>
       )}
+      </div>
+      </div>
 
       <DiagnosisModal
         key={capturingSentenceId ?? "closed"}
@@ -263,12 +292,12 @@ export default function PracticeClient({ track }: PracticeClientProps) {
         initialDifficulty={currentSentence?.reviewItem?.difficulty || "NORMAL"}
         shouldDefaultVocab={!currentSentence?.reviewItem}
       />
-      
-      <RenameTrackModal 
-        isOpen={isEditing} 
-        onClose={() => setIsEditing(false)} 
-        track={track} 
-        onRenamed={() => router.refresh()} 
+
+      <RenameTrackModal
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        track={track}
+        onRenamed={() => router.refresh()}
       />
 
       {shadowingMode && fullAudioBuffer && (

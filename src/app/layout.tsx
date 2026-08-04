@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
@@ -9,8 +8,6 @@ import { TimeTrackingProvider } from "@/contexts/TimeTrackingContext";
 import ThemeProvider from "@/components/theme/ThemeProvider";
 import AppShell from "@/components/app-shell/AppShell";
 import LegacyLocaleMigrator from "@/components/i18n/LegacyLocaleMigrator";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "DeepListener",
@@ -44,7 +41,7 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={inter.variable} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>

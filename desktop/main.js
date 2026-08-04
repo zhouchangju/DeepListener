@@ -27,7 +27,7 @@ const {
   Menu,
   dialog,
 } = require("electron");
-const { spawn, execFile, execFileSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const { randomBytes, randomUUID } = require("node:crypto");
 const net = require("node:net");
 const path = require("node:path");
@@ -119,82 +119,21 @@ function pickFreeLoopbackPort() {
 // ========================================================================
 // first-run database initialization (DLR-001 / T140 migration runner)
 // ========================================================================
-function ensureDatabaseReady(root) {
-  return new Promise((resolve, reject) => {
-    const dbFile = path.join(root, "database", "deeplistener.db");
-    const migrationsDir = findMigrationsDir();
-    if (!migrationsDir) {
-      return reject(new Error("prisma/migrations not found beside the app bundle."));
-    }
-    // Apply migration SQL offline via the bundled sqlite3 (or system fallback).
-    // This mirrors the offline migration runner (T140) behavior. For production
-    // the migration runner module (src/lib/migration-runner.ts) is the source
-    // of truth; here we shell out as the bootstrap before the Node service can
-    // import it. A pre-migration backup (T142) is created if the DB exists.
-    const backupDir = path.join(root, "backups");
-    fs.mkdirSync(backupDir, { recursive: true });
-
-    // Idempotent check: if the DB already has tables, skip migration. This
-    // avoids "table already exists" errors on restart.
-    function dbHasTables() {
-      try {
-        const out = execFileSync("sqlite3", [dbFile, "SELECT count(*) FROM sqlite_master WHERE type='table';"], {
-          stdio: ["ignore", "pipe", "pipe"], timeout: 3000, encoding: "utf8",
-        });
-        const count = parseInt(out.trim(), 10);
-        return Number.isFinite(count) && count > 0;
-      } catch { return false; }
-    }
-    if (fs.existsSync(dbFile) && dbHasTables()) {
-      log(`database already initialized: ${path.relative(root, dbFile)}`);
-      return resolve(dbFile);
-    }
-
-    function applyMigrations() {
-      // Concatenate migration SQL in order and write to a temp file, then
-      // pipe it to sqlite3. execFile input is unreliable in Electron's runtime.
-      const dirs = fs.readdirSync(migrationsDir)
-        .filter((d) => !d.endsWith(".toml") && !d.startsWith("."))
-        .sort();
-      let combined = ".echo off\n";
-      for (const d of dirs) {
-        const p = path.join(migrationsDir, d, "migration.sql");
-        if (fs.existsSync(p)) combined += fs.readFileSync(p, "utf8") + "\n";
-      }
-      const tmpSql = path.join(root, "runtime", `migrations-${Date.now()}.sql`);
-      fs.mkdirSync(path.dirname(tmpSql), { recursive: true });
-      fs.writeFileSync(tmpSql, combined);
-
-      const child = execFile("sqlite3", ["-batch", dbFile], {
-        stdio: ["pipe", "pipe", "pipe"],
-      }, (err) => {
-        if (err) return reject(new Error(`database initialization failed: ${err.message}`));
-        log(`database ready: ${path.relative(root, dbFile)}`);
-        try { fs.unlinkSync(tmpSql); } catch { /* best-effort */ }
-        resolve(dbFile);
-      });
-      // Pipe the SQL file to sqlite3 stdin via an fs read stream.
-      const stdin = fs.createReadStream(tmpSql);
-      stdin.pipe(child.stdin);
-    }
-
-    if (fs.existsSync(dbFile)) {
-      // pre-migration backup (T142)
-      const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      const backup = path.join(backupDir, `pre-migration-${ts}.db`);
-      fs.copyFileSync(dbFile, backup);
-      log(`pre-migration backup created: ${path.relative(root, backup)}`);
-    }
-    applyMigrations();
-  });
-}
-function findMigrationsDir() {
-  const candidates = [
-    process.env.DEEPLISTENER_MIGRATIONS_DIR,
-    path.join(process.resourcesPath || __dirname, "standalone", "prisma", "migrations"),
-    path.resolve(__dirname, "..", "prisma", "migrations"),
-  ].filter(Boolean);
-  return candidates.find((p) => fs.existsSync(p)) || null;
+// DB initialization is NOT done in the Electron main process anymore. The
+// spawned Next.js standalone service runs it once at boot via its
+// instrumentation hook (src/instrumentation.ts → register()), which calls the
+// TS migration runner (src/lib/migration-runner.ts). That runner uses Node's
+// built-in `node:sqlite` — no shell-out to system `sqlite3`, per-migration
+// transactions with rollback, and a pre-migration backup gate (T142). This
+// satisfies FR-001 (no system dependency) and FR-050 (data safety), and
+// removes the duplicate first-run logic that used to live here.
+//
+// The main process only needs to (1) ensure the data-root directory layout
+// exists (ensureDataLayout) and (2) pass the canonical DB file path to the
+// service as DATABASE_URL. The canonical path follows the desktop layout
+// (<dataRoot>/database/deeplistener.db), matching runtime-paths.ts.
+function databaseFilePath(root) {
+  return path.join(root, "database", "deeplistener.db");
 }
 
 // ========================================================================
@@ -227,13 +166,29 @@ function resolveFfmpegEnv() {
   if (ffmpeg) {
     env.FFMPEG_PATH = ffmpeg;
     log(`ffmpeg resolved: ${ffmpeg}`);
-  } else {
-    log("ffmpeg not vendored; relying on system PATH");
   }
   const ffprobe = probeCandidates.find((p) => fs.existsSync(p));
   if (ffprobe) {
     env.FFPROBE_PATH = ffprobe;
     log(`ffprobe resolved: ${ffprobe}`);
+  }
+  // FR-041: a packaged app must not silently fall back to "maybe FFmpeg is on
+  // PATH". If NEITHER binary is vendored, warn loudly. This is a packaging
+  // defect (Task 7b is responsible for dropping binaries under vendor/ffmpeg/);
+  // on machines without a system FFmpeg, media import/export will fail. We do
+  // NOT hard-fail — the readiness page surfaces the missing runtime — but the
+  // silent PATH fallback is replaced with an unmistakable operator warning.
+  if (!ffmpeg && !ffprobe) {
+    logError(
+      "FFmpeg/ffprobe NOT vendored: no FFMPEG_PATH/FFPROBE_PATH will be set. " +
+      "Media import/export will fail on machines without a system FFmpeg install. " +
+      "This is a packaging defect — vendor the binaries under <resources>/ffmpeg/ " +
+      "or desktop/vendor/ffmpeg/ (see Task 7b). Relying on system PATH as a fallback.",
+    );
+  } else if (!ffmpeg) {
+    logError("ffmpeg binary NOT vendored; media import/export may fail without a system FFmpeg. Packaging defect (Task 7b).");
+  } else if (!ffprobe) {
+    logError("ffprobe binary NOT vendored; some media probing may fail without a system ffprobe. Packaging defect (Task 7b).");
   }
   return env;
 }
@@ -261,7 +216,14 @@ function startService(port, root, dbFile) {
         ELECTRON_RUN_AS_NODE: "1",
         // Explicit absolute data root + DB (decouples from cwd — T110/T111).
         DEEPLISTENER_DATA_DIR: root,
+        // macOS desktop credentials live in the user Keychain; the standalone
+        // server keeps the file backend for legacy/server/test layouts.
+        DEEPLISTENER_SECRET_BACKEND: process.platform === "darwin" ? "keychain" : "file",
         DATABASE_URL: `file:${dbFile}`,
+        // The standalone package copies the frozen Prisma migrations here.
+        // Pass the path explicitly instead of relying on compiled module
+        // locations, which are not stable after Next.js bundles instrumentation.
+        DEEPLISTENER_MIGRATIONS_DIR: path.join(standaloneRoot, "prisma", "migrations"),
         // per-launch token injected via env; the service middleware (W3 T173)
         // will validate it for privileged endpoints. Renderer never sees it.
         DEEPLISTENER_LAUNCH_TOKEN: LAUNCH_TOKEN,
@@ -382,6 +344,13 @@ function createWindow(origin) {
       shell.openExternal(url);
     } else {
       log(`blocked window-open to ${redact(url)}`);
+      // Surface the deny to the renderer so it can show a toast. The renderer
+      // opts in via preload's onExternalBlocked (see desktop/preload.js).
+      // Wiring the actual toast component is a renderer-side follow-up; the
+      // IPC channel is stable either way.
+      try {
+        mainWindow.webContents.send("external-blocked", { url: redact(url) });
+      } catch { /* window may be gone */ }
     }
     return { action: "deny" };
   });
@@ -405,7 +374,9 @@ function isSelfOrigin(url) {
 function isAllowlistedExternal(url) {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" && /^([a-z0-9-]+\.)?(github\.com|deepgram\.com|openai\.com)$/.test(u.hostname);
+    // https-only. google.com covers aistudio.google.com (Google AI Studio
+    // "open console"), console.cloud.google.com, accounts.google.com, etc.
+    return u.protocol === "https:" && /^([a-z0-9-]+\.)?(github\.com|deepgram\.com|openai\.com|google\.com)$/.test(u.hostname);
   } catch { return false; }
 }
 function redact(s) { return String(s).replace(/token=[^&\s]+/gi, "token=REDACTED"); }
@@ -465,6 +436,38 @@ function shutdown() {
 }
 
 // ========================================================================
+// application menu (DAS-007) — minimal role-based menu
+// ========================================================================
+// Menu.setApplicationMenu(null) removes the standard role-based accelerators on
+// macOS (Cmd+Q, Cmd+W, Cmd+C, Cmd+R, Zoom...). Instead install a minimal menu
+// built from role menus, which restores those standard shortcuts without adding
+// any custom entries that could confuse the sandboxed renderer. Headless test
+// mode stays menu-less so background runs don't perturb the host.
+function buildApplicationMenu() {
+  if (HEADLESS) return;
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: "appMenu" },   // About / Hide / Quit (Cmd+Q)
+      { role: "editMenu" },  // Undo/Redo/Cut/Copy/Paste/Select All
+      { role: "viewMenu" },  // Reload/Force Reload/DevTools/Zoom/Fullscreen
+      { role: "windowMenu" }, // Minimize/Zoom/Close (Cmd+W)
+    ]));
+    return;
+  }
+  // Non-darwin: a lean template. viewMenu/editMenu give Zoom + Reload + editing
+  // roles; a File menu carries the Quit accelerator (Ctrl+Q) via the quit role.
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      role: "fileMenu",
+      submenu: [{ role: "quit" }],
+    },
+    { role: "editMenu" },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+  ]));
+}
+
+// ========================================================================
 // single instance (DAS-002) + boot
 // ========================================================================
 const gotLock = app.requestSingleInstanceLock();
@@ -481,7 +484,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    Menu.setApplicationMenu(null);
+    buildApplicationMenu();
     // Unify the macOS Dock to a single brand tile. In unpackaged dev runs
     // (`electron .`) macOS otherwise shows the default Electron icon and, with
     // multiple renderer/helper processes, can surface a second generic tile.
@@ -495,7 +498,11 @@ if (!gotLock) {
       log(`data root: ${dataRoot}`);
       log(`launch id: ${LAUNCH_ID} (token redacted)`);
 
-      const dbFile = await ensureDatabaseReady(dataRoot);
+      // DB initialization now happens inside the spawned service (via its
+      // instrumentation hook → TS migration runner). The main process only
+      // derives the canonical DB file path to hand it to the service as
+      // DATABASE_URL so the service and Prisma agree on the file.
+      const dbFile = databaseFilePath(dataRoot);
       servicePort = await pickFreeLoopbackPort();
       serviceProcess = await startService(servicePort, dataRoot, dbFile);
       await waitForHealth(servicePort);

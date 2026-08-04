@@ -23,6 +23,8 @@ test("shadowing text save delegates response parsing to the shared helper", () =
   assert.match(source, /@\/lib\/client-response/);
   assert.match(source, /requireOkResponse\(res,\s*t\("saveTextFailed"\)\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to update text"\)/);
+  assert.match(source, /formatting: JSON\.stringify\(localFormatting\)/);
+  assert.doesNotMatch(source, /formatting: null/);
 });
 
 test("shadowing text save keeps parsed server errors visible in the toast", () => {

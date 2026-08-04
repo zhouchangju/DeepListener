@@ -12,8 +12,19 @@
 ## Installation
 
 Download the `.dmg` from the [releases page] and drag DeepListener.app to your
-Applications folder. **No Node.js, npm, FFmpeg, or terminal is required.** The
-app bundles its own runtime.
+Applications folder. **No Node.js, npm, or terminal is required** — the app
+bundles its own runtime.
+
+The current maintainer artifact is an unsigned internal arm64 alpha. A public
+DMG requires an Apple Developer signing/notarization identity; without one,
+macOS may require an explicit confirmation in Privacy & Security before the
+app opens.
+
+> **Media import note (alpha):** The current alpha build does not yet bundle
+> FFmpeg. To import video files or export trimmed audio you currently need
+> FFmpeg installed on your system (`brew install ffmpeg`). Audio-only import
+> and playback work without FFmpeg. A self-contained, bundled FFmpeg is on
+> the roadmap for the next release.
 
 ## Where your data lives
 
@@ -63,13 +74,40 @@ No API key is required for the demo.
 ## Adding your own media
 
 1. Go to **Settings** and select a transcription provider (OpenAI, Deepgram,
-   or Google).
-2. Enter your API key. The key is stored securely in your macOS Keychain and
-   is never displayed after entry.
+   or Google). **Deepgram is the default** and is recommended for
+   speech-to-text.
+2. Enter your API key. In the packaged macOS Desktop app it is stored in one
+   macOS Keychain item; Server/dev runs use an access-restricted file under
+   the DeepListener data directory. The key is never displayed after entry.
 3. Optionally run a **connection test** to verify the key works.
 4. Import audio (mp3, wav, m4a, etc.) or video (mp4, webm) from the Library.
    If the video contains embedded subtitles, they're used automatically
    without contacting a provider.
+
+> **Don't have an API key yet?** DeepListener needs a key from the provider
+> you chose; transcription is billed by that provider, not by DeepListener.
+> The same steps are also shown inside the app on the **Settings → Configure**
+> dialog ("How do I get a key?").
+>
+> **Deepgram (default)** — https://console.deepgram.com/
+> 1. Sign up at console.deepgram.com.
+> 2. New accounts usually receive free credit; check the Dashboard.
+> 3. Go to **API Keys** and click **Create API Key**.
+> 4. Copy the generated key and paste it into the API key field in Settings.
+>
+> **OpenAI (Whisper)** — https://platform.openai.com/api-keys
+> 1. Sign up and sign in at platform.openai.com.
+> 2. Add a payment method under **Settings → Billing** (Whisper is
+>    pay-as-you-go).
+> 3. Go to **API Keys** and click **Create new secret key**.
+> 4. Copy the generated key (starts with `sk-`) and paste it into Settings.
+>    Access from mainland China may require a proxy.
+>
+> **Google (Gemini)** — https://aistudio.google.com/app/apikey
+> 1. Sign in with a Google account at aistudio.google.com.
+> 2. Accept the terms, then create a key on the **Get API Key** page.
+> 3. Copy the generated API key and paste it into Settings. Some regions may
+>    need a proxy to reach Google.
 
 ## Backup and restore
 

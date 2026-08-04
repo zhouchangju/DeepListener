@@ -226,11 +226,11 @@ export const SentenceList = memo(function SentenceList({
   };
 
   return (
-    <div className="bg-card border-t border-border">
+    <div className="flex min-h-0 flex-1 flex-col bg-card border-t border-border">
       <div
         ref={listContainerRef}
         onScroll={onScroll}
-        className="max-h-[450px] overflow-y-auto custom-scrollbar p-2 scroll-smooth"
+        className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-2 scroll-smooth"
       >
         {sentences.map((s, i) => {
           const isActive = i === activeSentenceIndex;

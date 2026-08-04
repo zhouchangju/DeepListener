@@ -40,8 +40,8 @@ Required `.env` variables:
 DATABASE_URL="file:./dev.db"
 
 # Transcription Provider (choose one)
-# If TRANSCRIPTION_PROVIDER is omitted, the app falls back to OpenAI.
-TRANSCRIPTION_PROVIDER=deepgram  # Recommended in restricted networks; usually no proxy needed
+# If TRANSCRIPTION_PROVIDER is omitted, the app defaults to deepgram.
+TRANSCRIPTION_PROVIDER=deepgram  # Default; usually no proxy needed
 DEEPGRAM_API_KEY=your_key
 
 # Alternatives (may require HTTPS_PROXY in China)

@@ -1,17 +1,19 @@
 /**
  * Secrets store for transcription provider credentials entered via the UI.
  *
- * Persists a small JSON file under the runtime data root so the Desktop and
- * Server layouts resolve it consistently (see runtime-paths). Values are
- * merged into `process.env` at startup (via instrumentation) and on each save
- * so the existing `factory.ts` / `setup-readiness.ts` keep reading
- * `process.env` unchanged.
+ * Persists credentials in the configured local backend: a small JSON file for
+ * Server/dev layouts, or one macOS Keychain item for the packaged Desktop
+ * client. Values are merged into `process.env` at startup (via
+ * instrumentation) and on each save so the existing `factory.ts` /
+ * `setup-readiness.ts` keep reading `process.env` unchanged.
  *
  * Security posture (mirrors setup-readiness.ts): the key *values* are never
  * returned to the browser — only a boolean "configured" flag per provider.
  */
 import { readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 import { resolveLayout, secretsFile } from "@/lib/runtime-paths";
 
 /** Supported transcription providers and the env var holding each one's key. */
@@ -34,6 +36,24 @@ const MANAGED_VARS = new Set<string>([
   ...EXTRA_VARS,
 ]);
 
+const execFileAsync = promisify(execFile);
+const KEYCHAIN_SERVICE = "io.zhouchangju.deeplistener.credentials";
+const KEYCHAIN_ACCOUNT = "default";
+
+export type SecretBackend = "file" | "keychain";
+
+/**
+ * Desktop enables the macOS Keychain backend before the standalone service is
+ * spawned. Server/dev/test layouts remain file-backed and deterministic.
+ */
+export function secretBackend(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): SecretBackend {
+  return process.platform === "darwin" && env.DEEPLISTENER_SECRET_BACKEND === "keychain"
+    ? "keychain"
+    : "file";
+}
+
 /** Raw shape of secrets.json (only known keys are honored). */
 export interface SecretsValues {
   TRANSCRIPTION_PROVIDER?: string;
@@ -55,6 +75,12 @@ export function secretsPath(): string {
  * error so callers can surface real problems.
  */
 export async function readSecretsFile(): Promise<SecretsValues> {
+  if (secretBackend() === "keychain") {
+    const keychainValues = await readKeychainSecret();
+    if (keychainValues) return keychainValues;
+    // One-time compatibility path: an existing file-backed profile remains
+    // readable and is moved to Keychain on the next provider save.
+  }
   const file = secretsPath();
   try {
     const content = await readFile(file, "utf8");
@@ -100,15 +126,27 @@ export async function loadSecretsIntoEnv(
 }
 
 /**
- * Atomically persist the full secrets set. Writes a temp file in the same
- * directory then renames, matching the upload route's partial+rename pattern.
- * Missing directory is created on demand.
+ * Atomically persist the full secrets set. The file backend writes a temp file
+ * in the same directory then renames, matching the upload route's
+ * partial+rename pattern. The Keychain backend replaces one generic password
+ * item and removes any legacy plaintext file only after that write succeeds.
+ * Missing directories are created on demand for the file backend.
  */
 export async function writeSecrets(values: SecretsValues): Promise<void> {
+  const payload = pickManaged(values as Record<string, unknown>);
+  if (secretBackend() === "keychain") {
+    await writeKeychainSecret(payload);
+    await unlink(secretsPath()).catch((error: unknown) => {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      if (code !== "ENOENT") {
+        throw new Error("Unable to remove the legacy DeepListener credentials file.");
+      }
+    });
+    return;
+  }
   const file = secretsPath();
   const dir = path.dirname(file);
   await mkdir(dir, { recursive: true });
-  const payload = pickManaged(values as Record<string, unknown>);
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
   await writeFile(tmp, JSON.stringify(payload, null, 2), { encoding: "utf8", mode: 0o600 });
   try {
@@ -118,6 +156,52 @@ export async function writeSecrets(values: SecretsValues): Promise<void> {
     await unlink(tmp).catch(() => undefined);
     throw error;
   }
+}
+
+/** Read the single JSON Keychain item used by the packaged macOS client. */
+async function readKeychainSecret(): Promise<SecretsValues | null> {
+  try {
+    const { stdout } = await execFileAsync(
+      "/usr/bin/security",
+      ["find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
+      { encoding: "utf8", timeout: 3_000, maxBuffer: 64 * 1024 },
+    );
+    const parsed: unknown = JSON.parse(stdout.trim());
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? pickManaged(parsed as Record<string, unknown>)
+      : {};
+  } catch (error: unknown) {
+    if (isMissingKeychainItem(error)) return null;
+    throw new Error("Unable to read DeepListener credentials from macOS Keychain.");
+  }
+}
+
+/** Atomically replace the single JSON Keychain item; values never enter logs. */
+async function writeKeychainSecret(values: SecretsValues): Promise<void> {
+  try {
+    await execFileAsync(
+      "/usr/bin/security",
+      [
+        "add-generic-password",
+        "-U",
+        "-a",
+        KEYCHAIN_ACCOUNT,
+        "-s",
+        KEYCHAIN_SERVICE,
+        "-w",
+        JSON.stringify(values),
+      ],
+      { encoding: "utf8", timeout: 3_000, maxBuffer: 16 * 1024 },
+    );
+  } catch {
+    throw new Error("Unable to save DeepListener credentials to macOS Keychain.");
+  }
+}
+
+function isMissingKeychainItem(error: unknown): boolean {
+  const candidate = error as { code?: number | string; stderr?: string; message?: string };
+  const text = `${candidate.stderr ?? ""} ${candidate.message ?? ""}`.toLowerCase();
+  return candidate.code === 44 || text.includes("could not be found") || text.includes("item not found");
 }
 
 /**
