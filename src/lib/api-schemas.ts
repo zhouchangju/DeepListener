@@ -77,6 +77,12 @@ export const providerConfigSchema = z.object({
   baseUrl: z.string().trim().url().max(500).optional(),
 }).strict();
 
+/** Provider credential removal is intentionally a separate schema so an
+ * empty API key can never be mistaken for a save request. */
+export const providerRemovalSchema = z.object({
+  provider: z.enum(["deepgram", "openai", "google"]),
+}).strict();
+
 export const reviewLogSchema = z.object({
   reviewItemId: nonEmptyString,
   rating: z.number().int().min(1).max(4),

@@ -40,6 +40,31 @@ test("practice exposes the first-session blind-mode and Capture handoff contract
   assert.match(source, /href=\{`\/vault\?trackId=\$\{track\.id\}`\}/);
   assert.match(source, /href="\/review"/);
   assert.match(source, /captureHandoffVisible/);
+  assert.match(source, /aria-label=\{blindMode \? t\("showTranscription"\) : t\("hideTranscription"\)\}/);
+  assert.match(source, /aria-label=\{t\("renameTrack"\)\}/);
+});
+
+test("practice blind-mode toggle exposes both a visible label and pressed state", () => {
+  const source = readFileSync(new URL("./[id]/PracticeClient.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /aria-pressed=\{blindMode\}/);
+  assert.match(source, /<span className="hidden sm:inline">\{blindMode \? t\("showTranscription"\) : t\("hideTranscription"\)\}<\/span>/);
+});
+
+test("demo practice exposes an observable listen-to-review journey without changing normal tracks", () => {
+  const source = readFileSync(new URL("./[id]/PracticeClient.tsx", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("./[id]/page.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /demoMode\?: boolean/);
+  assert.match(source, /const displayTitle = demoMode \? t\("demoTrackTitle"\) : track\.title/);
+  assert.match(source, /title=\{displayTitle\}>\{displayTitle\}/);
+  assert.match(source, /DemoJourneyPanel/);
+  assert.match(source, /recordDemoEvent\("played"\)/);
+  assert.match(source, /recordDemoEvent\("revealed"\)/);
+  assert.match(source, /recordDemoEvent\("sentenceSelected"\)/);
+  assert.match(source, /recordDemoEvent\("saved"\)/);
+  assert.match(source, /recordDemoEvent\("reviewHandoffSeen"\)/);
+  assert.match(pageSource, /demoMode=\{query\?\.demo === "1"\}/);
 });
 
 test("practice uses a height-safe desktop workspace instead of stacking notes under the player", () => {

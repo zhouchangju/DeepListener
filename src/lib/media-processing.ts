@@ -27,6 +27,17 @@ function hasSubtitleStream(videoPath: string): Promise<boolean> {
   });
 }
 
+/** Best-effort duration probe used to flag obviously mismatched sidecars. */
+export function readMediaDuration(mediaPath: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(mediaPath, (error, metadata) => {
+      if (error) return resolve(null);
+      const duration = metadata.format?.duration;
+      resolve(typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? duration : null);
+    });
+  });
+}
+
 export async function readEmbeddedSubtitles(videoPath: string): Promise<TranscriptionResponse | null> {
   if (!(await hasSubtitleStream(videoPath))) return null;
   const subtitlePath = path.join(tmpdir(), `deeplistener-${uuidv4()}.srt`);
@@ -46,8 +57,8 @@ export async function readEmbeddedSubtitles(videoPath: string): Promise<Transcri
       segments,
       rawJson: JSON.stringify({ source: "embedded-subtitles", segments }),
     };
-  } catch (error) {
-    console.warn("Embedded subtitles could not be used; falling back to transcription.", error);
+  } catch {
+    console.warn("Embedded subtitles could not be used; falling back to transcription.");
     return null;
   } finally {
     await rm(subtitlePath, { force: true });

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
 import {
   resolveLayout,
   resolveDataRoot,
@@ -14,12 +14,15 @@ import {
   mediaDirectoryFor,
   resolveStoredMediaPath,
   redactedRuntimeSummary,
+  settingsFile,
   type RuntimeLayout,
 } from "./runtime-paths";
 
 function freshRoot() {
-  return mkdtempSync(join(tmpdir(), "deeplistener-rp-test-"));
+  return mkdtempSync(path.join(tmpdir(), "deeplistener-rp-test-"));
 }
+
+const LEGACY_ROOT = path.resolve("repo-fixture");
 
 function desktopLayout(root: string): RuntimeLayout {
   return { root, mode: "desktop" };
@@ -32,13 +35,13 @@ function legacyLayout(root: string): RuntimeLayout {
 test("legacy layout: no DEEPLISTENER_DATA_DIR resolves to cwd and prisma/dev.db", () => {
   const env = {};
   assert.equal(isExplicitDataRoot(env), false);
-  const layout = resolveLayout(env, "/repo");
-  assert.equal(layout.root, "/repo");
+  const layout = resolveLayout(env, LEGACY_ROOT);
+  assert.equal(layout.root, LEGACY_ROOT);
   assert.equal(layout.mode, "legacy");
-  assert.equal(databaseFile(layout.root, layout.mode), join("/repo", "prisma", "dev.db"));
-  assert.equal(databaseUrl(layout), "file:/repo/prisma/dev.db");
-  assert.equal(uploadsDirectory(layout.root, layout.mode), join("/repo", "public", "uploads"));
-  assert.equal(videosDirectory(layout.root, layout.mode), join("/repo", "public", "videos"));
+  assert.equal(databaseFile(layout.root, layout.mode), path.join(LEGACY_ROOT, "prisma", "dev.db"));
+  assert.equal(databaseUrl(layout), `file:${databaseFile(layout.root, layout.mode)}`);
+  assert.equal(uploadsDirectory(layout.root, layout.mode), path.join(LEGACY_ROOT, "public", "uploads"));
+  assert.equal(videosDirectory(layout.root, layout.mode), path.join(LEGACY_ROOT, "public", "videos"));
 });
 
 test("explicit Desktop root: DEEPLISTENER_DATA_DIR resolves with new layout", () => {
@@ -48,12 +51,13 @@ test("explicit Desktop root: DEEPLISTENER_DATA_DIR resolves with new layout", ()
   const layout = resolveLayout(env);
   assert.equal(layout.root, root);
   assert.equal(layout.mode, "desktop");
-  assert.equal(databaseFile(layout.root, layout.mode), join(root, "database", "deeplistener.db"));
-  assert.equal(databaseUrl(layout), `file:${join(root, "database", "deeplistener.db")}`);
-  assert.equal(uploadsDirectory(layout.root, layout.mode), join(root, "media", "audio"));
-  assert.equal(videosDirectory(layout.root, layout.mode), join(root, "media", "video"));
-  assert.equal(mediaDirectoryFor("audio", layout.root, layout.mode), join(root, "media", "audio"));
-  assert.equal(mediaDirectoryFor("video", layout.root, layout.mode), join(root, "media", "video"));
+  assert.equal(databaseFile(layout.root, layout.mode), path.join(root, "database", "deeplistener.db"));
+  assert.equal(databaseUrl(layout), `file:${path.join(root, "database", "deeplistener.db")}`);
+  assert.equal(uploadsDirectory(layout.root, layout.mode), path.join(root, "media", "audio"));
+  assert.equal(videosDirectory(layout.root, layout.mode), path.join(root, "media", "video"));
+  assert.equal(mediaDirectoryFor("audio", layout.root, layout.mode), path.join(root, "media", "audio"));
+  assert.equal(mediaDirectoryFor("video", layout.root, layout.mode), path.join(root, "media", "video"));
+  assert.equal(settingsFile(root), path.join(root, "settings", "settings.json"));
 });
 
 test("explicit root must be absolute; relative value throws", () => {
@@ -70,25 +74,25 @@ test("explicit root is trimmed of surrounding whitespace", () => {
 test("empty DEEPLISTENER_DATA_DIR falls back to legacy cwd", () => {
   const env = { DEEPLISTENER_DATA_DIR: "   " };
   assert.equal(isExplicitDataRoot(env), false);
-  assert.equal(resolveDataRoot(env, "/repo"), "/repo");
+  assert.equal(resolveDataRoot(env, LEGACY_ROOT), LEGACY_ROOT);
 });
 
 test("resolveStoredMediaPath: desktop /uploads/ URL resolves under media/audio", () => {
   const root = freshRoot();
   const p = resolveStoredMediaPath("/uploads/song.mp3", desktopLayout(root));
-  assert.equal(p, join(root, "media", "audio", "song.mp3"));
+  assert.equal(p, path.join(root, "media", "audio", "song.mp3"));
 });
 
 test("resolveStoredMediaPath: desktop /videos/ URL resolves under media/video", () => {
   const root = freshRoot();
   const p = resolveStoredMediaPath("/videos/clip.mp4", desktopLayout(root));
-  assert.equal(p, join(root, "media", "video", "clip.mp4"));
+  assert.equal(p, path.join(root, "media", "video", "clip.mp4"));
 });
 
 test("resolveStoredMediaPath: works without leading slash", () => {
   const root = freshRoot();
   const p = resolveStoredMediaPath("uploads/song.mp3", desktopLayout(root));
-  assert.equal(p, join(root, "media", "audio", "song.mp3"));
+  assert.equal(p, path.join(root, "media", "audio", "song.mp3"));
 });
 
 test("resolveStoredMediaPath: rejects parent traversal", () => {
@@ -111,8 +115,8 @@ test("resolveStoredMediaPath: rejects non-media URLs", () => {
 });
 
 test("resolveStoredMediaPath: legacy Server root keeps public/uploads layout", () => {
-  const p = resolveStoredMediaPath("/uploads/song.mp3", legacyLayout("/repo"));
-  assert.equal(p, join("/repo", "public", "uploads", "song.mp3"));
+  const p = resolveStoredMediaPath("/uploads/song.mp3", legacyLayout(LEGACY_ROOT));
+  assert.equal(p, path.join(LEGACY_ROOT, "public", "uploads", "song.mp3"));
 });
 
 test("redactedRuntimeSummary exposes layout without secrets", () => {

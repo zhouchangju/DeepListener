@@ -23,3 +23,7 @@ test("upload dialog passes dropped or picked files to the caller", () => {
   assert.match(source, /onFilesSelected\(Array\.from\(event\.target\.files \|\| \[\]\)\)/);
   assert.match(source, /multiple=\{multiple\}/);
 });
+
+test("labels the picker according to single-file or batch mode", () => {
+  assert.match(source, /t\(multiple \? "chooseFolder" : "chooseFile"\)/);
+});

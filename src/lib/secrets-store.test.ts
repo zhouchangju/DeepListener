@@ -8,10 +8,14 @@ import {
   readSecretsFile,
   writeSecrets,
   saveProviderConfig,
+  removeProviderConfig,
   getProviderSummary,
+  getProviderSummaryAsync,
+  setProviderVerificationStatus,
   secretsPath,
   secretBackend,
 } from "./secrets-store";
+import { readSettings } from "./settings-store";
 
 function freshRoot(): string {
   return mkdtempSync(join(tmpdir(), "deeplistener-secrets-test-"));
@@ -110,7 +114,14 @@ test("writeSecrets creates the directory and writes only managed keys", async ()
   });
 });
 
-test("writeSecrets produces 0600 permissions on the secrets file", async () => {
+test("writeSecrets produces 0600 permissions on the secrets file where POSIX modes apply", async (t) => {
+  // Windows protects this file through ACLs rather than POSIX mode bits; Node
+  // reports the inherited 0666 mask even though chmod(0600) was requested.
+  // Keep the POSIX assertion strict and make the platform limitation explicit.
+  if (process.platform === "win32") {
+    t.skip("Windows uses ACLs; POSIX mode bits are not an observable secret boundary");
+    return;
+  }
   await withRootAsync(async (root) => {
     await writeSecrets({ DEEPGRAM_API_KEY: "x" });
     const file = join(root, "settings", "secrets.json");
@@ -157,6 +168,9 @@ test("saveProviderConfig updates env and preserves other providers' keys", async
       assert.equal(process.env.TRANSCRIPTION_PROVIDER, "openai");
       assert.equal(process.env.OPENAI_API_KEY, "sk-new");
       assert.equal(process.env.OPENAI_BASE_URL, "https://gw/v1");
+      const settings = await readSettings();
+      assert.equal(settings.selectedProvider, "openai");
+      assert.equal(settings.openaiBaseUrl, "https://gw/v1");
       // Deepgram key still present in the persisted file.
       const back = await readSecretsFile();
       assert.equal(back.DEEPGRAM_API_KEY, "dg-existing");
@@ -168,6 +182,59 @@ test("saveProviderConfig updates env and preserves other providers' keys", async
       if (savedDeepgram === undefined) delete process.env.DEEPGRAM_API_KEY;
       else process.env.DEEPGRAM_API_KEY = savedDeepgram;
       delete process.env.OPENAI_BASE_URL;
+    }
+  });
+});
+
+test("removeProviderConfig deletes only the selected credential and related OpenAI endpoint", async () => {
+  await withRootAsync(async () => {
+    await writeSecrets({
+      TRANSCRIPTION_PROVIDER: "openai",
+      OPENAI_API_KEY: "sk-remove",
+      OPENAI_BASE_URL: "https://gw.example.com/v1",
+      DEEPGRAM_API_KEY: "dg-keep",
+    });
+    await loadSecretsIntoEnv(process.env);
+    try {
+      await removeProviderConfig("openai");
+      const values = await readSecretsFile();
+      assert.equal(values.OPENAI_API_KEY, undefined);
+      assert.equal(values.OPENAI_BASE_URL, undefined);
+      assert.equal(values.DEEPGRAM_API_KEY, "dg-keep");
+      assert.equal(process.env.OPENAI_API_KEY, undefined);
+      assert.equal(process.env.OPENAI_BASE_URL, undefined);
+      assert.equal(process.env.DEEPGRAM_API_KEY, "dg-keep");
+    } finally {
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_BASE_URL;
+      delete process.env.DEEPGRAM_API_KEY;
+      delete process.env.TRANSCRIPTION_PROVIDER;
+    }
+  });
+});
+
+test("provider verification status persists without exposing credential values", async () => {
+  await withRootAsync(async (root) => {
+    const previous = process.env.DEEPGRAM_API_KEY;
+    try {
+      delete process.env.DEEPGRAM_API_KEY;
+      await saveProviderConfig({ provider: "deepgram", apiKey: "status-secret" });
+      let summary = await getProviderSummaryAsync();
+      assert.equal(summary.status?.deepgram, "unverified");
+
+      await setProviderVerificationStatus("deepgram", "verified");
+      summary = await getProviderSummaryAsync();
+      assert.equal(summary.status?.deepgram, "verified");
+
+      const rawSettings = readFileSync(join(root, "settings", "settings.json"), "utf8");
+      assert.doesNotMatch(rawSettings, /status-secret/);
+      await removeProviderConfig("deepgram");
+      summary = await getProviderSummaryAsync();
+      assert.equal(summary.status?.deepgram, "missing");
+    } finally {
+      if (previous === undefined) delete process.env.DEEPGRAM_API_KEY;
+      else process.env.DEEPGRAM_API_KEY = previous;
+      delete process.env.TRANSCRIPTION_PROVIDER;
     }
   });
 });

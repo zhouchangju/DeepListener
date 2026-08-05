@@ -34,6 +34,7 @@ export default function ShadowingHeader({
   onClose,
 }: ShadowingHeaderProps) {
   const t = useTranslations("feature.shadowingConsole");
+  const commonT = useTranslations("common");
   return (
     <div className="flex justify-between items-center p-6 border-b border-border">
       <div className="flex items-center gap-3 flex-wrap">
@@ -74,7 +75,8 @@ export default function ShadowingHeader({
             size="icon"
             className={blindMode ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary"}
             onClick={onToggleBlindMode}
-            title={blindMode ? "Show text" : "Hide text"}
+            title={blindMode ? t("showText") : t("hideText")}
+            aria-label={blindMode ? t("showText") : t("hideText")}
           >
             {blindMode ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           </Button>
@@ -84,11 +86,13 @@ export default function ShadowingHeader({
           size="icon"
           className={isBookmarked ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-primary"}
           onClick={onCapture}
+          title={isBookmarked ? t("removeBookmark") : t("bookmark")}
+          aria-label={isBookmarked ? t("removeBookmark") : t("bookmark")}
         >
           {isBookmarked ? <BookmarkCheck className="h-5 w-5" /> : <Bookmark className="h-5 w-5" />}
         </Button>
       </div>
-      <Button variant="ghost" size="icon" onClick={onClose}>
+      <Button variant="ghost" size="icon" onClick={onClose} title={commonT("close")} aria-label={commonT("close")}>
         <X className="h-6 w-6" />
       </Button>
     </div>

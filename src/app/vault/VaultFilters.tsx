@@ -52,19 +52,22 @@ export function VaultFilters({
   const commonT = useTranslations("common");
   return (
     <div className="bg-card rounded-lg border border-border">
-      <div
-        onClick={onToggleFilters}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
+      <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent transition-colors">
+        <button
+          type="button"
+          onClick={onToggleFilters}
+          aria-expanded={showFilters}
+          aria-controls="vault-filters-panel"
+          className="flex min-w-0 items-center gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm font-medium text-foreground">{t("filters")}</span>
           {hasActiveFilters && (
             <Badge variant="default" className="ml-2">
               {activeFilterCount}
             </Badge>
           )}
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           {hasActiveFilters && (
             <Button
@@ -80,18 +83,20 @@ export function VaultFilters({
               {commonT("clear")}
             </Button>
           )}
-          <div className="text-muted-foreground">{showFilters ? "▼" : "▶"}</div>
+          <span className="text-muted-foreground" aria-hidden="true">{showFilters ? "▼" : "▶"}</span>
         </div>
       </div>
 
       {showFilters && (
-        <div className="px-4 py-3 border-t border-border space-y-4">
+        <div id="vault-filters-panel" className="px-4 py-3 border-t border-border space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">{t("searchLabel")}</label>
+            <label id="vault-search-label" htmlFor="vault-search" className="text-xs font-medium text-muted-foreground mb-2 block">{t("searchLabel")}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
+                id="vault-search"
                 type="text"
+                aria-labelledby="vault-search-label"
                 placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => onSearchQueryChange(e.target.value)}
@@ -106,6 +111,7 @@ export function VaultFilters({
               {allDifficulties.map((difficulty) => (
                 <button
                   key={difficulty}
+                  type="button"
                   onClick={() => onSelectedDifficultiesChange(toggleFilterSelection(difficulty, selectedDifficulties))}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                     selectedDifficulties.includes(difficulty)
@@ -125,6 +131,7 @@ export function VaultFilters({
               {allTags.map((tag) => (
                 <button
                   key={tag}
+                  type="button"
                   onClick={() => onSelectedTagsChange(toggleFilterSelection(tag, selectedTags))}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                     selectedTags.includes(tag)
@@ -149,6 +156,7 @@ export function VaultFilters({
               ].map((option) => (
                 <button
                   key={option.id}
+                  type="button"
                   onClick={() => onSortByChange(option.id as SortOption)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all ${
                     sortBy === option.id

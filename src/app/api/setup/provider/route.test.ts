@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { tmpdir } from "node:os";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { GET, POST } from "./route";
+import { DELETE, GET, POST } from "./route";
 
 /**
  * Provider config API tests.
@@ -47,6 +47,14 @@ function postJson(body: unknown): NextRequest {
   });
 }
 
+function deleteJson(body: unknown): NextRequest {
+  return new NextRequest("http://localhost/api/setup/provider", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 test("GET returns deepgram default and all-unconfigured when nothing is set", async () => {
   for (const key of MANAGED_KEYS) delete process.env[key];
   const res = await GET();
@@ -64,6 +72,7 @@ test("POST with a deepgram key persists and is reflected by GET", async () => {
   assert.equal(data.provider, "deepgram");
   assert.equal(data.configured.deepgram, true);
   assert.equal(data.configured.openai, false);
+  assert.equal(data.status.deepgram, "unverified");
 
   // GET now reflects the persisted state via process.env.
   const getRes = await GET();
@@ -115,5 +124,23 @@ test("POST rejects malformed baseUrl", async () => {
 
 test("POST rejects unknown extra fields (strict)", async () => {
   const res = await POST(postJson({ provider: "deepgram", apiKey: "x", evil: true }));
+  assert.equal(res.status, 400);
+});
+
+test("DELETE removes one credential without exposing its value", async () => {
+  await POST(postJson({ provider: "openai", apiKey: "sk-remove-me", baseUrl: "https://gw.example.com/v1" }));
+  const res = await DELETE(deleteJson({ provider: "openai" }));
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.configured.openai, false);
+  assert.equal(data.status.openai, "missing");
+  assert.equal(data.hasBaseUrl, false);
+  assert.equal(JSON.stringify(data).includes("sk-remove-me"), false);
+  assert.equal(process.env.OPENAI_API_KEY, undefined);
+  assert.equal(process.env.OPENAI_BASE_URL, undefined);
+});
+
+test("DELETE rejects an unknown provider and does not change state", async () => {
+  const res = await DELETE(deleteJson({ provider: "azure" }));
   assert.equal(res.status, 400);
 });

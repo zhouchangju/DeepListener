@@ -34,6 +34,7 @@ Read these before opening a pull request.
 | Security boundary for media, secrets, and reports | [Security Policy](../SECURITY.md) |
 | Code of Conduct | [Code of Conduct](../CODE_OF_CONDUCT.md) |
 | Active desktop distribution change (proposal, design, tasks) | [Desktop Distribution OpenSpec](../openspec/changes/desktop-first-distribution/proposal.md) |
+| Ordinary learner first-success target state, implementation status, and adversarial task graph | [Ordinary Learner First Success OpenSpec](../openspec/changes/ordinary-learner-first-success/README.md) · [Current implementation status](../openspec/changes/ordinary-learner-first-success/implementation-status.md) |
 | Desktop packaging internals and runbook (includes runnable audit scripts) | [Desktop Maintainer Runbook](./desktop-maintainer-runbook.md) |
 | Feasibility spike scripts for the desktop shell | [desktop-w0/](./desktop-w0/) — one-off probes (`baseline.md`, `ffmpeg-spike.md`, `usability-protocol.md`, …). Tracked but **not library code**; excluded from ESLint. |
 | Background note on Node.js proxy behavior | [solving-node-proxy-timeout.md](./solving-node-proxy-timeout.md) |

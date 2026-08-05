@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTranslations } from "next-intl/server";
 import { getVaultPageData, type VaultSearchParams } from "./vault-query";
+import DatabaseRecoveryState from "@/components/readiness/DatabaseRecoveryState";
+import { getDatabaseRouteReadiness } from "@/lib/route-readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,11 @@ export default async function VaultPage({
 }: {
   searchParams?: Promise<VaultSearchParams>;
 }) {
+  const readiness = await getDatabaseRouteReadiness();
+  if (!readiness.ok && readiness.check) {
+    return <DatabaseRecoveryState check={readiness.check} />;
+  }
+
   const resolvedSearchParams = await searchParams;
   const t = await getTranslations("vault");
 

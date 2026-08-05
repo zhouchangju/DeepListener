@@ -8,7 +8,7 @@
 | Req | FR-073, DRD-003 (reproducible release manifest), FR-041 (packaged media tools) |
 | Baseline commit | `960ec85` |
 | Date | 2026-07-22 |
-| Scope | Documentation only: a JSON + TypeScript schema definition, acceptance/rejection rules, and a self-contained validator test embedded as a code block (no separate file created this round). |
+| Scope | Implemented contract: the schema/validator lives in `src/lib/runtime-asset-manifest.ts`, with a CommonJS Electron boundary adapter in `desktop/runtime-assets.js`; this document remains the normative field and acceptance reference. |
 
 ## 1. Purpose
 
@@ -41,8 +41,7 @@ release builds.
 ## 3. AssetEntry Schema (TypeScript)
 
 ```ts
-// src/lib/runtime-asset-manifest.ts (contract proposal — NOT created this round)
-// This file is the frozen W0 contract proposal. W1-C T082 implements it.
+// src/lib/runtime-asset-manifest.ts (implemented)
 
 export type AssetName = "ffmpeg" | "ffprobe";
 export type Platform = "darwin" | "win32"; // Node process.platform values
@@ -200,14 +199,14 @@ relativePath) === checksum`.
 
 ## 6. Validator Test (embedded code block — run with `node --import tsx --test`)
 
-This is the contract test for the schema. It is shown here as a code block per the task
-scope (no separate file created this round); W1-C T082 will land it as
-`src/lib/runtime-asset-manifest.test.ts`. It asserts: (a) a valid darwin-arm64 entry is
-accepted, and (b) wrong-platform, checksum-mismatch, and missing-metadata entries are
-rejected with specific reasons.
+This is the normative contract test outline. The executable tests now live in
+`src/lib/runtime-asset-manifest.test.ts` and `desktop/runtime-assets.test.js`. They assert:
+(a) a valid darwin-arm64 entry is accepted, and (b) wrong-platform,
+checksum-mismatch, missing-metadata, nonfree, capability-floor, and path-traversal entries
+are rejected with specific reasons.
 
 ```ts
-// runtime-asset-manifest.test.ts (contract test — embedded here, not yet a file)
+// runtime-asset-manifest.test.ts (contract excerpt; executable file is in src/lib/)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -460,11 +459,13 @@ All fields required by the task are present in the schema:
 
 ## 8. Inputs to Downstream Tasks
 
-- **W1-C T082** implements `runtime-asset-manifest.ts` + the resolver (`matchRuntimeAsset`
-  + `sha256` verify) and lands the test file from §6.
-- **W2-E T151 / W3-B T181** emit `assets.manifest.json` at build time and add a
-  package-content gate that fails release if a required asset is missing or fails
-  `validateAssetEntry`.
+- **W1-C T082** is implemented in `src/lib/runtime-asset-manifest.ts` and
+  `desktop/runtime-assets.js`; both the server-side and Electron-side tests cover
+  `matchRuntimeAsset` and SHA-256 verification.
+- **W2-E T151** is implemented in `scripts/desktop-package.mjs`: it emits
+  `runtime/assets.manifest.json` only when a complete per-target pair and metadata
+  are present, then validates the emitted envelope before packaging. **W3-B T181**
+  remains open until real redistributable binaries and provenance are supplied.
 - **T021's** recommended LGPL build populates the example in §5 once OPEN-001..003 close.
 - **T020's** mandatory capability set (libmp3lame, aresample, volume, concat, mov_text/srt)
   is encoded directly into the §4.2 capability floor, so a binary that cannot serve

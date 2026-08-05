@@ -8,6 +8,7 @@ import { sanitizeHtml } from "@/lib/sanitize-html";
 interface TrackWithNote {
   id: string;
   title: string;
+  displayTitle?: string;
   note: string | null;
   createdAt: Date;
 }
@@ -32,7 +33,7 @@ export default function NotesList({ tracks }: { tracks: TrackWithNote[] }) {
           <CardHeader className="bg-muted/50 border-b border-border py-3 px-4 flex flex-row items-center justify-between">
             <Link href={`/practice/${track.id}`} className="hover:underline">
                 <CardTitle className="text-base font-semibold text-primary">
-                {track.title}
+                {track.displayTitle ?? track.title}
                 </CardTitle>
             </Link>
             <span className="text-xs text-muted-foreground">

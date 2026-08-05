@@ -19,6 +19,7 @@
  *   node scripts/desktop-package.mjs [--staging <dir>] [--no-build]
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   cpSync,
@@ -33,6 +34,10 @@ import {
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { validateManifest } = require("../desktop/runtime-assets.js");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..");
@@ -44,6 +49,19 @@ function flag(name) {
 }
 const staging = path.resolve(flag("staging") || path.join(repo, ".desktop-build", "standalone"));
 const skipBuild = args.includes("--no-build");
+const targetPlatform = process.env.DEEPLISTENER_TARGET_PLATFORM || process.platform;
+const targetArchitecture = process.env.DEEPLISTENER_TARGET_ARCH || process.arch;
+const runtimeTarget = `${targetPlatform}-${targetArchitecture}`;
+
+const prismaEngines = {
+  "darwin-arm64": "node_modules/.prisma/client/libquery_engine-darwin-arm64.dylib.node",
+  "darwin-x64": "node_modules/.prisma/client/libquery_engine-darwin.dylib.node",
+  "win32-x64": "node_modules/.prisma/client/query_engine-windows.dll.node",
+};
+const prismaEnginePath = prismaEngines[runtimeTarget];
+if (!prismaEnginePath) {
+  fail(`unsupported Desktop runtime target ${runtimeTarget}; supported targets: ${Object.keys(prismaEngines).join(", ")}`);
+}
 
 function log(msg) {
   process.stdout.write(`[desktop-package] ${msg}\n`);
@@ -148,33 +166,95 @@ mkdirSync(path.dirname(migrationsDst), { recursive: true });
 cpSync(migrationsSrc, migrationsDst, { recursive: true });
 log(`copied prisma/migrations (${countMigrations(migrationsDst)} migrations)`);
 
-// --- 6b. optionally copy vendored FFmpeg/ffprobe binaries (DFS-005) -----
-// DeepListener's media import (video MP3 extraction, audio export) needs
-// ffmpeg/ffprobe. Desktop resolves them via env → vendored → system PATH.
-// Vendoring is OPTIONAL: if vendor/ffmpeg/{ffmpeg,ffprobe} are present in the
-// repo, they are copied into the bundle so the app works without a system
-// install. If absent, the app relies on the user's system PATH (acceptable
-// for technical users). This keeps the bundle small by default.
+// --- 6b. copy target-specific FFmpeg/ffprobe binaries (DFS-005/T082) -----
+// A packaged app may execute only binaries accompanied by a checked-in asset
+// metadata file. The metadata is intentionally not invented here: provenance,
+// license, capability, and build flags belong to the release asset owner.
 const ffmpegVendorSrc = path.join(repo, "vendor", "ffmpeg");
-const ffmpegVendorDst = path.join(staging, "vendor", "ffmpeg");
-const ffmpegBinaries = ["ffmpeg", "ffprobe"];
+const ffmpegTargetSrc = path.join(ffmpegVendorSrc, runtimeTarget);
+const ffmpegRuntimeDst = path.join(staging, "runtime", runtimeTarget);
+const executableNames = targetPlatform === "win32"
+  ? { ffmpeg: "ffmpeg.exe", ffprobe: "ffprobe.exe" }
+  : { ffmpeg: "ffmpeg", ffprobe: "ffprobe" };
 let copiedBinaries = 0;
-for (const bin of ffmpegBinaries) {
-  const src = path.join(ffmpegVendorSrc, bin);
-  if (existsSync(src)) {
-    if (copiedBinaries === 0) mkdirSync(ffmpegVendorDst, { recursive: true });
-    cpSync(src, path.join(ffmpegVendorDst, bin));
+for (const [name, executable] of Object.entries(executableNames)) {
+  const candidates = [
+    path.join(ffmpegTargetSrc, executable),
+    // Legacy development layout is accepted as an input only; the output is
+    // always normalized to runtime/<platform>-<arch>/.
+    path.join(ffmpegVendorSrc, executable),
+    targetPlatform === "win32" ? path.join(ffmpegTargetSrc, name) : null,
+    targetPlatform === "win32" ? path.join(ffmpegVendorSrc, name) : null,
+  ].filter(Boolean);
+  const src = candidates.find((candidate) => existsSync(candidate));
+  if (src) {
+    if (copiedBinaries === 0) mkdirSync(ffmpegRuntimeDst, { recursive: true });
+    cpSync(src, path.join(ffmpegRuntimeDst, executable));
     // Preserve executable bit (cpSync copies mode, but be explicit for safety).
     try {
-      chmodSync(path.join(ffmpegVendorDst, bin), 0o755);
+      chmodSync(path.join(ffmpegRuntimeDst, executable), 0o755);
     } catch { /* non-fatal on platforms that reject chmod */ }
     copiedBinaries++;
   }
 }
 if (copiedBinaries > 0) {
-  log(`copied ${copiedBinaries} vendored ffmpeg binaries → ${path.relative(staging, ffmpegVendorDst)}`);
+  log(`copied ${copiedBinaries} vendored ffmpeg binaries → ${path.relative(staging, ffmpegRuntimeDst)}`);
 } else {
-  log("no vendored ffmpeg binaries found; app will rely on system PATH");
+  log(`no vendored FFmpeg pair found for ${runtimeTarget}; packaged runtime manifest will be absent`);
+}
+
+const metadataCandidates = [
+  path.join(ffmpegTargetSrc, "assets.json"),
+  path.join(ffmpegVendorSrc, `${runtimeTarget}.assets.json`),
+];
+const metadataPath = metadataCandidates.find((candidate) => existsSync(candidate));
+if (copiedBinaries === 2 && metadataPath) {
+  try {
+    const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+    const rawEntries = Array.isArray(metadata) ? metadata : metadata.assets;
+    if (!Array.isArray(rawEntries) || rawEntries.length !== 2) {
+      fail(`FFmpeg metadata must contain exactly two assets: ${metadataPath}`);
+    }
+    const assets = rawEntries.map((entry) => {
+      const name = entry.name;
+      const executable = executableNames[name];
+      if (!executable || typeof entry !== "object" || entry === null) {
+        fail(`FFmpeg metadata has an invalid asset name: ${String(name)}`);
+      }
+      const filePath = path.join(ffmpegRuntimeDst, executable);
+      const checksum = createHash("sha256").update(readFileSync(filePath)).digest("hex");
+      return {
+        ...entry,
+        name,
+        platform: targetPlatform,
+        architecture: targetArchitecture,
+        relativePath: `runtime/${runtimeTarget}/${executable}`,
+        checksum,
+      };
+    });
+    mkdirSync(path.join(staging, "runtime"), { recursive: true });
+    writeFileSync(
+      path.join(staging, "runtime", "assets.manifest.json"),
+      `${JSON.stringify({
+        manifestVersion: 1,
+        generatedAt: new Date().toISOString(),
+        generatedFromCommit: process.env.GIT_COMMIT || "working-tree",
+        releaseChannel: process.env.DEEPLISTENER_RELEASE_CHANNEL || "internal",
+        assets,
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    const emittedManifest = JSON.parse(readFileSync(path.join(staging, "runtime", "assets.manifest.json"), "utf8"));
+    const manifestValidation = validateManifest(emittedManifest);
+    if (!manifestValidation.ok) {
+      fail(`emitted runtime asset manifest failed validation: ${manifestValidation.reason}`);
+    }
+    log(`wrote verified runtime asset manifest for ${runtimeTarget}`);
+  } catch (error) {
+    fail(`failed to generate FFmpeg runtime manifest: ${error instanceof Error ? error.message : String(error)}`);
+  }
+} else if (copiedBinaries === 2) {
+  log(`FFmpeg pair copied but metadata is missing; refusing to emit a runtime manifest for ${runtimeTarget}`);
 }
 
 // --- 7. verify required runtime assets --------------------------------
@@ -183,7 +263,7 @@ const required = [
   ["node_modules/@prisma/client/default.js", "Prisma client entrypoint"],
   ["node_modules/.prisma/client/index.js", "Prisma generated client"],
   ["node_modules/.prisma/client/schema.prisma", "Prisma generated schema"],
-  ["node_modules/.prisma/client/libquery_engine-darwin-arm64.dylib.node", "Prisma darwin-arm64 engine"],
+  [prismaEnginePath, `Prisma ${runtimeTarget} query engine`],
   [".next/static", "Next static assets"],
   ["prisma/migrations", "Migration SQL"],
 ];
@@ -200,8 +280,8 @@ const manifest = {
   schemaVersion: 1,
   applicationVersion: pkg.version,
   packagedAt: new Date().toISOString(),
-  platform: process.platform,
-  architecture: process.arch,
+  platform: targetPlatform,
+  architecture: targetArchitecture,
   nodeVersion: process.version,
   nextVersion: pkg.dependencies?.next,
   prismaVersion: pkg.dependencies?.["@prisma/client"],
@@ -209,8 +289,9 @@ const manifest = {
     standalone: true,
     staticAssetsCopied: true,
     migrationsBundled: countMigrations(migrationsDst),
-    prismaEngine: detectEngineName(staging),
+    prismaEngine: path.basename(prismaEnginePath),
     vendoredFfmpeg: copiedBinaries,
+    runtimeAssetManifest: existsSync(path.join(staging, "runtime", "assets.manifest.json")),
   },
   // NO secrets, NO user data, NO absolute user paths.
 };
@@ -228,13 +309,5 @@ function countMigrations(dir) {
     return readdirSync(dir).filter((d) => !d.endsWith(".toml") && !d.startsWith(".")).length;
   } catch {
     return 0;
-  }
-}
-function detectEngineName(stagingRoot) {
-  try {
-    const dir = path.join(stagingRoot, "node_modules/.prisma/client");
-    return readdirSync(dir).find((f) => f.startsWith("libquery_engine")) || null;
-  } catch {
-    return null;
   }
 }

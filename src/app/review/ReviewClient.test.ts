@@ -52,3 +52,9 @@ test("review client delegates mutation response parsing to the shared helper", (
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\("Failed to update"\)/);
   assert.doesNotMatch(source, /if \(!res\.ok\) throw new Error\('Failed to archive'\)/);
 });
+
+test("review grade success invalidates the global due-count badge", () => {
+  const source = readFileSync(new URL("./ReviewClient.tsx", import.meta.url), "utf8");
+  assert.match(source, /REVIEW_COUNT_INVALIDATED_EVENT/);
+  assert.match(source, /window\.dispatchEvent\(new Event\(REVIEW_COUNT_INVALIDATED_EVENT\)\)/);
+});

@@ -42,13 +42,20 @@ export function ReviewCard({
   return (
     <Card className="min-h-[300px] flex flex-col justify-between relative">
       <div className="absolute top-4 right-4 z-10">
-        <HelpCircle
-          className="h-5 w-5 text-muted-foreground cursor-help hover:text-foreground transition-colors"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label={t("shortcutGuideTitle")}
+          title={t("shortcutGuideTitle")}
           onClick={(e) => {
             e.stopPropagation();
             onToggleHelpTooltip();
           }}
-        />
+        >
+          <HelpCircle className="h-5 w-5" aria-hidden="true" />
+        </Button>
         <div
           className={`absolute top-6 right-0 w-64 bg-popover text-popover-foreground border border-border text-xs rounded-lg p-3 transition-opacity shadow-lg z-50 ${
             showHelpTooltip ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -71,8 +78,8 @@ export function ReviewCard({
       </div>
 
       <CardContent className="pt-10 text-center flex-grow">
-        <Button variant="secondary" size="lg" className="rounded-full h-16 w-16 mb-4" onClick={onPlayAudio}>
-          <Play className="h-8 w-8" />
+        <Button variant="secondary" size="lg" className="rounded-full h-16 w-16 mb-4" onClick={onPlayAudio} aria-label={t("playAudio")} title={t("playAudio")}>
+          <Play className="h-8 w-8" aria-hidden="true" />
         </Button>
 
         {showAnswer && (

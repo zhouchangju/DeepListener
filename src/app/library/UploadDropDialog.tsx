@@ -34,6 +34,7 @@ export default function UploadDropDialog({
   processFiles,
 }: UploadDropDialogProps) {
   const t = useTranslations("library");
+  const commonT = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +84,7 @@ export default function UploadDropDialog({
           {uploading ? uploadingLabel : triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" closeLabel={commonT("close")}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -120,7 +121,7 @@ export default function UploadDropDialog({
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {t("chooseFolder")}
+            {t(multiple ? "chooseFolder" : "chooseFile")}
           </Button>
         </div>
       </DialogContent>

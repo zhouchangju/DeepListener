@@ -1,13 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as fs from "fs";
 import { mimeFromExtension } from "@/lib/media-storage";
-import { TranscriptionProvider, TranscriptionResponse, TranscriptionSegment } from "./types";
+import { TranscriptionProvider, TranscriptionResponse, TranscriptionSegment, type TranscriptionProviderConfig } from "./types";
 
 export class GoogleProvider implements TranscriptionProvider {
   private genAI: GoogleGenerativeAI;
 
-  constructor() {
-    const apiKey = process.env.GOOGLE_API_KEY;
+  constructor(config?: TranscriptionProviderConfig) {
+    const apiKey = config?.apiKey ?? process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       throw new Error("Google API key is not set. Set GOOGLE_API_KEY in your environment.");
     }
@@ -76,7 +76,7 @@ export class GoogleProvider implements TranscriptionProvider {
         rawJson: cleaned,
       };
     } catch {
-      console.error("Failed to parse Gemini response as JSON:", responseText);
+      console.error("Gemini transcription response could not be parsed");
       throw new Error("Gemini transcription failed to return valid JSON format.");
     }
   }

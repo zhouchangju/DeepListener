@@ -61,6 +61,7 @@ const SentenceItem = memo(function SentenceItem({
     copiedToast: string;
     savedShort: string;
     captureShort: string;
+    selectSentence: string;
   };
   onClick: () => void;
   onShadowing: (e: React.MouseEvent) => void;
@@ -71,6 +72,19 @@ const SentenceItem = memo(function SentenceItem({
     <div
       id={`sentence-${i}`}
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isActive}
+      aria-label={labels.selectSentence}
+      onKeyDown={(event) => {
+        // Inner action buttons own their keyboard events. Only the card itself
+        // should select the sentence when it receives Enter/Space.
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={`group flex flex-col sm:flex-row items-start gap-2 sm:gap-4 p-4 rounded-xl transition-all cursor-pointer border-2 mb-2 ${
         isActive
           ? "bg-primary/10 border-primary/15 shadow-sm dark:bg-primary/10 dark:border-primary/30"
@@ -91,6 +105,7 @@ const SentenceItem = memo(function SentenceItem({
 
       <div className="flex-grow w-full">
         <div
+          aria-hidden={isBlurred}
           className={`text-[15px] sm:text-[16px] leading-relaxed transition-all duration-300 ${
             isBlurred ? "blur-sm select-none text-muted-foreground/60" : "text-foreground"
           }`}
@@ -121,6 +136,8 @@ const SentenceItem = memo(function SentenceItem({
             size="sm"
             className="h-9 px-3 gap-1.5 border-border flex-1"
             onClick={onShadowing}
+            title={labels.shadowing}
+            aria-label={labels.shadowing}
           >
             <Mic2 className="h-4 w-4 text-primary" />
           </Button>
@@ -129,6 +146,8 @@ const SentenceItem = memo(function SentenceItem({
             size="sm"
             className="h-9 px-3 gap-1.5 border-border flex-1"
             onClick={onCopy}
+            title={labels.copy}
+            aria-label={labels.copy}
           >
             <Copy className="h-4 w-4 text-muted-foreground" />
           </Button>
@@ -141,6 +160,8 @@ const SentenceItem = memo(function SentenceItem({
                 : "border-border text-muted-foreground"
             }`}
             onClick={onCapture}
+            title={isSaved ? labels.captured : labels.capture}
+            aria-label={isSaved ? labels.captured : labels.capture}
           >
             {isSaved ? (
               <BookmarkCheck className="h-4 w-4" />
@@ -156,30 +177,35 @@ const SentenceItem = memo(function SentenceItem({
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 p-0"
+          className="h-9 min-w-9 w-auto gap-1.5 px-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
           title={labels.shadowing}
+          aria-label={labels.shadowing}
           onClick={onShadowing}
         >
           <Mic2 className="h-5 w-5" />
+          <span className="hidden lg:inline text-xs" aria-hidden="true">{labels.shadowing}</span>
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 p-0"
+          className="h-9 min-w-9 w-auto gap-1.5 px-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
           title={labels.copy}
+          aria-label={labels.copy}
           onClick={onCopy}
         >
           <Copy className="h-5 w-5" />
+          <span className="hidden lg:inline text-xs" aria-hidden="true">{labels.copy}</span>
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          className={`h-9 w-9 p-0 ${
+          className={`h-9 min-w-9 w-auto gap-1.5 px-2 ${
             isSaved
               ? "text-amber-500 hover:text-amber-600"
               : "text-muted-foreground hover:text-primary hover:bg-primary/10"
           }`}
           title={isSaved ? labels.captured : labels.capture}
+          aria-label={isSaved ? labels.captured : labels.capture}
           onClick={onCapture}
         >
           {isSaved ? (
@@ -187,6 +213,9 @@ const SentenceItem = memo(function SentenceItem({
           ) : (
             <Save className="h-5 w-5" />
           )}
+          <span className="hidden lg:inline text-xs" aria-hidden="true">
+            {isSaved ? labels.savedShort : labels.captureShort}
+          </span>
         </Button>
       </div>
     </div>
@@ -236,6 +265,7 @@ export const SentenceList = memo(function SentenceList({
           const isActive = i === activeSentenceIndex;
           const isBlurred = blindMode && !revealedIds.has(s.id);
           const isSaved = !!s.reviewItem;
+          const itemLabels = { ...labels, selectSentence: t("selectSentence", { index: i + 1 }) };
 
           return (
             <SentenceItem
@@ -246,7 +276,7 @@ export const SentenceList = memo(function SentenceList({
               isBlurred={isBlurred}
               isSaved={isSaved}
               debugMode={debugMode}
-              labels={labels}
+              labels={itemLabels}
               onClick={() => onSentenceClick(s, i)}
               onShadowing={(e) => {
                 e.stopPropagation();

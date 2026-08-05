@@ -14,6 +14,8 @@ import {
 } from "./upload-policy";
 import type { RuntimeLayout } from "./runtime-paths";
 
+const LEGACY_ROOT = path.resolve("repo-fixture");
+
 test("sanitizeUploadFilename removes path separators and control characters", () => {
   assert.equal(sanitizeUploadFilename("../evil\ntrack.mp3"), "evil-track.mp3");
   assert.equal(sanitizeUploadFilename("folder\\voice memo?.wav"), "folder-voice-memo-.wav");
@@ -49,39 +51,39 @@ test("buildUploadTarget stores original videos outside the remotely synced uploa
   const target = buildUploadTarget({
     originalName: "lesson.mp4",
     uniqueId: "fixed-id",
-    rootDir: "/repo",
+    rootDir: LEGACY_ROOT,
     mediaKind: "VIDEO",
   });
 
   assert.equal(target.mediaUrl, "/videos/fixed-id-lesson.mp4");
-  assert.equal(target.uploadPath, path.join("/repo", "public", "videos", "fixed-id-lesson.mp4"));
+  assert.equal(target.uploadPath, path.join(LEGACY_ROOT, "public", "videos", "fixed-id-lesson.mp4"));
 });
 
 test("buildUploadTarget keeps uploads inside public/uploads", () => {
   const target = buildUploadTarget({
     originalName: "../lesson one.mp3",
     uniqueId: "fixed-id",
-    rootDir: "/repo",
+    rootDir: LEGACY_ROOT,
   });
 
   assert.equal(target.fileName, "fixed-id-lesson-one.mp3");
   assert.equal(target.audioUrl, "/uploads/fixed-id-lesson-one.mp3");
-  assert.equal(target.uploadPath, path.join("/repo", "public", "uploads", "fixed-id-lesson-one.mp3"));
+  assert.equal(target.uploadPath, path.join(LEGACY_ROOT, "public", "uploads", "fixed-id-lesson-one.mp3"));
 });
 
 test("resolveStoredUploadPath accepts only stored uploads inside public/uploads", () => {
   assert.equal(
-    resolveStoredUploadPath("/uploads/lesson.mp3", "/repo"),
-    path.join("/repo", "public", "uploads", "lesson.mp3")
+    resolveStoredUploadPath("/uploads/lesson.mp3", LEGACY_ROOT),
+    path.join(LEGACY_ROOT, "public", "uploads", "lesson.mp3")
   );
   assert.equal(
-    resolveStoredUploadPath("uploads/lesson.mp3", "/repo"),
-    path.join("/repo", "public", "uploads", "lesson.mp3")
+    resolveStoredUploadPath("uploads/lesson.mp3", LEGACY_ROOT),
+    path.join(LEGACY_ROOT, "public", "uploads", "lesson.mp3")
   );
 
-  assert.equal(resolveStoredUploadPath("/uploads/../../secret.txt", "/repo"), null);
-  assert.equal(resolveStoredUploadPath("https://example.com/audio.mp3", "/repo"), null);
-  assert.equal(resolveStoredUploadPath("/other/lesson.mp3", "/repo"), null);
+  assert.equal(resolveStoredUploadPath("/uploads/../../secret.txt", LEGACY_ROOT), null);
+  assert.equal(resolveStoredUploadPath("https://example.com/audio.mp3", LEGACY_ROOT), null);
+  assert.equal(resolveStoredUploadPath("/other/lesson.mp3", LEGACY_ROOT), null);
 });
 
 // --- W1/W2-B: runtime-paths default resolution (PDR-002) -------------------

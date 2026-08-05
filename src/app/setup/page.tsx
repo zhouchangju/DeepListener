@@ -4,8 +4,10 @@ import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { evaluateSetupReadiness, type ReadinessStatus } from "@/lib/setup-readiness";
-import { getProviderSummary } from "@/lib/secrets-store";
+import { getProviderSummaryAsync } from "@/lib/secrets-store";
 import ProviderCardActions from "./ProviderCardActions";
+import TranscriptionDecisionGuide from "./TranscriptionDecisionGuide";
+import DataSafetyActions from "./DataSafetyActions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,7 @@ export default async function SetupPage() {
   const checks = await evaluateSetupReadiness();
   const actions = checks.filter((check) => check.status === "action").length;
   const ready = checks.filter((check) => check.status === "ready").length;
-  const providerSummary = getProviderSummary();
+  const providerSummary = await getProviderSummaryAsync();
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-10 md:py-16">
@@ -56,7 +58,11 @@ export default async function SetupPage() {
             <p className="mt-1 text-sm text-muted-foreground">{t("summaryDetail", { ready, total: checks.length })}</p>
           </div>
           {actions > 0 ? (
-            <Button disabled>{t("resolveFirst")}</Button>
+            <Button asChild variant="outline">
+              <Link href="#setup-readiness-checks">
+                {t("reviewChecks")} <ArrowRight />
+              </Link>
+            </Button>
           ) : (
             <Button asChild>
               <Link href="/library">{t("openLibrary")} <ArrowRight /></Link>
@@ -65,7 +71,9 @@ export default async function SetupPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <TranscriptionDecisionGuide />
+
+      <div id="setup-readiness-checks" className="grid scroll-mt-24 gap-4 md:grid-cols-2">
         {checks.map((check) => {
           const style = statusStyles[check.status];
           const Icon = check.status === "ready" ? CheckCircle2 : check.status === "action" ? AlertTriangle : CircleDashed;
@@ -73,7 +81,7 @@ export default async function SetupPage() {
             ? t("configured")
             : t(check.status);
           return (
-            <Card key={check.id} className="gap-4 py-5">
+            <Card id={check.id === "provider" ? "provider-settings" : undefined} key={check.id} className="gap-4 py-5">
               <CardHeader className="gap-3 px-5">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -83,8 +91,14 @@ export default async function SetupPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 px-5 text-sm">
-                <p className="text-muted-foreground">{t(check.detailKey as SetupKey, check.values)}</p>
-                {check.fixKey && <p className="rounded-lg bg-muted px-3 py-2 font-medium text-foreground">{t("nextPrefix")} {t(check.fixKey as SetupKey, check.values)}</p>}
+                <p className="text-muted-foreground">{t(`status${check.status[0].toUpperCase()}${check.status.slice(1)}` as SetupKey)}</p>
+                <details className="rounded-lg border bg-background/60 px-3 py-2">
+                  <summary className="cursor-pointer font-medium text-foreground">{t("showDetails")}</summary>
+                  <div className="mt-2 space-y-3 text-muted-foreground">
+                    <p>{t(check.detailKey as SetupKey, check.values)}</p>
+                    {check.fixKey && <p className="rounded-lg bg-muted px-3 py-2 font-medium text-foreground">{t("nextPrefix")} {t(check.fixKey as SetupKey, check.values)}</p>}
+                  </div>
+                </details>
                 {check.id === "provider" && (
                   <ProviderCardActions summary={providerSummary} />
                 )}
@@ -93,6 +107,8 @@ export default async function SetupPage() {
           );
         })}
       </div>
+
+      <DataSafetyActions />
 
       <div className="mt-8 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm dark:border-amber-400/25 dark:bg-amber-500/10">
         <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-300" />

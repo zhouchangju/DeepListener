@@ -50,9 +50,15 @@ yarn-error.log*
 /vendor/ffmpeg/ffprobe
 /vendor/ffmpeg/*.exe
 /vendor/ffmpeg/*.dylib
+/vendor/ffmpeg/*/ffmpeg
+/vendor/ffmpeg/*/ffprobe
+/vendor/ffmpeg/*/ffmpeg.exe
+/vendor/ffmpeg/*/ffprobe.exe
+/vendor/ffmpeg/*/assets.json
 
 # local UI-configured secrets (transcription provider keys etc.)
 /settings/secrets.json
+/settings/settings.json
 
 # vercel
 .vercel
@@ -70,6 +76,10 @@ docs/OMSCS
 
 # desktop build artifacts (standalone bundle + dmg + unpacked .app)
 .desktop-build/
+
+# disposable local build/test staging
+/.build-temp-*/
+/.tmp/
 
 # disposable Electron feasibility spike (verdict archived under docs/review/;
 # production shell lives in desktop/). Kept ignored in case it is rebuilt locally.

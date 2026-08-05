@@ -32,6 +32,7 @@ const STATUS_MESSAGE_KEYS: Record<TrackStatus, "unlearnt" | "intensive" | "analy
 interface Track {
   id: string;
   title: string;
+  displayTitle?: string;
   isArchived: boolean;
   status: string;
   createdAt: Date;
@@ -167,6 +168,7 @@ export default function TrackList({
         {tracks.map((track) => {
           const statusConfig = getTrackStatusDisplay(track.status);
           const isSelected = selectedTrackIds.has(track.id);
+          const displayTitle = track.displayTitle ?? track.title;
 
           const cardContent = (
             <Card
@@ -180,7 +182,7 @@ export default function TrackList({
               : {
                   role: "link",
                   tabIndex: 0,
-                  "aria-label": `Open ${track.title}`,
+                  "aria-label": t("openTrack", { title: displayTitle }),
                   onClick: () => router.push(`/practice/${track.id}`),
                   onKeyDown: (e: React.KeyboardEvent) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -196,7 +198,7 @@ export default function TrackList({
                   type="button"
                   role="checkbox"
                   aria-checked={isSelected}
-                  aria-label={`Select ${track.title}`}
+                  aria-label={t("selectTrack", { title: displayTitle })}
                   className="absolute top-3 left-3 z-10"
                   onClick={(e) => {
                     e.preventDefault();
@@ -227,7 +229,7 @@ export default function TrackList({
                   </div>
 
                   <CardTitle className="leading-tight break-words text-lg">
-                    {track.title}
+                    {displayTitle}
                   </CardTitle>
                   
                   <div className="absolute top-4 right-4">

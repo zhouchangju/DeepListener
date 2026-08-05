@@ -33,6 +33,14 @@ const net = require("node:net");
 const path = require("node:path");
 const fs = require("node:fs");
 const os = require("node:os");
+const { createBoundedLogWriter } = require("./bounded-log.js");
+const { validateDiagnosticsJson } = require("./native-export.js");
+const {
+  exportBundle,
+  removeOwnedDirectory,
+  stageBundle,
+} = require("./native-backup.js");
+const { resolvePackagedRuntimeAssets } = require("./runtime-assets.js");
 
 const HEADLESS = !!process.env.DEEPLISTENER_HEADLESS;
 const HEALTH_TIMEOUT_MS = Number(process.env.DEEPLISTENER_HEALTH_TIMEOUT_MS || 30000);
@@ -71,15 +79,40 @@ let mainWindow = null;
 let healthTimer = null;
 let shuttingDown = false;
 let dataRoot = "";
+let recoveryMode = false;
+let fileLogWriter = null;
+let launchHeaderInterceptorInstalled = false;
+
+function getFileLogWriter() {
+  if (fileLogWriter) return fileLogWriter;
+  try {
+    const root = dataRoot || resolveDataRoot();
+    fileLogWriter = createBoundedLogWriter({
+      directory: path.join(root, "logs"),
+      fileName: "desktop.log",
+      maxBytes: Number(process.env.DEEPLISTENER_LOG_MAX_BYTES || 512 * 1024),
+      maxFiles: 3,
+    });
+  } catch {
+    // app.getPath() can be unavailable before Electron is ready. The next
+    // log call will retry; stdout/stderr remain the fallback meanwhile.
+    fileLogWriter = null;
+  }
+  return fileLogWriter;
+}
 
 function log(msg) {
-  // Bounded logging; never include tokens or secrets.
-  const safe = String(msg).replace(/token=[^\s]+/gi, "token=REDACTED");
+  // Bounded logging; never include tokens, secrets, or private filesystem
+  // paths. The latter commonly appear in FFmpeg resolution and startup
+  // errors, which are often shared as diagnostics by non-technical users.
+  const safe = redact(msg);
   process.stdout.write(`[desktop] ${safe}\n`);
+  getFileLogWriter()?.write(`[desktop] ${safe}\n`);
 }
 function logError(msg) {
-  const safe = String(msg).replace(/token=[^\s]+/gi, "token=REDACTED");
+  const safe = redact(msg);
   process.stderr.write(`[desktop] ${safe}\n`);
+  getFileLogWriter()?.write(`[desktop] ${safe}\n`);
 }
 
 // ========================================================================
@@ -98,6 +131,36 @@ function ensureDataLayout(root) {
     "exports", "backups", "logs", "settings", "runtime",
   ]) {
     fs.mkdirSync(path.join(root, sub), { recursive: true });
+  }
+}
+
+// Keep only a bounded, categorical failure summary across restarts. The raw
+// error remains in the redacted process log; this file is safe for the Setup
+// diagnostics export to read and never contains a path, token, or user data.
+function writeStartupFailureSummary(code, phase) {
+  try {
+    const root = dataRoot || resolveDataRoot();
+    const directory = path.join(root, "runtime");
+    fs.mkdirSync(directory, { recursive: true });
+    const target = path.join(directory, "startup-failure.json");
+    const temporary = `${target}.tmp-${process.pid}-${Date.now()}`;
+    fs.writeFileSync(
+      temporary,
+      `${JSON.stringify({ code: String(code).slice(0, 80), phase: String(phase).slice(0, 80), occurredAt: new Date().toISOString() })}\n`,
+      { encoding: "utf8", mode: 0o600 },
+    );
+    fs.renameSync(temporary, target);
+  } catch {
+    // Diagnostics must never make a startup failure worse.
+  }
+}
+
+function clearStartupFailureSummary() {
+  try {
+    const root = dataRoot || resolveDataRoot();
+    fs.rmSync(path.join(root, "runtime", "startup-failure.json"), { force: true });
+  } catch {
+    // Best effort only; stale summaries are still redacted and bounded.
   }
 }
 
@@ -141,27 +204,51 @@ function databaseFilePath(root) {
 // ========================================================================
 // DeepListener uses fluent-ffmpeg for media import, video MP3 extraction, and
 // audio export. fluent-ffmpeg resolves the binary via (1) FFMPEG_PATH env,
-// (2) system PATH lookup. Desktop resolves a usable binary in this priority:
-//   1. explicit FFMPEG_PATH / FFPROBE_PATH env (dev/test override);
-//   2. vendored binaries at <resourcesPath>/ffmpeg/{ffmpeg,ffprobe} or
-//      <__dirname>/vendor/ffmpeg/{ffmpeg,ffprobe} (dev fallback);
-//   3. system PATH (do nothing — fluent-ffmpeg's default).
-// We only set the env when we found a concrete file, so a system install keeps
-// working unchanged. This keeps the bundle small for technical users who have
-// FFmpeg installed, while still supporting a vendored fallback for packaging.
+// In a packaged Desktop app the manifest/checksum pair is the only accepted
+// source. Explicit paths are set even on failure, using a guaranteed-missing
+// sentinel, so fluent-ffmpeg cannot silently fall back to a user's PATH.
+// Development keeps the explicit env and system PATH fallback.
 function resolveFfmpegEnv() {
+  const standaloneRoot = resolveStandaloneRoot();
+  if (app.isPackaged) {
+    const verified = standaloneRoot
+      ? resolvePackagedRuntimeAssets({
+          resourcesRoot: standaloneRoot,
+          manifestPath: path.join(standaloneRoot, "runtime", "assets.manifest.json"),
+          platform: process.platform,
+          architecture: process.arch,
+        })
+      : { ok: false, reason: "standalone runtime is unavailable" };
+    if (verified.ok) {
+      log("verified packaged FFmpeg/ffprobe runtime assets");
+      return {
+        FFMPEG_PATH: verified.ffmpegPath,
+        FFPROBE_PATH: verified.ffprobePath,
+        DEEPLISTENER_RUNTIME_ASSET_STATUS: "verified",
+      };
+    }
+    const missingRoot = standaloneRoot || path.join(process.resourcesPath || __dirname, "standalone");
+    logError(`packaged FFmpeg/ffprobe rejected: ${verified.reason}`);
+    return {
+      // Explicit non-existent paths prevent fluent-ffmpeg from searching PATH.
+      FFMPEG_PATH: path.join(missingRoot, "runtime", "__missing__", "ffmpeg"),
+      FFPROBE_PATH: path.join(missingRoot, "runtime", "__missing__", "ffprobe"),
+      DEEPLISTENER_RUNTIME_ASSET_STATUS: "missing",
+    };
+  }
+
   const candidates = [
     process.env.FFMPEG_PATH,
-    process.resourcesPath && path.join(process.resourcesPath, "ffmpeg", "ffmpeg"),
-    path.join(__dirname, "vendor", "ffmpeg", "ffmpeg"),
+    process.resourcesPath && path.join(process.resourcesPath, "ffmpeg", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"),
+    path.join(__dirname, "vendor", "ffmpeg", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"),
   ].filter(Boolean);
   const probeCandidates = [
     process.env.FFPROBE_PATH,
-    process.resourcesPath && path.join(process.resourcesPath, "ffmpeg", "ffprobe"),
-    path.join(__dirname, "vendor", "ffmpeg", "ffprobe"),
+    process.resourcesPath && path.join(process.resourcesPath, "ffmpeg", process.platform === "win32" ? "ffprobe.exe" : "ffprobe"),
+    path.join(__dirname, "vendor", "ffmpeg", process.platform === "win32" ? "ffprobe.exe" : "ffprobe"),
   ].filter(Boolean);
 
-  const env = {};
+  const env = { DEEPLISTENER_RUNTIME_ASSET_STATUS: "development" };
   const ffmpeg = candidates.find((p) => fs.existsSync(p));
   if (ffmpeg) {
     env.FFMPEG_PATH = ffmpeg;
@@ -172,23 +259,16 @@ function resolveFfmpegEnv() {
     env.FFPROBE_PATH = ffprobe;
     log(`ffprobe resolved: ${ffprobe}`);
   }
-  // FR-041: a packaged app must not silently fall back to "maybe FFmpeg is on
-  // PATH". If NEITHER binary is vendored, warn loudly. This is a packaging
-  // defect (Task 7b is responsible for dropping binaries under vendor/ffmpeg/);
-  // on machines without a system FFmpeg, media import/export will fail. We do
-  // NOT hard-fail — the readiness page surfaces the missing runtime — but the
-  // silent PATH fallback is replaced with an unmistakable operator warning.
+  // Development-only warning. A packaged build takes the fail-closed branch
+  // above and never relies on PATH.
   if (!ffmpeg && !ffprobe) {
     logError(
-      "FFmpeg/ffprobe NOT vendored: no FFMPEG_PATH/FFPROBE_PATH will be set. " +
-      "Media import/export will fail on machines without a system FFmpeg install. " +
-      "This is a packaging defect — vendor the binaries under <resources>/ffmpeg/ " +
-      "or desktop/vendor/ffmpeg/ (see Task 7b). Relying on system PATH as a fallback.",
+      "FFmpeg/ffprobe are unavailable in development; media import/export will use the system PATH if present.",
     );
   } else if (!ffmpeg) {
-    logError("ffmpeg binary NOT vendored; media import/export may fail without a system FFmpeg. Packaging defect (Task 7b).");
+    logError("ffmpeg binary is unavailable in development; media import/export may fail without a system FFmpeg.");
   } else if (!ffprobe) {
-    logError("ffprobe binary NOT vendored; some media probing may fail without a system ffprobe. Packaging defect (Task 7b).");
+    logError("ffprobe binary is unavailable in development; media probing may fail without a system ffprobe.");
   }
   return env;
 }
@@ -226,6 +306,7 @@ function startService(port, root, dbFile) {
         DEEPLISTENER_MIGRATIONS_DIR: path.join(standaloneRoot, "prisma", "migrations"),
         // per-launch token injected via env; the service middleware (W3 T173)
         // will validate it for privileged endpoints. Renderer never sees it.
+        DEEPLISTENER_REQUIRE_LAUNCH_TOKEN: "1",
         DEEPLISTENER_LAUNCH_TOKEN: LAUNCH_TOKEN,
         DEEPLISTENER_LAUNCH_ID: LAUNCH_ID,
         ELECTRON_DISABLE_SECURITY_WARNINGS: "1",
@@ -237,7 +318,7 @@ function startService(port, root, dbFile) {
       boot += d.toString();
       if (boot.includes("Ready")) resolve(proc);
     });
-    proc.stderr.on("data", (d) => process.stderr.write(`[service] ${d}`));
+    proc.stderr.on("data", (d) => logError(`[service] ${d.toString()}`));
     proc.on("exit", (code, signal) => {
       if (!shuttingDown && !mainWindow) {
         logError(`service exited early code=${code} signal=${signal}`);
@@ -256,7 +337,13 @@ function waitForHealth(port) {
   return new Promise((resolve, reject) => {
     function poll() {
       const req = http.get(
-        { host: "127.0.0.1", port, path: "/api/symphony/state", timeout: 2000 },
+        {
+          host: "127.0.0.1",
+          port,
+          path: "/api/symphony/state",
+          timeout: 2000,
+          headers: launchAuthHeaders(),
+        },
         (res) => {
           if (res.statusCode === 200) return resolve(true);
           res.resume();
@@ -361,8 +448,28 @@ function createWindow(origin) {
   });
   session.defaultSession.setPermissionCheckHandler(() => false);
 
+  // The renderer cannot read LAUNCH_TOKEN. Electron adds it only to requests
+  // addressed to this process's own loopback origin, keeping static assets,
+  // page data, and API calls inside the same authorization boundary.
+  if (!launchHeaderInterceptorInstalled) {
+    const originUrl = new URL(origin);
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+      { urls: [`${originUrl.protocol}//${originUrl.host}/*`] },
+      (details, callback) => {
+        if (isSelfOrigin(details.url)) {
+          details.requestHeaders["X-DeepListener-Launch-Token"] = LAUNCH_TOKEN;
+        }
+        callback({ requestHeaders: details.requestHeaders });
+      },
+    );
+    launchHeaderInterceptorInstalled = true;
+  }
+
+  const windowRef = mainWindow;
   mainWindow.loadURL(origin);
-  mainWindow.on("closed", () => { mainWindow = null; });
+  mainWindow.on("closed", () => {
+    if (mainWindow === windowRef) mainWindow = null;
+  });
 }
 
 function isSelfOrigin(url) {
@@ -379,7 +486,100 @@ function isAllowlistedExternal(url) {
     return u.protocol === "https:" && /^([a-z0-9-]+\.)?(github\.com|deepgram\.com|openai\.com|google\.com)$/.test(u.hostname);
   } catch { return false; }
 }
-function redact(s) { return String(s).replace(/token=[^&\s]+/gi, "token=REDACTED"); }
+function redact(s) {
+  return String(s)
+    .replace(/token=[^&\s]+/gi, "token=REDACTED")
+    .replace(/((?:api[_-]?key|secret|password|authorization|credential)[=:]\s*)[^\s,}]+/gi, "$1REDACTED")
+    .replace(/(?:file:\/\/\/)?[A-Za-z]:[\\/][^\r\n,)]+|\/(?:Users|home|private|var|tmp)\/[^\r\n,)]+/g, "<private-path>");
+}
+function launchAuthHeaders() {
+  return { "X-DeepListener-Launch-Token": LAUNCH_TOKEN };
+}
+
+function classifyStartupFailure(reason) {
+  const text = String(reason).toLowerCase();
+  if (text.includes("database") || text.includes("migration") || text.includes("sqlite")) {
+    return {
+      code: "DATABASE_UNAVAILABLE",
+      title: "Your local learning data is unavailable",
+      body: "DeepListener could not prepare its local learning database. Your existing media and learning history were not removed. Open Setup after restarting to review the read-only checks.",
+    };
+  }
+  if (text.includes("standalone") || text.includes("bundle")) {
+    return {
+      code: "APP_ASSET_MISSING",
+      title: "DeepListener is missing an application file",
+      body: "This installation is incomplete or damaged. Restart once, then reinstall the application if the problem continues.",
+    };
+  }
+  if (text.includes("health") || text.includes("timeout") || text.includes("127.0.0.1")) {
+    return {
+      code: "LOCAL_SERVICE_UNAVAILABLE",
+      title: "The local DeepListener service did not respond",
+      body: "The app could not finish starting its private local service. Restart once; if it continues, open diagnostics and share the redacted log with the maintainer.",
+    };
+  }
+  return {
+    code: "STARTUP_UNAVAILABLE",
+    title: "DeepListener could not start",
+    body: "The app could not finish starting. Your local data was not removed. Restart once, then open diagnostics if the problem continues.",
+  };
+}
+
+function isRecoverySender(event) {
+  return Boolean(recoveryMode && mainWindow && event.sender === mainWindow.webContents);
+}
+
+function isAppSender(event) {
+  return Boolean(
+    !recoveryMode &&
+    mainWindow &&
+    event.sender === mainWindow.webContents &&
+    event.senderFrame &&
+    isSelfOrigin(event.senderFrame.url),
+  );
+}
+
+async function fetchDiagnosticsForExport() {
+  if (!servicePort) return { ok: false, code: "SERVICE_UNAVAILABLE" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`http://127.0.0.1:${servicePort}/api/diagnostics`, {
+      cache: "no-store",
+      headers: launchAuthHeaders(),
+      signal: controller.signal,
+    });
+    if (!response.ok) return { ok: false, code: "DIAGNOSTICS_UNAVAILABLE" };
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    if (contentLength > 2 * 1024 * 1024) return { ok: false, code: "PAYLOAD_TOO_LARGE" };
+    return validateDiagnosticsJson(await response.text());
+  } catch {
+    return { ok: false, code: "DIAGNOSTICS_UNAVAILABLE" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function postLocalJson(pathname, body) {
+  if (!servicePort) return { ok: false, code: "SERVICE_UNAVAILABLE" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`http://127.0.0.1:${servicePort}${pathname}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...launchAuthHeaders() },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { ok: response.ok, payload };
+  } catch {
+    return { ok: false, code: "LOCAL_SERVICE_UNAVAILABLE" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 // ========================================================================
 // validated IPC (NFR-012) — narrow, sender-checked
@@ -397,22 +597,113 @@ ipcMain.handle("app:version", () => {
     return { version: pkg.version };
   } catch { return { version: "0.0.0" }; }
 });
+ipcMain.handle("startup:retry", (event) => {
+  if (!isRecoverySender(event)) return { ok: false };
+  app.relaunch();
+  app.exit(0);
+  return { ok: true };
+});
+ipcMain.handle("startup:open-diagnostics", (event) => {
+  if (!isRecoverySender(event)) return { ok: false };
+  void shell.openPath(path.join(dataRoot || app.getPath("userData"), "logs"));
+  return { ok: true };
+});
+ipcMain.handle("diagnostics:save", async (event) => {
+  if (!isAppSender(event) || !mainWindow) return { ok: false, code: "UNAUTHORIZED" };
+  const payload = await fetchDiagnosticsForExport();
+  if (!payload.ok) return payload;
+  const defaultRoot = dataRoot || app.getPath("userData");
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Save DeepListener diagnostics",
+    defaultPath: path.join(defaultRoot, "exports", "deeplistener-diagnostics.json"),
+    filters: [{ name: "JSON", extensions: ["json"] }],
+    properties: ["showOverwriteConfirmation", "createDirectory"],
+  });
+  if (result.canceled || !result.filePath) return { ok: true, canceled: true };
+  try {
+    fs.mkdirSync(path.dirname(result.filePath), { recursive: true });
+    fs.writeFileSync(result.filePath, payload.content, { encoding: "utf8", mode: 0o600 });
+    return { ok: true, canceled: false };
+  } catch {
+    return { ok: false, code: "WRITE_FAILED" };
+  }
+});
+ipcMain.handle("backup:export", async (event) => {
+  if (!isAppSender(event) || !mainWindow) return { ok: false, code: "UNAUTHORIZED" };
+  const selection = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose a folder for your DeepListener backup",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (selection.canceled || !selection.filePaths[0]) return { ok: true, canceled: true };
+  const created = await postLocalJson("/api/backups", { action: "create" });
+  const backupId = created.ok && created.payload?.backup?.id;
+  if (typeof backupId !== "string") return { ok: false, code: "BACKUP_UNAVAILABLE" };
+  const sourcePath = path.join(dataRoot || app.getPath("userData"), "backups", backupId);
+  const copied = await exportBundle(sourcePath, selection.filePaths[0], backupId);
+  return copied.ok ? { ok: true, canceled: false } : { ok: false, code: copied.code };
+});
+ipcMain.handle("backup:import", async (event) => {
+  if (!isAppSender(event) || !mainWindow) return { ok: false, code: "UNAUTHORIZED" };
+  const selection = await dialog.showOpenDialog(mainWindow, {
+    title: "Select a DeepListener backup folder",
+    properties: ["openDirectory"],
+  });
+  if (selection.canceled || !selection.filePaths[0]) return { ok: true, canceled: true };
+  const root = dataRoot || app.getPath("userData");
+  const stagingId = `.deeplistener-backup-import-${randomUUID()}`;
+  const stagingPath = path.join(root, "backups", stagingId);
+  const staged = await stageBundle(selection.filePaths[0], stagingPath);
+  if (!staged.ok) return { ok: false, code: staged.code };
+  const imported = await postLocalJson("/api/backups", { action: "import", stagingId });
+  if (imported.ok && imported.payload?.imported === true) return { ok: true, canceled: false };
+  if (await removeOwnedDirectory(stagingPath)) {
+    return { ok: false, code: "IMPORT_UNAVAILABLE" };
+  }
+  return { ok: false, code: "IMPORT_UNAVAILABLE" };
+});
 
 // ========================================================================
 // recovery surface (DAS-004)
 // ========================================================================
 function showRecovery(reason) {
   if (mainWindow) mainWindow.destroy();
-  mainWindow = new BrowserWindow({ width: 600, height: 380, show: !HEADLESS, title: "DeepListener", icon: APP_ICON });
+  recoveryMode = true;
+  const status = classifyStartupFailure(reason);
+  writeStartupFailureSummary(status.code, "desktop-startup");
+  mainWindow = new BrowserWindow({
+    width: 640,
+    height: 460,
+    show: !HEADLESS,
+    title: "DeepListener",
+    icon: APP_ICON,
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+  const recoveryWindow = mainWindow;
+  mainWindow.on("closed", () => {
+    if (mainWindow === recoveryWindow) {
+      mainWindow = null;
+      recoveryMode = false;
+    }
+  });
   mainWindow.loadURL(
     "data:text/html;charset=utf-8," + encodeURIComponent(
       `<meta charset="utf-8"><title>DeepListener</title>` +
       `<body style="font-family:-apple-system,sans-serif;padding:2em;color:#222;background:#fafafa">` +
-      `<h1>DeepListener could not start</h1><p>${reason}</p>` +
-      `<p>You can quit and try again, or open diagnostics.</p></body>`,
+      `<h1>${status.title}</h1><p>${status.body}</p>` +
+      `<p style="font-size:.9em;color:#666">Recovery code: ${status.code}</p>` +
+      `<p><button id="retry" type="button">Restart DeepListener</button> ` +
+      `<button id="diagnostics" type="button">Open diagnostics</button></p>` +
+      `<script>` +
+      `document.getElementById('retry').onclick=()=>window.deepListener?.retryStartup?.();` +
+      `document.getElementById('diagnostics').onclick=()=>window.deepListener?.openDiagnostics?.();` +
+      `</script></body>`,
     ),
   );
-  logError(`recovery shown: ${reason}`);
+  logError(`recovery shown: ${status.code}`);
 }
 
 // ========================================================================
@@ -495,7 +786,7 @@ if (!gotLock) {
     try {
       dataRoot = resolveDataRoot();
       ensureDataLayout(dataRoot);
-      log(`data root: ${dataRoot}`);
+      log("data root resolved");
       log(`launch id: ${LAUNCH_ID} (token redacted)`);
 
       // DB initialization now happens inside the spawned service (via its
@@ -507,11 +798,14 @@ if (!gotLock) {
       serviceProcess = await startService(servicePort, dataRoot, dbFile);
       await waitForHealth(servicePort);
       log(`service healthy on 127.0.0.1:${servicePort}`);
+      clearStartupFailureSummary();
       createWindow(`http://127.0.0.1:${servicePort}`);
       if (HEADLESS) setTimeout(() => shutdown(), 1500);
     } catch (err) {
-      logError(`startup failed: ${err.message}`);
-      showRecovery(err.message);
+      const reason = err instanceof Error ? err.message : String(err || "");
+      const status = classifyStartupFailure(reason);
+      logError(`startup failed: ${status.code}`);
+      showRecovery(reason);
       if (HEADLESS) setTimeout(() => shutdown(), 2000);
     }
   });

@@ -91,6 +91,7 @@ export default function DictationPanel({
               onChange={(event) => onAnswerChange(event.target.value)}
               disabled={!hasPlayedOnce || !isAudioReady}
               placeholder={isAudioReady ? t("placeholderReady") : t("placeholderPreparing")}
+              aria-label={t("dictationLabel")}
               className="min-h-[150px] resize-none border-input bg-background text-lg leading-relaxed text-foreground placeholder:text-muted-foreground"
             />
 
@@ -152,6 +153,7 @@ export default function DictationPanel({
                       className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                       onClick={handleCopyOriginal}
                       title={t("copyOriginalTitle")}
+                      aria-label={t("copyOriginalTitle")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>

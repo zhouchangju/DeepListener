@@ -5,10 +5,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getTranslations } from "next-intl/server";
 import { getCountdownDays } from "./date-utils";
 import { buildDailyStats, buildDashboardData, formatDuration } from "./analytics";
+import DatabaseRecoveryState from "@/components/readiness/DatabaseRecoveryState";
+import { getDatabaseRouteReadiness } from "@/lib/route-readiness";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const readiness = await getDatabaseRouteReadiness();
+  if (!readiness.ok && readiness.check) {
+    return <DatabaseRecoveryState check={readiness.check} />;
+  }
+
   // Read target date from environment variable, default to a future exam window.
   const targetDateStr = process.env.NEXT_PUBLIC_TARGET_DATE || "2026-12-31";
   const targetDate = new Date(targetDateStr);

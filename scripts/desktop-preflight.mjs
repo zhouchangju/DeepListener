@@ -17,6 +17,9 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = new Set(process.argv.slice(2));
 const allowSystemFfmpeg = args.has("--allow-system-ffmpeg");
 const allowSyntheticDemo = args.has("--allow-synthetic-demo");
+const targetPlatform = process.env.DEEPLISTENER_TARGET_PLATFORM || process.platform;
+const targetArchitecture = process.env.DEEPLISTENER_TARGET_ARCH || process.arch;
+const runtimeTarget = `${targetPlatform}-${targetArchitecture}`;
 
 const failures = [];
 const warnings = [];
@@ -47,15 +50,29 @@ function checkSystemBinary(label, command) {
   return false;
 }
 
-const vendorDir = path.join(repo, "vendor", "ffmpeg");
-const vendoredFfmpeg = checkBinary("ffmpeg", path.join(vendorDir, "ffmpeg"));
-const vendoredFfprobe = checkBinary("ffprobe", path.join(vendorDir, "ffprobe"));
+const vendorDir = path.join(repo, "vendor", "ffmpeg", runtimeTarget);
+const executableSuffix = targetPlatform === "win32" ? ".exe" : "";
+const vendoredFfmpeg = checkBinary("ffmpeg", path.join(vendorDir, `ffmpeg${executableSuffix}`));
+const vendoredFfprobe = checkBinary("ffprobe", path.join(vendorDir, `ffprobe${executableSuffix}`));
+const metadataPath = path.join(vendorDir, "assets.json");
+if (vendoredFfmpeg && vendoredFfprobe && !existsSync(metadataPath)) {
+  failures.push(`Runtime asset metadata is missing: ${metadataPath}`);
+}
 if (!vendoredFfmpeg || !vendoredFfprobe) {
-  if (allowSystemFfmpeg && checkSystemBinary("ffmpeg", "ffmpeg") && checkSystemBinary("ffprobe", "ffprobe")) {
+  const systemFfmpegReady = allowSystemFfmpeg
+    && checkSystemBinary("ffmpeg", "ffmpeg")
+    && checkSystemBinary("ffprobe", "ffprobe");
+  if (systemFfmpegReady) {
     warnings.push("Using system FFmpeg; this is acceptable only for internal alpha builds.");
+  } else if (allowSystemFfmpeg) {
+    failures.push(
+      "Internal alpha requested system FFmpeg, but ffmpeg and/or ffprobe are not available on PATH. " +
+      "Install both commands for the alpha run, or provide the target-specific redistributable vendor assets for a public build.",
+    );
   } else {
     failures.push(
-      "A public desktop build needs matching redistributable vendor/ffmpeg/ffmpeg and vendor/ffmpeg/ffprobe binaries. " +
+      `A public desktop build needs matching redistributable vendor/ffmpeg/${runtimeTarget}/ffmpeg${executableSuffix}, ` +
+      `vendor/ffmpeg/${runtimeTarget}/ffprobe${executableSuffix}, and assets.json metadata. ` +
       "Use --allow-system-ffmpeg only for an internal alpha build.",
     );
   }

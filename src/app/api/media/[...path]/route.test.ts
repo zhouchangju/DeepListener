@@ -49,6 +49,21 @@ function request(pathSegments: string[], range?: string, method: "GET" | "HEAD" 
   };
 }
 
+function createDirectoryLink(target: string, linkPath: string): boolean {
+  try {
+    // Directory junctions work on Windows without Developer Mode/admin
+    // symlink privileges; POSIX uses a normal directory symlink.
+    symlinkSync(target, linkPath, process.platform === "win32" ? "junction" : "dir");
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (process.platform === "win32" && (code === "EPERM" || code === "EACCES")) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 async function collectBody(res: Response): Promise<Buffer> {
   const reader = res.body?.getReader();
   if (!reader) return Buffer.alloc(0);
@@ -192,16 +207,17 @@ test("missing file → 404 (no path detail leaked)", async () => {
   assert.equal(res.headers.get("Content-Type"), null);
 });
 
-test("symlink that escapes the media dir → 404 (PDR-003)", async () => {
-  // Plant a secret outside the media dir and a symlink inside pointing to it.
+test("symlink that escapes the media dir → 404 (PDR-003)", async (t) => {
+  // Plant a secret outside the media dir and a directory link inside pointing
+  // to it. The junction form keeps this security test runnable on Windows.
   const outsideDir = join(dataRoot, "outside");
   mkdirSync(outsideDir, { recursive: true });
-  writeFileSync(join(outsideDir, "secret.txt"), "top-secret");
-  symlinkSync(
-    join(outsideDir, "secret.txt"),
-    join(dataRoot, "media", "audio", "escape.mp3"),
-  );
-  const { req, context } = request(["uploads", "escape.mp3"]);
+  writeFileSync(join(outsideDir, "secret.mp3"), "top-secret");
+  if (!createDirectoryLink(outsideDir, join(dataRoot, "media", "audio", "escape"))) {
+    t.skip("Windows symlink/junction creation is unavailable in this environment");
+    return;
+  }
+  const { req, context } = request(["uploads", "escape", "secret.mp3"]);
   const res = await GET(req, context);
   assert.equal(res.status, 404);
 });

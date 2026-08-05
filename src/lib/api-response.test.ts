@@ -39,6 +39,12 @@ test("internalServerErrorSafe forwards whitelisted codes only", async () => {
     { code: "SQLITE_CONSTRAINT_FOREIGN_KEY" } as unknown as Parameters<typeof internalServerErrorSafe>[0],
   );
   assert.deepEqual(await filtered.json(), { error: "Internal server error" });
+
+  const readiness = internalServerErrorSafe({ code: "DATABASE_NOT_READY" });
+  assert.deepEqual(await readiness.json(), {
+    error: "Internal server error",
+    code: "DATABASE_NOT_READY",
+  });
 });
 
 test("internalServerErrorFrom logs and tags the known safe code", async () => {

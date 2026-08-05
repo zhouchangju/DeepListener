@@ -16,6 +16,7 @@ import { presetTrackTypes, presetTrackTopics } from "@/lib/track-taxonomy";
 interface Track {
     id: string;
     title: string;
+    displayTitle?: string;
     audioUrl: string;
     isArchived: boolean;
     status: string;
@@ -47,7 +48,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
   const selectedTracks = useMemo(() => {
     return tracks.filter(t => selectedTrackIds.has(t.id)).map(t => ({
       id: t.id,
-      title: t.title,
+      title: t.displayTitle ?? t.title,
       audioUrl: t.audioUrl,
     }));
   }, [tracks, selectedTrackIds]);
@@ -248,6 +249,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
             <div className="flex items-center gap-1.5 bg-background border border-input rounded-md px-2 py-1 w-full sm:w-auto">
                 <input
                     type="date"
+                    aria-label={t("dateFrom")}
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
                     className="text-xs bg-transparent border-none outline-none focus:ring-0 flex-1 min-w-0 sm:w-[110px] sm:flex-initial"
@@ -255,6 +257,7 @@ export default function LibraryManager({ tracks }: LibraryManagerProps) {
                 <span className="text-muted-foreground">~</span>
                 <input
                     type="date"
+                    aria-label={t("dateTo")}
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
                     className="text-xs bg-transparent border-none outline-none focus:ring-0 flex-1 min-w-0 sm:w-[110px] sm:flex-initial"

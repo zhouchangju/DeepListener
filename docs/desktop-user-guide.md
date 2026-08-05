@@ -4,27 +4,29 @@
 
 | Platform | Status |
 |---|---|
-| macOS Apple Silicon (M1/M2/M3/M4) | ✅ Supported |
-| macOS Intel | Under evaluation (may ship as universal binary) |
-| Windows x64 | Planned (next milestone) |
+| macOS Apple Silicon (M1/M2/M3/M4) | Internal unsigned alpha only; public support not claimed |
+| macOS Intel | Not verified |
+| Windows x64 | Packaging contract exists; clean-install support not yet claimed |
 | Linux | Not supported |
+
+The repository currently has no signed public Desktop release. Do not treat the
+internal alpha or a source checkout as a supported learner installation.
 
 ## Installation
 
-Download the `.dmg` from the [releases page] and drag DeepListener.app to your
-Applications folder. **No Node.js, npm, or terminal is required** — the app
-bundles its own runtime.
+When a signed release is published, download its `.dmg` from the releases page
+and drag DeepListener.app to Applications. **No Node.js, npm, or terminal is
+required for that intended packaged path** — the app is designed to bundle its
+own runtime.
 
 The current maintainer artifact is an unsigned internal arm64 alpha. A public
-DMG requires an Apple Developer signing/notarization identity; without one,
-macOS may require an explicit confirmation in Privacy & Security before the
-app opens.
+DMG still requires Apple signing/notarization and a clean-install verification
+run; those gates are intentionally open.
 
-> **Media import note (alpha):** The current alpha build does not yet bundle
-> FFmpeg. To import video files or export trimmed audio you currently need
-> FFmpeg installed on your system (`brew install ffmpeg`). Audio-only import
-> and playback work without FFmpeg. A self-contained, bundled FFmpeg is on
-> the roadmap for the next release.
+> **Media import note:** Public Desktop packaging is fail-closed until a
+> checksum-verified, redistributable FFmpeg/ffprobe pair and provenance are
+> supplied. Development/server runs may use an explicitly configured system
+> FFmpeg, but that is not a supported learner installation workaround.
 
 ## Where your data lives
 
@@ -69,13 +71,15 @@ everything, manually delete `~/Library/Application Support/DeepListener/`.
 5. Capture one sentence to your Vault.
 6. See where it continues in Review.
 
-No API key is required for the demo.
+No API key is required for the demo. The current repository demo audio is an
+internal synthetic fixture; a real redistributable speech asset is still
+required before a public learner release.
 
 ## Adding your own media
 
-1. Go to **Settings** and select a transcription provider (OpenAI, Deepgram,
-   or Google). **Deepgram is the default** and is recommended for
-   speech-to-text.
+1. Go to **Setup** and select a transcription provider (OpenAI, Deepgram, or
+   Google). Deepgram is the current local default; the public recommendation
+   policy remains subject to product approval.
 2. Enter your API key. In the packaged macOS Desktop app it is stored in one
    macOS Keychain item; Server/dev runs use an access-restricted file under
    the DeepListener data directory. The key is never displayed after entry.
@@ -111,17 +115,19 @@ No API key is required for the demo.
 
 ## Backup and restore
 
-- Create a complete backup from **Settings → Backup**. The backup includes
+- Create a complete backup from **Setup → Data safety**. The backup includes
   your database, media files, and a manifest with version + integrity info.
-- Restore from a backup when you switch computers or recover from a problem.
-- Backups are portable between macOS and Windows (cross-platform support
-  coming in a later release).
+- Restore from a backup when you recover from a problem; confirmation is
+  required before existing data is replaced and a rollback copy is retained.
+- Cross-platform restore is designed but not yet proven by native macOS and
+  Windows release evidence.
 
 ## Upgrading
 
-When a new version is available, the app will notify you. Data is
-automatically backed up before a schema-changing upgrade. If the upgrade
-fails, your data remains safe and the previous version can be restored.
+An automatic updater is not shipped yet. Before a manually installed upgrade,
+create a verified backup. The migration runner backs up existing data before a
+schema-changing migration and blocks activation if the backup or migration
+fails.
 
 ## Recovery
 
@@ -141,4 +147,4 @@ If the app fails to start:
 
 ## Getting help
 
-Issues and feedback: [GitHub issues](https://github.com/deeplistener/deeplistener/issues)
+Issues and feedback: [GitHub issues](https://github.com/zhouchangju/DeepListener/issues)

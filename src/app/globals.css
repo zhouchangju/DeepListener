@@ -151,6 +151,21 @@
   }
 }
 
+/* Respect learners who reduce motion at the OS/browser level. This keeps
+   spotlight movement, button feedback, chart transitions, and scrolling from
+   becoming a barrier without requiring every component to remember a local
+   media query. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

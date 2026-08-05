@@ -1,47 +1,53 @@
-# Vendored FFmpeg binaries (optional)
+# Vendored FFmpeg binaries (release input)
 
 DeepListener uses `ffmpeg` and `ffprobe` for video MP3 extraction, audio
-export, and embedded-subtitle detection. At runtime the Desktop shell
-resolves these binaries in this priority order:
+export, and embedded-subtitle detection.
 
-1. `FFMPEG_PATH` / `FFPROBE_PATH` environment variables (dev/test override);
-2. the files in **this directory** (`vendor/ffmpeg/ffmpeg` and
-   `vendor/ffmpeg/ffprobe`), if present;
-3. the system `PATH` (the default — `fluent-ffmpeg` finds them itself).
+In a packaged Desktop build the shell resolves these binaries only from a
+checksum-verified manifest. It never silently falls back to the host `PATH`.
+Development builds may still use `FFMPEG_PATH`/`FFPROBE_PATH` or the system
+`PATH` for local testing.
 
-## When to vendor binaries
+## Required release layout
 
-Vendoring is **optional**. If you skip it, the packaged app relies on the
-user having FFmpeg installed on their system, which is acceptable for a
-technical audience but will break media import for users without FFmpeg on
-their `PATH`.
+Vendoring is required for a public Desktop build. If the assets are absent,
+the packaged app starts in a limited media-runtime state and media
+import/export is intentionally unavailable rather than executing an
+unverified binary.
 
-If you want the packaged app to be fully self-contained (no system FFmpeg
-required), place matching static binaries here before running the desktop
-packaging script:
+```text
+vendor/ffmpeg/<platform>-<arch>/ffmpeg(.exe)
+vendor/ffmpeg/<platform>-<arch>/ffprobe(.exe)
+vendor/ffmpeg/<platform>-<arch>/assets.json
+```
+
+Use `darwin-arm64`, `darwin-x64`, or `win32-x64` for `<platform>-<arch>`.
+`assets.json` must contain complete metadata for exactly one `ffmpeg` and one
+`ffprobe` entry as specified in
+`docs/desktop-w0/runtime-asset-manifest.md`. The packager computes the final
+SHA-256 after copying the files.
 
 ```bash
-# Example: download macOS arm64 static builds (verify the source yourself)
-#   ffmpeg  → vendor/ffmpeg/ffmpeg
-#   ffprobe → vendor/ffmpeg/ffprobe
-chmod +x vendor/ffmpeg/ffmpeg vendor/ffmpeg/ffprobe
+chmod +x vendor/ffmpeg/darwin-arm64/ffmpeg vendor/ffmpeg/darwin-arm64/ffprobe
 npm run desktop:package
 ```
 
-## Requirements for the binaries
+## Requirements
 
-- **Platform/arch must match the packaging host** (the script does not
-  cross-fetch). For a `darwin-arm64` build, place `darwin-arm64` binaries.
-- **Executable bit** must be set (`chmod +x`). The packaging script re-asserts
-  `0o755` defensively, but set it here too.
-- **Licensing**: FFmpeg is LGPL/GPL. See [../NOTICE](../../NOTICE) for the
-  attribution already recorded for the project. If you redistribute the
-  binaries inside a release, review FFmpeg's licensing terms for your
-  distribution scenario.
+- **Platform/arch must match the target.** Set
+  `DEEPLISTENER_TARGET_PLATFORM` and `DEEPLISTENER_TARGET_ARCH` only when the
+  packaging environment already contains matching Prisma and media assets;
+  the script does not download or cross-fetch binaries.
+- **Executable bit** must be set on Unix. The packager re-asserts `0o755`
+  defensively.
+- **Capabilities:** an ffmpeg entry must include `libmp3lame`, `aresample`,
+  `volume`, `concat`, and at least one of `mov_text`, `subrip`, or `srt`.
+- **Licensing:** FFmpeg is LGPL/GPL. See [../NOTICE](../../NOTICE) for the
+  attribution already recorded for the project. GPL builds must declare a GPL
+  license; nonfree builds are rejected and LGPL is the preferred posture.
 
 ## Git tracking
 
-The binaries themselves are **gitignored** (see `../../.gitignore`). Only
-this README and `.gitkeep` are committed, so each packager supplies their
-own binaries. This keeps the repository small and avoids committing large,
-platform-specific artifacts.
+The binaries and per-target `assets.json` are **gitignored** (see
+`../../.gitignore`). Only this README and `.gitkeep` are committed, so each
+release pipeline supplies its own licensed, checksummed assets.

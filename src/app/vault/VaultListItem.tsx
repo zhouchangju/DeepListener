@@ -67,6 +67,8 @@ export function VaultListItem({ item, isPlaying, onPlay, onEdit, onToggleArchive
             size="icon"
             className="rounded-full flex-shrink-0"
             onClick={() => onPlay(item)}
+            title={isPlaying ? t("pauseSentence") : t("playSentence")}
+            aria-label={isPlaying ? t("pauseSentence") : t("playSentence")}
           >
             <Play className={`h-4 w-4 ${isPlaying ? "animate-pulse" : ""}`} />
           </Button>

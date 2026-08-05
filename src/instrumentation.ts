@@ -1,7 +1,8 @@
 /**
  * Next.js instrumentation hook (runs once when the server starts, before any
  * route module is imported). Used to merge UI-configured transcription secrets
- * from `<data-root>/settings/secrets.json` into `process.env`, so the existing
+ * from `<data-root>/settings/secrets.json` and non-secret routing settings from
+ * `<data-root>/settings/settings.json` into `process.env`, so the existing
  * factory and setup-readiness code keep reading `process.env` unchanged.
  *
  * This runs in the Node.js runtime only — Next.js skips `register()` in the
@@ -23,7 +24,22 @@ export async function register(): Promise<void> {
   } catch (error) {
     // Don't crash startup over a secrets file we cannot read; the readiness
     // page will surface the underlying problem. Log for operator visibility.
-    console.error("[instrumentation] Failed to load secrets.json:", error);
+    console.error(
+      "[instrumentation] Failed to load secrets.json:",
+      error instanceof Error ? error.name : typeof error,
+    );
+  }
+
+  try {
+    const { loadSettingsIntoEnv } = await import("./lib/settings-store");
+    await loadSettingsIntoEnv();
+  } catch (error) {
+    // A malformed non-secret settings document falls back to safe defaults in
+    // the store; this catch protects startup if the filesystem itself fails.
+    console.error(
+      "[instrumentation] Failed to load settings.json:",
+      error instanceof Error ? error.name : typeof error,
+    );
   }
 
   // First-run database initialization. Dynamic imports keep these node-only
@@ -44,10 +60,12 @@ export async function register(): Promise<void> {
       const migrationsDir = process.env.DEEPLISTENER_MIGRATIONS_DIR || undefined;
       const result = await ensureDatabaseReady(dbFilePath, backupDir, undefined, migrationsDir);
       if (result.ok) {
+        const { clearStartupFailure } = await import("./lib/diagnostics");
+        await clearStartupFailure(layout.root);
         const applied = result.migration.applied.length;
         const alreadyApplied = result.migration.alreadyApplied.length;
         console.log(
-          `[instrumentation] Database ready at ${dbFilePath} (applied=${applied}, alreadyApplied=${alreadyApplied})`,
+          `[instrumentation] Database ready (applied=${applied}, alreadyApplied=${alreadyApplied})`,
         );
       } else {
         // Migration failure leaves the database incompatible with the current
@@ -69,7 +87,17 @@ export async function register(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error("[instrumentation] Database initialization threw:", error);
+    console.error(
+      "[instrumentation] Database initialization threw:",
+      error instanceof Error ? error.name : typeof error,
+    );
+    try {
+      const { recordStartupFailure } = await import("./lib/diagnostics");
+      const root = process.env.DEEPLISTENER_DATA_DIR;
+      if (root) await recordStartupFailure({ root, code: "DATABASE_UNAVAILABLE", phase: "database-initialization" });
+    } catch {
+      // Failure reporting must not mask the original startup failure.
+    }
     // Next.js catches a rejected instrumentation hook and may continue serving
     // requests. That would open a renderer against an incompatible database,
     // so database initialization is one of the few startup paths that must

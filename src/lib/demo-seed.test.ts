@@ -1,10 +1,12 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
-import { mkdtempSync, mkdirSync, rmSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { PrismaClient } from "@prisma/client";
 import { seedDemoTrack, removeDemoTracks, demoTrackExists, DEMO_TRACK_TYPE } from "./demo-seed";
+import { migrateDatabase, type SqliteConnection } from "./migration-runner";
 
 /**
  * Demo seed tests (W3 T192, DFS-004 isolation/removal).
@@ -24,16 +26,17 @@ before(async () => {
   dbFile = join(dataRoot, "database", "deeplistener.db");
   process.env.DEEPLISTENER_DATA_DIR = dataRoot;
   process.env.DATABASE_URL = `file:${dbFile}`;
-  // Initialize schema via offline migration SQL (read-only against frozen inputs).
-  const { execFileSync } = await import("node:child_process");
-  const migDir = join(process.cwd(), "prisma", "migrations");
-  const dirs = readdirSync(migDir).filter((d) => !d.endsWith(".toml") && !d.startsWith(".")).sort();
-  let combined = "";
-  for (const d of dirs) {
-    const p = join(migDir, d, "migration.sql");
-    try { combined += readFileSync(p, "utf8") + "\n\n"; } catch { /* skip */ }
-  }
-  execFileSync("sqlite3", [dbFile], { input: combined, stdio: ["pipe", "pipe", "pipe"] });
+  // Initialize only the disposable database. Do not depend on a system
+  // `sqlite3` CLI or Prisma's schema-engine binary: clean Windows installs
+  // commonly have neither. Reuse the project's offline migration runner,
+  // which is the same no-shell path used by Desktop startup.
+  const migrationsDir = join(process.cwd(), "prisma", "migrations");
+  const result = await migrateDatabase(
+    dbFile,
+    async (file) => new DatabaseSync(file) as unknown as SqliteConnection,
+    migrationsDir,
+  );
+  assert.equal(result.ok, true, `disposable schema setup failed: ${JSON.stringify(result)}`);
   db = new PrismaClient();
 });
 

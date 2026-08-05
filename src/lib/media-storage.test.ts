@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import path from "node:path";
 import {
   mimeFromExtension,
   resolveMedia,
@@ -21,6 +22,22 @@ function desktopLayout(root: string): RuntimeLayout {
 
 function legacyLayout(root: string): RuntimeLayout {
   return { root, mode: "legacy" };
+}
+
+function createDirectoryLink(target: string, linkPath: string): boolean {
+  try {
+    // Directory junctions are the Windows equivalent available without
+    // requiring Developer Mode/admin symlink privileges. POSIX uses a normal
+    // directory symlink. Both exercise the canonical containment check.
+    symlinkSync(target, linkPath, process.platform === "win32" ? "junction" : "dir");
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (process.platform === "win32" && (code === "EPERM" || code === "EACCES")) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 test("mimeFromExtension maps common audio/video extensions", () => {
@@ -74,10 +91,11 @@ test("resolveMedia resolves /videos/ URL to video media dir (desktop)", () => {
 });
 
 test("resolveMedia keeps legacy public/uploads layout", () => {
-  const result = resolveMedia("/uploads/song.mp3", legacyLayout("/repo"));
+  const legacyRoot = path.resolve("repo-fixture");
+  const result = resolveMedia("/uploads/song.mp3", legacyLayout(legacyRoot));
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.path, join("/repo", "public", "uploads", "song.mp3"));
+    assert.equal(result.path, join(legacyRoot, "public", "uploads", "song.mp3"));
   }
 });
 
@@ -127,7 +145,7 @@ test("resolveExistingMedia returns resolved path for present files", async () =>
   }
 });
 
-test("resolveExistingMedia rejects a symlink that escapes the media directory (PDR-003)", async () => {
+test("resolveExistingMedia rejects a symlink that escapes the media directory (PDR-003)", async (t) => {
   const root = freshRoot();
   const audioDir = join(root, "media", "audio");
   mkdirSync(audioDir, { recursive: true });
@@ -137,27 +155,39 @@ test("resolveExistingMedia rejects a symlink that escapes the media directory (P
   mkdirSync(secretDir, { recursive: true });
   writeFileSync(join(secretDir, "secret.txt"), "top-secret");
 
-  // A symlink planted INSIDE the media dir that points outside.
-  symlinkSync(join(secretDir, "secret.txt"), join(audioDir, "escape.txt"));
+  // A link planted INSIDE the media dir that points outside. Use a directory
+  // link so the test remains runnable on Windows without symlink privileges.
+  if (!createDirectoryLink(secretDir, join(audioDir, "escape"))) {
+    t.skip("Windows symlink/junction creation is unavailable in this environment");
+    return;
+  }
 
-  const result = await resolveExistingMedia("/uploads/escape.txt", desktopLayout(root));
+  const result = await resolveExistingMedia("/uploads/escape/secret.txt", desktopLayout(root));
   assert.deepEqual(result, { ok: false, reason: "not-found" });
 });
 
-test("resolveExistingMedia accepts a symlink that stays inside the media directory", async () => {
+test("resolveExistingMedia accepts a symlink that stays inside the media directory", async (t) => {
   const root = freshRoot();
   const audioDir = join(root, "media", "audio");
   mkdirSync(audioDir, { recursive: true });
-  writeFileSync(join(audioDir, "real.mp3"), "audio-bytes");
-  // Internal symlink — same directory.
-  symlinkSync(join(audioDir, "real.mp3"), join(audioDir, "alias.mp3"));
+  const realDir = join(audioDir, "real");
+  mkdirSync(realDir, { recursive: true });
+  writeFileSync(join(realDir, "real.mp3"), "audio-bytes");
+  // Internal directory link — canonical target remains under media/audio.
+  if (!createDirectoryLink(realDir, join(audioDir, "alias"))) {
+    t.skip("Windows symlink/junction creation is unavailable in this environment");
+    return;
+  }
 
-  const result = await resolveExistingMedia("/uploads/alias.mp3", desktopLayout(root));
+  const result = await resolveExistingMedia("/uploads/alias/real.mp3", desktopLayout(root));
   assert.equal(result.ok, true);
 });
 
 test("resolveMedia is pure: never throws and never reads the filesystem", () => {
   // Non-existent root dir — pure resolution must still succeed lexically.
-  const result = resolveMedia("/uploads/song.mp3", desktopLayout("/definitely/does/not/exist"));
+  const result = resolveMedia(
+    "/uploads/song.mp3",
+    desktopLayout(path.resolve("definitely", "does", "not", "exist")),
+  );
   assert.equal(result.ok, true);
 });

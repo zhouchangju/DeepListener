@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { constants } from "node:fs";
 import { evaluateSetupReadiness } from "./setup-readiness";
 
+function portablePath(value: string) {
+  return value.replaceAll("\\", "/");
+}
+
 const accessible = async () => true;
 const commandsAvailable = async () => true;
 
@@ -92,7 +96,7 @@ test("reports an existing media directory that is not writable", async () => {
     },
     nodeVersion: "22.12.0",
     canAccess: async (target, mode) => {
-      if (target.endsWith("/uploads")) return mode === constants.F_OK;
+      if (portablePath(target).endsWith("/uploads")) return mode === constants.F_OK;
       return true;
     },
     hasCommand: commandsAvailable,
@@ -133,7 +137,7 @@ test("explicit Desktop data root resolves database under DEEPLISTENER_DATA_DIR",
     nodeVersion: "22.12.0",
     canAccess: async (target) => {
       // desktop DB lives at /userdata/database/deeplistener.db
-      return target.includes("/userdata/database/deeplistener.db");
+      return portablePath(target).includes("/userdata/database/deeplistener.db");
     },
     hasCommand: commandsAvailable,
   });
@@ -141,6 +145,27 @@ test("explicit Desktop data root resolves database under DEEPLISTENER_DATA_DIR",
   assert.equal(database?.status, "ready");
   const media = checks.find((check) => check.id === "media");
   assert.equal(media?.status, "action");
+});
+
+test("fresh Desktop media paths are ready when their nearest ancestor is writable", async () => {
+  const checks = await evaluateSetupReadiness({
+    cwd: "/workspace",
+    env: {
+      DEEPLISTENER_DATA_DIR: "/userdata",
+      TRANSCRIPTION_PROVIDER: "deepgram",
+      DEEPGRAM_API_KEY: "configured",
+    },
+    nodeVersion: "22.12.0",
+    canAccess: async (target, mode) => {
+      const normalized = portablePath(target);
+      if (normalized.endsWith("/userdata/database/deeplistener.db")) return true;
+      if (normalized.endsWith("/userdata")) return mode === constants.F_OK || mode === constants.W_OK;
+      return false;
+    },
+    hasCommand: commandsAvailable,
+  });
+
+  assert.equal(checks.find((check) => check.id === "media")?.status, "ready");
 });
 
 test("explicit Desktop root reports actionable database when not initialized", async () => {
@@ -158,4 +183,43 @@ test("explicit Desktop root reports actionable database when not initialized", a
   const database = checks.find((check) => check.id === "database");
   assert.equal(database?.status, "action");
   assert.equal(database?.fixKey, "readiness.database.desktopMissingFix");
+});
+
+test("packaged Desktop asset failure never falls back to host FFmpeg commands", async () => {
+  let commandProbeCalls = 0;
+  const checks = await evaluateSetupReadiness({
+    cwd: "/workspace",
+    env: {
+      DEEPLISTENER_DATA_DIR: "/userdata",
+      DEEPLISTENER_RUNTIME_ASSET_STATUS: "missing",
+      TRANSCRIPTION_PROVIDER: "deepgram",
+      DEEPGRAM_API_KEY: "configured",
+    },
+    nodeVersion: "22.12.0",
+    canAccess: async () => true,
+    hasCommand: async () => {
+      commandProbeCalls += 1;
+      return true;
+    },
+  });
+
+  assert.equal(commandProbeCalls, 0);
+  assert.equal(checks.find((check) => check.id === "ffmpeg")?.status, "limited");
+});
+
+test("verified packaged Desktop assets make FFmpeg readiness independent of PATH", async () => {
+  const checks = await evaluateSetupReadiness({
+    cwd: "/workspace",
+    env: {
+      DEEPLISTENER_DATA_DIR: "/userdata",
+      DEEPLISTENER_RUNTIME_ASSET_STATUS: "verified",
+      TRANSCRIPTION_PROVIDER: "deepgram",
+      DEEPGRAM_API_KEY: "configured",
+    },
+    nodeVersion: "22.12.0",
+    canAccess: async () => true,
+    hasCommand: async () => false,
+  });
+
+  assert.equal(checks.find((check) => check.id === "ffmpeg")?.status, "ready");
 });

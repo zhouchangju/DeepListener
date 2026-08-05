@@ -22,11 +22,31 @@ const standaloneOutputDir = path.join(projectRoot, ".next", "standalone");
 // `.next` first so Next always sees a clean destination, then delete the stale
 // tree from the OS temp directory. Dev output and caches remain untouched.
 if (existsSync(standaloneOutputDir)) {
-  const staleOutputDir = path.join(
+  const preferredStaleOutputDir = path.join(
     os.tmpdir(),
     `deeplistener-next-standalone-${process.pid}-${Date.now()}`,
   );
-  renameSync(standaloneOutputDir, staleOutputDir);
+  let staleOutputDir = preferredStaleOutputDir;
+  try {
+    renameSync(standaloneOutputDir, staleOutputDir);
+  } catch (error) {
+    if (error?.code !== "EXDEV") {
+      throw error;
+    }
+
+    // Windows can place the OS temp directory on a different volume from the
+    // checkout. A cross-volume rename cannot be atomic, so fall back to a
+    // disposable sibling inside `.next`, which is guaranteed to share the
+    // volume with the generated standalone output.
+    staleOutputDir = path.join(
+      path.dirname(standaloneOutputDir),
+      `.standalone-stale-${process.pid}-${Date.now()}`,
+    );
+    console.warn(
+      "[next-build] OS temp directory is on another volume; using a same-volume cleanup path.",
+    );
+    renameSync(standaloneOutputDir, staleOutputDir);
+  }
   let cleanupError;
   for (let attempt = 0; attempt < 3 && existsSync(staleOutputDir); attempt += 1) {
     try {

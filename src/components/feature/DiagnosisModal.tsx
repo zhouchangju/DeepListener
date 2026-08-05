@@ -76,7 +76,7 @@ export default function DiagnosisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[638px]" zIndex="z-[60]">
+      <DialogContent className="sm:max-w-[638px]" closeLabel={commonT("close")} zIndex="z-[60]">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
         </DialogHeader>

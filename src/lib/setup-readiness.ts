@@ -22,7 +22,7 @@ export interface ReadinessCheck {
   values?: Record<string, string | number>;
 }
 
-interface ReadinessDependencies {
+export interface ReadinessDependencies {
   cwd: string;
   env: Readonly<Record<string, string | undefined>>;
   nodeVersion: string;
@@ -56,9 +56,22 @@ async function isWritableOrCreatable(
   canAccessTarget: ReadinessDependencies["canAccess"],
 ) {
   const exists = await canAccessTarget(target, constants.F_OK);
-  return exists
-    ? canAccessTarget(target, constants.W_OK)
-    : canAccessTarget(parent, constants.W_OK);
+  if (exists) return canAccessTarget(target, constants.W_OK);
+
+  // A clean Desktop profile commonly has neither `<root>/media` nor its
+  // `audio`/`video` children yet. Readiness must stay read-only, so walk up to
+  // the nearest existing ancestor and check whether the app could create the
+  // missing path there instead of treating an absent immediate parent as a
+  // blocker.
+  let candidate = parent;
+  while (true) {
+    if (await canAccessTarget(candidate, constants.F_OK)) {
+      return canAccessTarget(candidate, constants.W_OK);
+    }
+    const next = path.dirname(candidate);
+    if (next === candidate) return false;
+    candidate = next;
+  }
 }
 
 function isSupportedNode(version: string) {
@@ -74,6 +87,16 @@ interface DatabaseReadiness {
   status: ReadinessStatus;
   detailKey: string;
   fixKey?: string;
+}
+
+function createDependencies(overrides: Partial<ReadinessDependencies>): ReadinessDependencies {
+  return {
+    cwd: overrides.cwd ?? process.cwd(),
+    env: overrides.env ?? process.env,
+    nodeVersion: overrides.nodeVersion ?? process.versions.node,
+    canAccess: overrides.canAccess ?? canAccess,
+    hasCommand: overrides.hasCommand ?? hasCommand,
+  };
 }
 
 /**
@@ -121,6 +144,23 @@ async function evaluateDatabase(
   };
 }
 
+/**
+ * Cheap, read-only database gate for server pages that require Prisma data.
+ * It deliberately checks only the resolved database path, so a blocked route
+ * can offer Setup recovery without probing providers or invoking Prisma.
+ */
+export async function evaluateDatabaseReadiness(
+  overrides: Partial<ReadinessDependencies> = {},
+): Promise<ReadinessCheck> {
+  const check = await evaluateDatabase(createDependencies(overrides));
+  return {
+    id: "database",
+    status: check.status,
+    detailKey: check.detailKey,
+    fixKey: check.fixKey,
+  };
+}
+
 function getProviderCheck(env: Readonly<Record<string, string | undefined>>): ReadinessCheck {
   const provider = (env.TRANSCRIPTION_PROVIDER || "deepgram").toLowerCase();
   const keyNames: Record<string, string> = {
@@ -161,25 +201,34 @@ function getProviderCheck(env: Readonly<Record<string, string | undefined>>): Re
 export async function evaluateSetupReadiness(
   overrides: Partial<ReadinessDependencies> = {},
 ): Promise<ReadinessCheck[]> {
-  const dependencies: ReadinessDependencies = {
-    cwd: overrides.cwd ?? process.cwd(),
-    env: overrides.env ?? process.env,
-    nodeVersion: overrides.nodeVersion ?? process.versions.node,
-    canAccess: overrides.canAccess ?? canAccess,
-    hasCommand: overrides.hasCommand ?? hasCommand,
-  };
+  const dependencies = createDependencies(overrides);
   const { env, nodeVersion } = dependencies;
   const layout = resolveLayout(env, dependencies.cwd);
   const uploadDir = uploadsDirectory(layout.root, layout.mode);
   const videoDir = videosDirectory(layout.root, layout.mode);
   const publicOrMediaParent = path.dirname(uploadDir);
 
+  // Packaged Desktop passes a verified/failed asset status from the Electron
+  // boundary. A failed status must not fall back to the host PATH; Server and
+  // development layouts retain the existing command probe.
+  const packagedAssetStatus = env.DEEPLISTENER_RUNTIME_ASSET_STATUS;
+  const ffmpegProbe = packagedAssetStatus === "verified"
+    ? Promise.resolve(true)
+    : packagedAssetStatus === "missing"
+      ? Promise.resolve(false)
+      : dependencies.hasCommand("ffmpeg");
+  const ffprobeProbe = packagedAssetStatus === "verified"
+    ? Promise.resolve(true)
+    : packagedAssetStatus === "missing"
+      ? Promise.resolve(false)
+      : dependencies.hasCommand("ffprobe");
+
   const [databaseCheck, uploadsWritable, videosWritable, ffmpegAvailable, ffprobeAvailable] = await Promise.all([
     evaluateDatabase(dependencies),
     isWritableOrCreatable(uploadDir, publicOrMediaParent, dependencies.canAccess),
     isWritableOrCreatable(videoDir, publicOrMediaParent, dependencies.canAccess),
-    dependencies.hasCommand("ffmpeg"),
-    dependencies.hasCommand("ffprobe"),
+    ffmpegProbe,
+    ffprobeProbe,
   ]);
   const mediaWritable = uploadsWritable && videosWritable;
 

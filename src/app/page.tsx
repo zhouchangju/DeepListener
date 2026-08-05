@@ -1,21 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowRight, BrainCircuit, Headphones, Loader2, Mic2, PlayCircle, Repeat2, ShieldCheck, Sparkles, Waves } from "lucide-react";
 import { useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireOkResponse } from "@/lib/client-response";
+import { ApiError, requireOkResponse } from "@/lib/client-response";
 import { translations } from "./landing-translations";
 
 export default function HomePage() {
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const copy = locale === "zh-CN" ? translations["zh-CN"] : translations.en;
   const [demoLoading, setDemoLoading] = useState(false);
+  const autoDemoStarted = useRef(false);
   const workflow = [
     { icon: Headphones, title: copy.workflow.listen.title, text: copy.workflow.listen.text },
     { icon: Waves, title: copy.workflow.decode.title, text: copy.workflow.decode.text },
@@ -23,7 +25,7 @@ export default function HomePage() {
     { icon: Repeat2, title: copy.workflow.review.title, text: copy.workflow.review.text },
   ];
 
-  const handleTryDemo = async () => {
+  const handleTryDemo = useCallback(async () => {
     setDemoLoading(true);
     try {
       const response = await fetch("/api/demo", { method: "POST" });
@@ -34,11 +36,25 @@ export default function HomePage() {
       }
       router.push(`/practice/${data.trackId}?demo=1`);
     } catch (error) {
+      if (error instanceof ApiError && error.code === "DATABASE_NOT_READY") {
+        toast.info(copy.demoSetupRequired);
+        router.push("/setup");
+        return;
+      }
       toast.error(error instanceof Error ? error.message : copy.demoFailed);
     } finally {
       setDemoLoading(false);
     }
-  };
+  }, [copy, router]);
+
+  // Setup's explicit "try the demo" action lands here with a user-initiated
+  // query flag. Starting only for that flag keeps normal home-page visits
+  // side-effect free while making the decision guide's CTA executable.
+  useEffect(() => {
+    if (searchParams.get("demo") !== "1" || autoDemoStarted.current) return;
+    autoDemoStarted.current = true;
+    void handleTryDemo();
+  }, [handleTryDemo, searchParams]);
 
   return (
     <div className="overflow-hidden">
@@ -59,9 +75,14 @@ export default function HomePage() {
               {copy.intro}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button size="lg" className="h-12 px-6" onClick={handleTryDemo} disabled={demoLoading}>
+              <Button size="lg" className="h-12 px-6" onClick={handleTryDemo} disabled={demoLoading} aria-busy={demoLoading}>
                 {demoLoading ? <Loader2 className="animate-spin" /> : <PlayCircle />} {demoLoading ? copy.demoLoading : copy.demo}
               </Button>
+              {demoLoading && (
+                <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                  {copy.demoLoading}
+                </p>
+              )}
               <Button asChild size="lg" variant="outline" className="h-12 px-6">
                 <Link href="/setup">{copy.setup} <ArrowRight /></Link>
               </Button>

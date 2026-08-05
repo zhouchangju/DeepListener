@@ -185,6 +185,7 @@ export default function ExportButtons({
           <div className="flex items-center gap-2">
             <input
               type="date"
+              aria-label={t("dateFrom")}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -192,6 +193,7 @@ export default function ExportButtons({
             <span className="text-muted-foreground">~</span>
             <input
               type="date"
+              aria-label={t("dateTo")}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="px-2 py-1 text-xs border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -201,6 +203,7 @@ export default function ExportButtons({
                 onClick={clearDateFilter}
                 className="text-xs text-muted-foreground hover:text-red-600 transition-colors"
                 title={t("clearDateFilter")}
+                aria-label={t("clearDateFilter")}
               >
                 ✕
               </button>

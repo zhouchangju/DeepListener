@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CONTRACT_ROUTES = [
   "./review/log/route.ts",
@@ -28,7 +29,10 @@ test("archive route uses shared response helper", () => {
 });
 
 test("api routes do not expose raw exception messages in 500 responses", () => {
-  const routePaths = findRouteFiles(path.dirname(new URL(import.meta.url).pathname));
+  // URL.pathname is not a filesystem path on Windows (it keeps the leading
+  // slash before the drive letter, producing e.g. `\\D:\\repo`). Convert the
+  // module URL through the platform-aware helper before walking the tree.
+  const routePaths = findRouteFiles(path.dirname(fileURLToPath(import.meta.url)));
 
   for (const routePath of routePaths) {
     const source = readFileSync(routePath, "utf8");

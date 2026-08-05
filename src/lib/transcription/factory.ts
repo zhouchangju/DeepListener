@@ -1,7 +1,8 @@
 import { OpenAIProvider } from "./openai-provider";
 import { GoogleProvider } from "./google-provider";
 import { DeepgramProvider } from "./deepgram-provider";
-import { TranscriptionProvider } from "./types";
+import { TranscriptionProvider, type TranscriptionProviderConfig } from "./types";
+import type { ProviderId } from "@/lib/secrets-store";
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 
 export function getTranscriptionProvider(): TranscriptionProvider {
@@ -15,14 +16,26 @@ export function getTranscriptionProvider(): TranscriptionProvider {
 
   const providerType = process.env.TRANSCRIPTION_PROVIDER || "deepgram";
 
-  switch (providerType.toLowerCase()) {
+  return getTranscriptionProviderFor(providerType);
+}
+
+/**
+ * Construct a provider for an explicit retry choice without changing the
+ * process-wide selected provider. The provider constructors still read only
+ * their own credential from the server environment.
+ */
+export function getTranscriptionProviderFor(
+  provider: string | ProviderId,
+  config?: TranscriptionProviderConfig,
+): TranscriptionProvider {
+  switch (provider.toLowerCase()) {
     case "openai":
-      return new OpenAIProvider();
+      return new OpenAIProvider(config);
     case "google":
-      return new GoogleProvider();
+      return new GoogleProvider(config);
     case "deepgram":
-      return new DeepgramProvider();
+      return new DeepgramProvider(config);
     default:
-      return new OpenAIProvider();
+      throw new Error("Unsupported transcription provider");
   }
 }

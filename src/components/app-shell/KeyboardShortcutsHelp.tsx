@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
  */
 export default function KeyboardShortcutsHelp() {
   const t = useTranslations("shortcuts");
+  const commonT = useTranslations("common");
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function KeyboardShortcutsHelp() {
         <Keyboard className="h-4 w-4" aria-hidden="true" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" closeLabel={commonT("close")}>
           <DialogHeader>
             <DialogTitle>{t("title")}</DialogTitle>
             <DialogDescription>{t("description")}</DialogDescription>

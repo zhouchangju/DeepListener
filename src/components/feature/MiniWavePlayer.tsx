@@ -201,6 +201,8 @@ export default function MiniWavePlayer({
         variant="secondary" 
         className="rounded-full h-10 w-10 shrink-0 bg-background shadow-sm hover:bg-accent"
         onClick={togglePlay}
+        title={isPlaying ? t("pause") : t("play")}
+        aria-label={isPlaying ? t("pause") : t("play")}
       >
         {isPlaying ? <Pause className="h-4 w-4 text-foreground" /> : <Play className="h-4 w-4 ml-0.5 text-foreground" />}
       </Button>
@@ -217,6 +219,7 @@ export default function MiniWavePlayer({
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md z-10 opacity-80 hover:opacity-100"
             onClick={clearRegions}
             title={t("clearSelection")}
+            aria-label={t("clearSelection")}
           >
             <X className="h-3 w-3" />
           </Button>

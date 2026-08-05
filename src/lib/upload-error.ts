@@ -35,6 +35,13 @@ export function toPublicUploadError(error: unknown): PublicUploadError {
       code: "FFMPEG_NOT_FOUND",
     };
   }
+  if (/disk space|ENOSPC|free disk/i.test(message)) {
+    return {
+      message: "There is not enough free disk space to keep this import safely. Free space, then retry the saved operation.",
+      status: 507,
+      code: "DISK_INSUFFICIENT",
+    };
+  }
   if (/timeout|timed out/i.test(message)) {
     return {
       message: "Transcription timed out. Try again, or use a shorter media file.",
@@ -42,9 +49,9 @@ export function toPublicUploadError(error: unknown): PublicUploadError {
       code: "TRANSCRIPTION_TIMEOUT",
     };
   }
-  if (/fetch failed|network|ECONN|ENOTFOUND/i.test(message)) {
+  if (/fetch failed|network|proxy|ECONN|ENOTFOUND|quota|rate\s*limit|too many requests|\b429\b|provider\s+request\s+failed/i.test(message)) {
     return {
-      message: "The transcription provider could not be reached. Check your network, proxy, and selected provider.",
+      message: "The transcription provider is unavailable or over its quota. Check the provider account, network, or choose another provider.",
       status: 502,
       code: "PROVIDER_REQUEST_FAILED",
     };

@@ -29,6 +29,10 @@ directories:
 files:
   - main.js
   - preload.js
+  - bounded-log.js
+  - native-export.js
+  - native-backup.js
+  - runtime-assets.js
   - package.json
   - icon.png
   - "!**/.DS_Store"

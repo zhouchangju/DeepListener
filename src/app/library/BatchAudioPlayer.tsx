@@ -76,6 +76,7 @@ export default function BatchAudioPlayer({
               onClick={onSkipPrev}
               disabled={isGap}
               title={t("prevTrack")}
+              aria-label={t("prevTrack")}
             >
               <SkipBack className="h-4 w-4" />
             </Button>
@@ -86,6 +87,7 @@ export default function BatchAudioPlayer({
                 onClick={onResume}
                 disabled={isGap}
                 title={t("playTitle")}
+                aria-label={t("playTitle")}
               >
                 <Play className="h-4 w-4" />
               </Button>
@@ -94,6 +96,7 @@ export default function BatchAudioPlayer({
                 size="icon"
                 onClick={onPause}
                 title={t("pauseTitle")}
+                aria-label={t("pauseTitle")}
               >
                 <Pause className="h-4 w-4" />
               </Button>
@@ -105,6 +108,7 @@ export default function BatchAudioPlayer({
               onClick={onSkipNext}
               disabled={isGap}
               title={t("nextTrack")}
+              aria-label={t("nextTrack")}
             >
               <SkipForward className="h-4 w-4" />
             </Button>
@@ -116,6 +120,7 @@ export default function BatchAudioPlayer({
               variant="ghost"
               onClick={onStop}
               title={t("stopTitle")}
+              aria-label={t("stopTitle")}
             >
               <X className="h-4 w-4" />
             </Button>

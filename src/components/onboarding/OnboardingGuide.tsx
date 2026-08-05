@@ -1,6 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, type CSSProperties } from "react";
+import {
+  forwardRef,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type CSSProperties,
+  type ComponentPropsWithoutRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -13,15 +23,24 @@ export interface OnboardingStep {
   id: string;
   title: string;
   description: string;
+  /** Optional real destination represented by the step. */
+  href?: string;
+  /** Optional label for the destination action. */
+  actionLabel?: string;
 }
+
+export type OnboardingCompleteReason = "finish" | "action";
+export type OnboardingSkipReason = "skip" | "escape" | "outside";
 
 export interface OnboardingGuideProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   steps: readonly OnboardingStep[];
   storageKey?: string;
-  onComplete?: () => void;
-  onSkip?: () => void;
+  onComplete?: (step: OnboardingStep, reason: OnboardingCompleteReason) => void;
+  onSkip?: (step: OnboardingStep, reason: OnboardingSkipReason) => void;
+  /** The control that opened the guide; focus returns here when it closes. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export function getOnboardingProgressLabel(current: number, total: number) {
@@ -64,7 +83,7 @@ const STEP_HREF: Record<string, string> = {
 
 const HIGHLIGHT_PADDING = 8;
 
-interface TargetRect {
+export interface TargetRect {
   top: number;
   left: number;
   width: number;
@@ -73,6 +92,54 @@ interface TargetRect {
    *  `window` directly (which crashes during SSR / prerender). */
   viewportWidth: number;
   viewportHeight: number;
+}
+
+export interface OverlayRegion {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Build the four dimming regions around a spotlight hole. Keeping this pure
+ * makes the most important layering invariant easy to test: no region may
+ * cover the highlighted target.
+ */
+export function getSpotlightOverlayRegions(targetRect: TargetRect): OverlayRegion[] {
+  const top = Math.max(0, targetRect.top - HIGHLIGHT_PADDING);
+  const left = Math.max(0, targetRect.left - HIGHLIGHT_PADDING);
+  const right = Math.min(
+    targetRect.viewportWidth,
+    targetRect.left + targetRect.width + HIGHLIGHT_PADDING,
+  );
+  const bottom = Math.min(
+    targetRect.viewportHeight,
+    targetRect.top + targetRect.height + HIGHLIGHT_PADDING,
+  );
+
+  return [
+    { top: 0, left: 0, width: targetRect.viewportWidth, height: top },
+    { top: bottom, left: 0, width: targetRect.viewportWidth, height: targetRect.viewportHeight - bottom },
+    { top, left: 0, width: left, height: bottom - top },
+    { top, left: right, width: targetRect.viewportWidth - right, height: bottom - top },
+  ].filter((region) => region.width > 0 && region.height > 0);
+}
+
+const FOCUSABLE_SELECTOR = [
+  "button:not([disabled])",
+  "a[href]",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex=\"-1\"])",
+].join(",");
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => !element.hidden && element.getClientRects().length > 0,
+  );
 }
 
 /**
@@ -93,10 +160,13 @@ export function OnboardingGuide({
   storageKey = ONBOARDING_STORAGE_KEY,
   onComplete,
   onSkip,
+  returnFocusRef,
 }: OnboardingGuideProps) {
   const t = useTranslations("onboarding");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const totalSteps = steps.length;
   const currentStep = steps[currentIndex];
   const isLastStep = currentIndex === totalSteps - 1;
@@ -165,20 +235,87 @@ export function OnboardingGuide({
     };
   }, [open, currentStep, measureTarget]);
 
+  const closeAfterCompletion = useCallback(
+    (
+      action: "complete" | "skip",
+      reason: OnboardingCompleteReason | OnboardingSkipReason,
+    ) => {
+      if (!currentStep) return;
+      persistCompletion(storageKey);
+      setCurrentIndex(0);
+      if (action === "complete") {
+        onComplete?.(currentStep, reason as OnboardingCompleteReason);
+      } else {
+        onSkip?.(currentStep, reason as OnboardingSkipReason);
+      }
+      onOpenChange(false);
+
+      const returnTarget = returnFocusRef?.current ?? previousFocusRef.current;
+      if (returnTarget && document.contains(returnTarget)) {
+        window.requestAnimationFrame(() => returnTarget.focus());
+      }
+    },
+    [currentStep, onComplete, onOpenChange, onSkip, returnFocusRef, storageKey],
+  );
+
+  // Capture the opener and move focus into the guide. The dialog itself is
+  // focused first so screen readers announce the title before the controls.
+  useEffect(() => {
+    if (!open) return;
+    const active = document.activeElement;
+    previousFocusRef.current = returnFocusRef?.current ?? (active instanceof HTMLElement ? active : null);
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, returnFocusRef]);
+
+  // Escape is a dismissal action even when focus is temporarily on the
+  // spotlighted target. Background clicks remain a skip, never a completion.
+  useEffect(() => {
+    if (!open) return;
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeAfterCompletion("skip", "escape");
+    };
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }, [closeAfterCompletion, open]);
+
+  // The highlighted nav link remains a real control. Once it is activated by
+  // pointer or keyboard, close the guide and record an action completion so a
+  // route transition never leaves the spotlight floating over the next page.
+  useEffect(() => {
+    if (!open || !currentStep) return;
+    const selector = STEP_TARGET_SELECTORS[currentStep.id];
+    const target = selector ? document.querySelector(selector) : null;
+    if (!(target instanceof HTMLElement)) return;
+    const handleTargetActivate = () => closeAfterCompletion("complete", "action");
+    target.addEventListener("click", handleTargetActivate);
+    return () => target.removeEventListener("click", handleTargetActivate);
+  }, [closeAfterCompletion, currentStep, open]);
+
+  const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = getFocusableElements(dialogRef.current);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialogRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   if (!open || totalSteps === 0 || !currentStep) {
     return null;
   }
-
-  const closeAfterCompletion = (action: "complete" | "skip") => {
-    persistCompletion(storageKey);
-    setCurrentIndex(0);
-    if (action === "complete") {
-      onComplete?.();
-    } else {
-      onSkip?.();
-    }
-    onOpenChange(false);
-  };
 
   const progressLabel = t("stepLabel", { current: currentIndex + 1, total: totalSteps });
 
@@ -225,6 +362,12 @@ export function OnboardingGuide({
         ),
         width: BUBBLE_WIDTH,
         maxWidth: targetRect.viewportWidth - 32,
+        // At 200% zoom the effective CSS viewport can be short enough that
+        // the estimated bubble height is larger than the available space.
+        // Keep the guide itself reachable instead of allowing its controls to
+        // render below the viewport.
+        maxHeight: "calc(100vh - 32px)",
+        overflowY: "auto",
         zIndex: 61,
       }
     : {
@@ -234,24 +377,46 @@ export function OnboardingGuide({
         transform: "translate(-50%, -50%)",
         width: BUBBLE_WIDTH,
         maxWidth: "calc(100vw - 32px)",
+        maxHeight: "calc(100vh - 32px)",
+        overflowY: "auto",
         zIndex: 61,
       };
 
+  const targetHref = currentStep.href ?? STEP_HREF[currentStep.id];
+  const overlayRegions = targetRect ? getSpotlightOverlayRegions(targetRect) : [];
+
   return (
     <>
-      {/* Click-catcher behind everything so background UI is non-interactive
-          while the guide is open, but the spotlighted target stays clickable. */}
-      <div
-        role="presentation"
-        onClick={() => closeAfterCompletion("skip")}
-        style={{ position: "fixed", inset: 0, zIndex: 59 }}
-        aria-hidden="true"
-      />
+      {/* Dimming regions deliberately leave the spotlight hole empty. A
+          full-screen click-catcher used to sit above the nav and made the
+          highlighted target impossible to activate. */}
+      {targetRect ? (
+        overlayRegions.map((region, index) => (
+          <div
+            key={`onboarding-overlay-${index}`}
+            role="presentation"
+            onClick={() => closeAfterCompletion("skip", "outside")}
+            style={{ ...region, position: "fixed", zIndex: 59 }}
+            aria-hidden="true"
+          />
+        ))
+      ) : (
+        <div
+          role="presentation"
+          onClick={() => closeAfterCompletion("skip", "outside")}
+          style={{ position: "fixed", inset: 0, zIndex: 59 }}
+          aria-hidden="true"
+        />
+      )}
       <div style={spotlightStyle} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={currentStep.title}
+        aria-describedby="onboarding-step-description"
+        ref={dialogRef}
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         style={bubbleStyle}
         className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-2xl"
       >
@@ -259,15 +424,17 @@ export function OnboardingGuide({
           {progressLabel}
         </p>
         <h2 className="mt-1 text-lg font-semibold leading-tight">{currentStep.title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{currentStep.description}</p>
+        <p id="onboarding-step-description" className="mt-2 text-sm text-muted-foreground">
+          {currentStep.description}
+        </p>
 
         {/* When the target element is off-screen (mainly mobile, where nav
             links are inside the hamburger menu), offer a direct link so the
             centered bubble is a launchpad, not a dead end. */}
-        {!targetRect && STEP_HREF[currentStep.id] && (
+        {targetHref && (
           <Button asChild size="sm" variant="outline" className="mt-3 gap-1.5">
-            <Link href={STEP_HREF[currentStep.id]} onClick={() => closeAfterCompletion("complete")}>
-              {t("goNow")}
+            <Link href={targetHref} onClick={() => closeAfterCompletion("complete", "action")}>
+              {currentStep.actionLabel ?? t("goNow")}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -290,7 +457,12 @@ export function OnboardingGuide({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={() => closeAfterCompletion("skip")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => closeAfterCompletion("skip", "skip")}
+          >
             {t("skip")}
           </Button>
           <div className="flex gap-2">
@@ -308,7 +480,7 @@ export function OnboardingGuide({
               size="sm"
               onClick={() =>
                 isLastStep
-                  ? closeAfterCompletion("complete")
+                  ? closeAfterCompletion("complete", "finish")
                   : setCurrentIndex((index) => index + 1)
               }
             >
@@ -321,16 +493,24 @@ export function OnboardingGuide({
   );
 }
 
-export interface GuideTriggerProps {
+export type GuideTriggerProps = ComponentPropsWithoutRef<typeof Button> & {
   onClick: () => void;
-  children: React.ReactNode;
-  className?: string;
-}
+};
 
-export function GuideTrigger({ onClick, children, className }: GuideTriggerProps) {
+export const GuideTrigger = forwardRef<HTMLButtonElement, GuideTriggerProps>(function GuideTrigger(
+  { onClick, children, className, ...props },
+  ref,
+) {
   return (
-    <Button type="button" variant="ghost" className={className} onClick={onClick}>
+    <Button
+      {...props}
+      ref={ref}
+      type="button"
+      variant="ghost"
+      className={className}
+      onClick={onClick}
+    >
       {children}
     </Button>
   );
-}
+});

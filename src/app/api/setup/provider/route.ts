@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { formatZodError, providerConfigSchema } from "@/lib/api-schemas";
+import { formatZodError, providerConfigSchema, providerRemovalSchema } from "@/lib/api-schemas";
 import { badRequest, internalServerError } from "@/lib/api-response";
-import { getProviderSummary, saveProviderConfig } from "@/lib/secrets-store";
+import { getProviderSummaryAsync, removeProviderConfig, saveProviderConfig } from "@/lib/secrets-store";
 
 /** Returns a masked summary of the transcription provider state. */
 export async function GET() {
   try {
-    return NextResponse.json(getProviderSummary());
-  } catch (error: unknown) {
-    console.error("Provider summary error:", error);
+    return NextResponse.json(await getProviderSummaryAsync());
+  } catch {
+    console.error("Provider summary error");
     return internalServerError();
   }
 }
@@ -24,9 +24,25 @@ export async function POST(req: NextRequest) {
     const { provider, apiKey, baseUrl } = parsed.data;
     await saveProviderConfig({ provider, apiKey, baseUrl });
 
-    return NextResponse.json(getProviderSummary());
-  } catch (error: unknown) {
-    console.error("Provider config save error:", error);
+    return NextResponse.json(await getProviderSummaryAsync());
+  } catch {
+    console.error("Provider config save error");
+    return internalServerError();
+  }
+}
+
+/** Removes one locally stored provider credential after explicit UI confirmation. */
+export async function DELETE(req: NextRequest) {
+  try {
+    const parsed = providerRemovalSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return badRequest(formatZodError(parsed.error));
+    }
+
+    await removeProviderConfig(parsed.data.provider);
+    return NextResponse.json(await getProviderSummaryAsync());
+  } catch {
+    console.error("Provider config removal error");
     return internalServerError();
   }
 }

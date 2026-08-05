@@ -44,6 +44,14 @@ test("global styles do not force a grayscale filter on the document", () => {
   assert.doesNotMatch(source, /filter:\s*grayscale/);
 });
 
+test("global styles honor reduced-motion preferences", () => {
+  const source = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(source, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(source, /transition-duration:\s*0\.01ms\s*!important/);
+  assert.match(source, /scroll-behavior:\s*auto\s*!important/);
+});
+
 test("primary brand token carries an indigo hue so accent work is visible", () => {
   const source = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
   // Slice from the :root block to the .dark { block (the selector, not the

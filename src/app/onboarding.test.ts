@@ -12,7 +12,7 @@ test("the root route exposes demo, setup, and library first-use paths", () => {
   assert.match(source, /router\.push\(`\/practice\/\$\{data\.trackId\}\?demo=1`\)/);
   // Landing text moved to landing-translations.ts
   const translationsSource = readFileSync(new URL("./landing-translations.ts", import.meta.url), "utf8");
-  assert.match(translationsSource, /Your media and database stay local; provider keys remain under your control/);
+  assert.match(translationsSource, /Your media and database stay local; service keys remain under your control/);
   assert.match(translationsSource, /demoNote/);
 });
 

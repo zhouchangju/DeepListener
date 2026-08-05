@@ -6,8 +6,12 @@ import { Loader2, Check, X, FileAudio } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { requireOkResponse } from "@/lib/client-response";
+import { ApiError, requireOkResponse } from "@/lib/client-response";
+import { getClientUploadValidationMessageKey } from "@/lib/client-upload-validation-copy";
+import { getRecoveryErrorMessageKey } from "@/lib/import-jobs/recovery-copy";
+import { classifyMediaKind, validateClientUpload } from "@/lib/client-upload-validation";
 import UploadDropDialog from "./UploadDropDialog";
+import ImportRecoveryList from "./ImportRecoveryList";
 
 interface UploadProgress {
   fileName: string;
@@ -15,10 +19,16 @@ interface UploadProgress {
   error?: string;
 }
 
-export default function BatchUploadButton() {
+interface BatchUploadButtonProps {
+  configuredProviders?: readonly ("deepgram" | "openai" | "google")[];
+}
+
+export default function BatchUploadButton({ configuredProviders }: BatchUploadButtonProps) {
   const t = useTranslations("library");
+  const noProviderConfigured = configuredProviders !== undefined && configuredProviders.length === 0;
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
+  const [recoveryVersion, setRecoveryVersion] = useState(0);
   const router = useRouter();
   // Hold the post-success navigation timeout so it can be cleared on unmount
   // or when a new upload starts (otherwise navigating away within 2s would
@@ -34,6 +44,26 @@ export default function BatchUploadButton() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
+    // Match the single-file path's fail-fast behavior. Invalid, empty, or
+    // oversized files should not enter the multipart request only to fail
+    // after the learner has already waited for an upload/transcription pass.
+    const invalidFile = files
+      .map((file) => ({ file, validation: validateClientUpload(file) }))
+      .find(({ validation }) => !validation.ok);
+    if (invalidFile) {
+      const reasonKey = getClientUploadValidationMessageKey(invalidFile.validation.code);
+      toast.error(t("batchValidationError", {
+        fileName: invalidFile.file.name || t("trackFallback", { index: 1 }),
+        reason: t(reasonKey as Parameters<typeof t>[0]),
+      }));
+      return;
+    }
+
+    if (noProviderConfigured && files.some((file) => classifyMediaKind(file) === "AUDIO")) {
+      toast.error(t("noProviderBatchHint"));
+      return;
+    }
+
     // Initialize progress
     const initialProgress: UploadProgress[] = files.map((file) => ({
       fileName: file.name,
@@ -41,6 +71,10 @@ export default function BatchUploadButton() {
     }));
     setProgress(initialProgress);
     setUploading(true);
+    // The batch endpoint processes the selected files as one request, so
+    // expose the honest in-flight state for every item while that request is
+    // active instead of leaving assistive technology stuck on "waiting".
+    setProgress(initialProgress.map((item) => ({ ...item, status: "uploading" })));
 
     const toastId = toast.loading(t("processingFiles", { count: files.length }));
 
@@ -60,7 +94,7 @@ export default function BatchUploadButton() {
       const data = await res.json();
       const { success, failed } = data as {
         success: Array<{ id: string; title: string; audioUrl: string; fileName: string }>;
-        failed: Array<{ fileName: string; error: string }>;
+        failed: Array<{ fileName: string; error: string; code?: string }>;
       };
 
       // Update progress based on results
@@ -68,7 +102,7 @@ export default function BatchUploadButton() {
 
       success.forEach((item) => {
         const idx = updatedProgress.findIndex(
-          (p) => p.fileName === item.fileName
+          (p) => p.fileName === item.fileName && (p.status === "pending" || p.status === "uploading"),
         );
         if (idx !== -1) {
           updatedProgress[idx] = { fileName: item.fileName, status: "success" };
@@ -77,18 +111,19 @@ export default function BatchUploadButton() {
 
       failed.forEach((item) => {
         const idx = updatedProgress.findIndex(
-          (p) => p.fileName === item.fileName
+          (p) => p.fileName === item.fileName && (p.status === "pending" || p.status === "uploading"),
         );
         if (idx !== -1) {
           updatedProgress[idx] = {
             fileName: item.fileName,
             status: "error",
-            error: item.error,
+            error: t(getRecoveryErrorMessageKey(item.code) as Parameters<typeof t>[0]),
           };
         }
       });
 
       setProgress(updatedProgress);
+      if (failed.length > 0) setRecoveryVersion((version) => version + 1);
 
       // Show summary toast
       if (failed.length === 0) {
@@ -107,14 +142,15 @@ export default function BatchUploadButton() {
         }, 2000);
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : t("batchFailed");
+      console.warn("Batch media import failed", error);
+      const message = error instanceof ApiError && error.code
+        ? t(getRecoveryErrorMessageKey(error.code) as Parameters<typeof t>[0])
+        : t("batchFailed");
       toast.error(message, { id: toastId });
       setProgress(
         initialProgress.map((p) => ({ ...p, status: "error", error: message }))
       );
+      setRecoveryVersion((version) => version + 1);
     } finally {
       setUploading(false);
     }
@@ -135,7 +171,7 @@ export default function BatchUploadButton() {
       {/* Progress Display */}
       {progress.length > 0 && (
         <div className="mt-4 space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-          <div className="text-sm font-medium text-foreground sticky top-0 bg-background py-2 border-b border-border">
+          <div className="text-sm font-medium text-foreground sticky top-0 bg-background py-2 border-b border-border" role="status" aria-live="polite" aria-atomic="true">
             {t("uploadProgress", { done: progress.filter((p) => p.status === "success").length, total: progress.length })}
           </div>
           {progress.map((item, idx) => (
@@ -148,6 +184,15 @@ export default function BatchUploadButton() {
                 <div className="text-sm font-medium text-foreground truncate">
                   {item.fileName}
                 </div>
+                <span className="sr-only">
+                  {item.status === "pending"
+                    ? t("uploadPending")
+                    : item.status === "uploading"
+                      ? t("uploadUploading")
+                      : item.status === "success"
+                        ? t("uploadSuccess")
+                        : t("uploadError")}
+                </span>
                 {item.error && (
                   <div className="text-xs text-red-600 mt-1">{item.error}</div>
                 )}
@@ -183,6 +228,8 @@ export default function BatchUploadButton() {
           </Button>
         </div>
       )}
+
+      <ImportRecoveryList refreshToken={recoveryVersion} configuredProviders={configuredProviders} />
     </div>
   );
 }

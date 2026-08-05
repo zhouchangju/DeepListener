@@ -54,5 +54,18 @@ test("audio player uses WaveSurfer playback state for controls", () => {
 
 test("the primary transport control has an accessible play or pause name", () => {
   const source = readFileSync(new URL("./PlayerControls.tsx", import.meta.url), "utf8");
-  assert.match(source, /aria-label=\{isPlaying \? "Pause" : "Play"\}/);
+  assert.match(source, /useTranslations\("feature\.audioPlayer"\)/);
+  assert.match(source, /aria-label=\{isPlaying \? t\("pause"\) : t\("play"\)\}/);
+  assert.match(source, /\{t\("position"\)\}/);
+  assert.match(source, /\{t\("loop"\)\}/);
+  assert.match(source, /\{t\("clear"\)\}/);
+});
+
+test("waveform help text follows the selected locale", () => {
+  const source = readFileSync(new URL("./WaveformArea.tsx", import.meta.url), "utf8");
+  assert.match(source, /useTranslations\("feature\.audioPlayer"\)/);
+  assert.match(source, /\{t\("waveformSelect"\)\}/);
+  assert.match(source, /\{t\("waveformPan"\)\}/);
+  assert.match(source, /\{t\("waveformZoom"\)\}/);
+  assert.match(source, /\{t\("keyboardPlayPause"\)\}/);
 });

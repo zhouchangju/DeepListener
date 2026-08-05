@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import AudioPlayer from "@/components/feature/AudioPlayer";
 
@@ -27,6 +27,12 @@ import { useTranslations } from "next-intl";
 import { useTimeTracking } from "@/contexts/TimeTrackingContext";
 import { downloadResponseBlob } from "@/lib/client-download";
 import { requireOkResponse } from "@/lib/client-response";
+import DemoJourneyPanel from "./DemoJourneyPanel";
+import {
+  advanceDemoJourney,
+  INITIAL_DEMO_JOURNEY_STATE,
+  type DemoJourneyEvent,
+} from "@/lib/demo-journey";
 
 
 
@@ -59,14 +65,20 @@ interface Track {
 interface PracticeClientProps {
   track: Track;
   initialBlindMode?: boolean;
+  demoMode?: boolean;
 }
 
 
 
-export default function PracticeClient({ track, initialBlindMode = false }: PracticeClientProps) {
+export default function PracticeClient({
+  track,
+  initialBlindMode = false,
+  demoMode = false,
+}: PracticeClientProps) {
   const router = useRouter();
   const t = useTranslations("practice");
   const { setMode } = useTimeTracking();
+  const displayTitle = demoMode ? t("demoTrackTitle") : track.title;
 
   useEffect(() => {
     setMode("LISTENING");
@@ -75,6 +87,7 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
 
   const [capturingSentenceId, setCapturingSentenceId] = useState<string | null>(null);
   const [captureHandoffVisible, setCaptureHandoffVisible] = useState(false);
+  const [demoJourney, setDemoJourney] = useState(INITIAL_DEMO_JOURNEY_STATE);
 
   const [blindMode, setBlindMode] = useState(initialBlindMode);
 
@@ -89,6 +102,20 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
   const [isExporting, setIsExporting] = useState(false);
 
   const [note, setNote] = useState<string | null>(track.note || null);
+
+  const recordDemoEvent = useCallback(
+    (event: DemoJourneyEvent) => {
+      if (!demoMode) return;
+      setDemoJourney((state) => advanceDemoJourney(state, event));
+    },
+    [demoMode],
+  );
+
+  useEffect(() => {
+    if (demoMode && captureHandoffVisible) {
+      recordDemoEvent("reviewHandoffSeen");
+    }
+  }, [captureHandoffVisible, demoMode, recordDemoEvent]);
 
   // Keep the note in sync with the server prop after router.refresh() so an
   // externally-updated note is reflected instead of the stale local copy.
@@ -149,6 +176,7 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
 
       toast.success(t("addedToVault"));
       setCaptureHandoffVisible(true);
+      recordDemoEvent("saved");
       setCapturingSentenceId(null);
       router.refresh();
     } catch (error) {
@@ -195,8 +223,8 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
       <div className="flex min-h-full flex-col md:h-full md:min-h-0 md:overflow-hidden">
       <div className="mb-3 flex flex-shrink-0 flex-wrap items-center justify-between gap-2 md:mb-4">
         <div className="flex items-center gap-2">
-           <h1 className="text-xl font-bold truncate max-w-[300px] md:max-w-md" title={track.title}>{track.title}</h1>
-           <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
+           <h1 className="text-xl font-bold truncate max-w-[300px] md:max-w-md" title={displayTitle}>{displayTitle}</h1>
+           <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} title={t("renameTrack")} aria-label={t("renameTrack")}>
              <Edit3 className="h-4 w-4 text-muted-foreground" />
            </Button>
         </div>
@@ -227,13 +255,18 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
             <Button
               variant={blindMode ? "default" : "outline"}
               onClick={() => setBlindMode(!blindMode)}
-              size="icon"
-              title={t("blindModeTitle")}
+              size="sm"
+              title={blindMode ? t("showTranscription") : t("hideTranscription")}
+              aria-label={blindMode ? t("showTranscription") : t("hideTranscription")}
+              aria-pressed={blindMode}
             >
               {blindMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <span className="hidden sm:inline">{blindMode ? t("showTranscription") : t("hideTranscription")}</span>
             </Button>
         </div>
       </div>
+
+      {demoMode && <DemoJourneyPanel state={demoJourney} />}
 
       {captureHandoffVisible && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-100" role="status" aria-live="polite">
@@ -261,6 +294,9 @@ export default function PracticeClient({ track, initialBlindMode = false }: Prac
           sentences={track.sentences}
           onCapture={handleCapture}
           blindMode={blindMode}
+          onPlay={() => recordDemoEvent("played")}
+          onReveal={() => recordDemoEvent("revealed")}
+          onSentenceSelected={() => recordDemoEvent("sentenceSelected")}
           onShadowing={(index) => {
             setShadowIndex(index);
             setShadowingMode(true);

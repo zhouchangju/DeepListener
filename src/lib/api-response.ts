@@ -33,9 +33,11 @@ export const SAFE_ERROR_CODES = [
   "MEDIA_DECODE_FAILED",
   "FFMPEG_FAILED",
   "FFMPEG_NOT_FOUND",
+  "DISK_INSUFFICIENT",
   "EXPORT_EMPTY",
   "EXPORT_TOO_LARGE",
   "DB_CONSTRAINT",
+  "DATABASE_NOT_READY",
   "NOT_FOUND",
   "CONFLICT",
 ] as const;
@@ -76,6 +78,7 @@ export function internalServerErrorSafe(options: SafeErrorOptions = {}) {
  */
 export function internalServerErrorFrom(error: unknown, knownCode?: SafeErrorCode) {
   // Log the real error server-side for debugging — never echo it to the client.
-  console.error("[api] request failed:", error);
+  const category = error instanceof Error ? error.name : typeof error;
+  console.error("[api] request failed:", category);
   return internalServerErrorSafe({ code: knownCode });
 }

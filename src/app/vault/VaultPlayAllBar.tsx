@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Pause, Play, SkipForward, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { VaultPlaybackItem } from "./vault-items";
 
 interface VaultPlayAllBarProps {
@@ -23,6 +24,7 @@ export function VaultPlayAllBar({
   onNext,
   onStop,
 }: VaultPlayAllBarProps) {
+  const t = useTranslations("vault");
   // Clamp the index so a stale playAllIndex (e.g. after the list shrank from
   // a filter/page change) doesn't render an out-of-range fraction like "11/5".
   const safeIndex = Math.min(playAllIndex, Math.max(0, items.length - 1));
@@ -44,11 +46,11 @@ export function VaultPlayAllBar({
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {playAllPaused ? (
-            <Button size="icon" variant="outline" className="h-8 w-8" onClick={onResume}>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={onResume} title={t("playAllResume")} aria-label={t("playAllResume")}>
               <Play className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="icon" variant="outline" className="h-8 w-8" onClick={onPause}>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={onPause} title={t("playAllPause")} aria-label={t("playAllPause")}>
               <Pause className="h-4 w-4" />
             </Button>
           )}
@@ -58,10 +60,12 @@ export function VaultPlayAllBar({
             className="h-8 w-8"
             onClick={onNext}
             disabled={safeIndex >= items.length - 1}
+            title={t("playAllNext")}
+            aria-label={t("playAllNext")}
           >
             <SkipForward className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={onStop}>
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={onStop} title={t("playAllStop")} aria-label={t("playAllStop")}>
             <X className="h-4 w-4" />
           </Button>
         </div>

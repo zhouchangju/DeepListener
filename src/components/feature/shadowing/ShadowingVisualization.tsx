@@ -55,6 +55,7 @@ export default function ShadowingVisualization({
                 className={`rounded-full h-10 w-10 shrink-0 shadow-sm ${isLooping ? "bg-primary hover:bg-primary" : "bg-background hover:bg-accent"}`}
                 onClick={onToggleLoop}
                 title={t("loopPlayback")}
+                aria-label={t("loopPlayback")}
               >
                 {isLooping ? <Pause className="h-4 w-4" /> : <Repeat className="h-4 w-4 text-foreground" />}
               </Button>

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseSrt } from "./subtitle-utils";
+import { parseSrt, parseSubtitle, parseVtt, validateSubtitleMatch } from "./subtitle-utils";
 
 test("parseSrt converts subtitle cues into non-overlapping sentence timestamps", () => {
   assert.deepEqual(
@@ -11,6 +11,20 @@ test("parseSrt converts subtitle cues into non-overlapping sentence timestamps",
     ],
   );
 });
+
+test("parseVtt accepts cue settings and strips markup safely", () => {
+  const segments = parseVtt(`WEBVTT\n\n00:00.000 --> 00:02.500 align:start\n<b>Hello</b> &amp; welcome\n\n00:02.400 --> 00:04.000\nWorld`);
+  assert.deepEqual(segments, [
+    { text: "Hello & welcome", start: 0, end: 2.35 },
+    { text: "World", start: 2.4, end: 4 },
+  ]);
+});
+
+test("invalid subtitle documents are rejected with a safe reason", () => {
+  assert.throws(() => parseSubtitle("not a subtitle", "vtt"), /no usable timed cues/i);
+  assert.equal(validateSubtitleMatch([{ text: "x", start: 0, end: 5 }], 0.1).ok, false);
+});
+
 
 test("parseSrt removes simple markup and ignores malformed cues", () => {
   assert.deepEqual(parseSrt(`1\nBAD --> TIME\nBroken\n\n2\n00:00:06.000 --> 00:00:08.000\n<i>Technical</i> English\ncontinues here.`), [

@@ -4,8 +4,16 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTranslations } from "next-intl/server";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/local-day";
+import DatabaseRecoveryState from "@/components/readiness/DatabaseRecoveryState";
+import { getDatabaseRouteReadiness } from "@/lib/route-readiness";
+import { getDueReviewItemIds } from "@/lib/review-queue-summary";
 
 export default async function ReviewPage() {
+  const readiness = await getDatabaseRouteReadiness();
+  if (!readiness.ok && readiness.check) {
+    return <DatabaseRecoveryState check={readiness.check} />;
+  }
+
   const t = await getTranslations("review");
   return (
     <div className="container mx-auto py-8 px-4">
@@ -26,7 +34,7 @@ async function ReviewContent() {
   const endOfToday = endOfLocalDay(now);
 
   // Run initial queries in parallel
-  const [todayLogs, todayReviews] = await Promise.all([
+  const [todayLogs, todayReviews, dueCandidates] = await Promise.all([
     prisma.reviewLog.findMany({
       where: { createdAt: { gte: startOfToday, lte: endOfToday } },
       select: { reviewItemId: true },
@@ -35,28 +43,29 @@ async function ReviewContent() {
       by: ['reviewItemId'],
       where: { createdAt: { gte: startOfToday, lte: endOfToday } },
       _max: { rating: true },
-    })
+    }),
+    prisma.reviewItem.findMany({
+      where: { due: { lte: now }, isArchived: false },
+      select: { id: true },
+      orderBy: { due: "asc" },
+    }),
   ]);
 
   // Count unique items reviewed today
   const reviewedItemIds = new Set(todayLogs.map(log => log.reviewItemId));
   const todayReviewedCount = reviewedItemIds.size;
 
-  // Identify relearning items (Again=1 or Hard=2)
-  const relearningItemIds = todayReviews
-    .filter(review => review._max.rating === 1 || review._max.rating === 2)
-    .map(review => review.reviewItemId);
+  const dueItemIds = getDueReviewItemIds(
+    dueCandidates.map((item) => item.id),
+    todayReviews.map((review) => ({
+      reviewItemId: review.reviewItemId,
+      rating: review._max.rating,
+    })),
+  );
 
   // Get items that are due NOW
   const rawItems = await prisma.reviewItem.findMany({
-    where: {
-      due: { lte: now },
-      isArchived: false,
-      OR: [
-        { id: { notIn: Array.from(reviewedItemIds) } },
-        { id: { in: relearningItemIds } }
-      ]
-    },
+    where: { id: { in: dueItemIds } },
     select: {
       id: true,
       userNote: true,

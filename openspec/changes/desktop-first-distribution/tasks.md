@@ -319,13 +319,14 @@ Critical path: `T000 → T010 → T014 → T050 → T060 → T100 → T140 → T
   - Work: enumerate required native capabilities; reject generic filesystem/shell/IPC exposure; define sender validation.
   - Verify: API surface review and invalid payload tests.
 
-- [ ] **T082 Freeze runtime asset resolver/manifest contract**
+- [x] **T082 Freeze runtime asset resolver/manifest contract**
   - Req: FR-041, FR-073
   - Deps: T023, T050
   - Parallel: W1-C
   - Owner: runtime asset types/tests
   - Work: platform/arch mapping, checksum verification, capabilities, packaged vs explicit development fallback.
   - Verify: darwin-arm64 pass; wrong arch, missing, checksum mismatch fail.
+  - Evidence (2026-08-04): `src/lib/runtime-asset-manifest.ts` and `desktop/runtime-assets.js` validate the versioned manifest, path/license/capability floors, platform/architecture, and SHA-256 before returning either binary path. Packaged Electron uses the verified pair only; development keeps explicit/PATH fallback. Focused TypeScript/Electron tests pass.
 
 ### Lane W1-D — Migration and backup contracts
 
@@ -469,29 +470,32 @@ Critical path: `T000 → T010 → T014 → T050 → T060 → T100 → T140 → T
 
 ### Lane W2-C — Settings and diagnostics
 
-- [ ] **T130 Implement atomic non-secret settings store**
+- [x] **T130 Implement atomic non-secret settings store**
   - Req: FR-030, FR-070, PDR-006
   - Deps: T100, T070, T110
   - Parallel: W2-C
   - Owner: settings store/schema/tests
   - Work: load/validate/migrate/default/write atomically; never store credentials.
   - Verify: corrupt/old/interrupted-write tests.
+  - Evidence (2026-08-05): `src/lib/settings-store.ts` and `src/lib/settings-store.test.ts` implement schema v1 defaults, legacy migration, fail-closed recovery for corrupt/future documents, secret-shaped field dropping, provider/base URL routing integration, and same-directory temp + atomic rename with interrupted-promotion coverage. `runtime-paths.ts` now exposes `settingsFile()`, and instrumentation loads settings only when the document exists so legacy `.env`/`secrets.json` profiles remain compatible. Targeted tests, `npm run test:ci` (538 tests, 536 passed, 2 Windows capability skips), lint, and production build pass. Protected database/media/env resources were not touched.
 
-- [ ] **T131 Implement secret-store service with fake backend**
+- [x] **T131 Implement secret-store service with fake backend**
   - Req: FR-031 through FR-034
   - Deps: T100, T071
   - Parallel: W2-C
   - Owner: secret service/contract tests; no real OS backend yet
   - Work: configured state, operation-scoped access, delete, redaction; renderer cannot read values.
   - Verify: fake backend contract and source audit for serialization.
+  - Evidence (2026-08-05): `src/lib/secret-store-service.ts` provides redacted `status/save/remove` and operation-scoped `withCredential` without a credential read-back method; `src/lib/import-jobs/run.ts` and the explicit connectivity probe pass only the selected provider key into provider config. Added fake-backend, selected-provider, missing-credential, provider-factory, and connectivity isolation tests. Targeted tests (38 passed, 1 Windows permission skip), `npm run lint`, `npm run test:ci` (546 passed, 2 skips), and `npm run build` pass. T132 provider status persistence and T133 Settings UI remain open; no real provider/network or OS-specific release validation was claimed.
 
-- [ ] **T132 Implement provider configuration/status APIs**
+- [x] **T132 Implement provider configuration/status APIs**
   - Req: FR-030, FR-031, FR-032, FR-033, FR-034, FR-035, FR-036
   - Deps: T130, T131, T072
   - Parallel: W2-C
   - Owner: settings/provider APIs and schemas/tests
   - Work: select provider, store/remove credential via service, explicit connectivity action, safe taxonomy.
   - Verify: API contract normal/invalid/network/no-probe cases; no values in responses.
+  - Evidence (2026-08-05): `src/app/api/setup/provider/route.ts` and `src/app/api/setup/provider/test/route.ts` expose only redacted provider summaries, persist `unverified`/`verified`/`invalid`/`unknown` states, and scope each probe to the selected credential. Tests cover no-probe/metadata rejection, selected-provider isolation, credential/auth failure, network/proxy/quota/timeout classification, empty transcript rejection, response redaction, and status persistence. `src/lib/upload-error.ts` now classifies proxy failures as provider-request failures. Targeted tests 22/22 passed; full `npm run test:ci` 551 passed, 2 Windows capability skips; `npm run lint` and `npm run build` passed. Real provider/network/quota validation remains an external gate.
 
 - [ ] **T133 Implement Settings UI**
   - Req: FR-030, FR-031, FR-035, NFR-040, NFR-041
@@ -500,82 +504,93 @@ Critical path: `T000 → T010 → T014 → T050 → T060 → T100 → T140 → T
   - Owner: Settings route/components/tests
   - Work: provider selector, masked replace/remove, configured/unverified/verified state, explicit probe consent, keyboard/focus behavior.
   - Verify: component/route tests and browser keyboard check.
+  - Partial evidence (2026-08-05): `ProviderConfigDialog` now renders redacted status labels, explicit external-request/cost consent, sample selection, replace/remove controls, and live status updates; structure tests cover labels, status semantics, consent guard, and dialog close labeling. Browser check confirms the deep link opens the dialog, Esc closes it, and focus returns to the `配置服务商` entry button. Screen-reader verification and the consent flow with a configured provider remain open, so this task is not marked complete.
 
-- [ ] **T134 Expand Diagnostics and redacted export contract**
+- [x] **T134 Expand Diagnostics and redacted export contract**
   - Req: FR-060, FR-061, FR-062, FR-063, FR-064
   - Deps: T112, T130, T132
   - Parallel: W2-C
   - Owner: diagnostics service/UI/export tests
   - Work: runtime/data/assets/provider/network states, rotated log policy, redacted bundle, previous-startup failure summary.
   - Verify: seeded secret/media/note strings absent from exported bundle.
+  - Evidence (2026-08-04): `src/lib/diagnostics.ts`, `/api/diagnostics`, and `desktop/main.js` provide an allow-listed redacted snapshot, bounded startup-failure summary, and bounded rotating `desktop.log` under the Desktop data root. Focused logger/diagnostics contracts, lint, build, and full tests pass. The task remains open only for the native Settings/diagnostics UI and native file-dialog integration; no public-release claim is made.
+  - Evidence update (2026-08-06): Setup now renders `src/app/setup/DiagnosticsSummary.tsx` inside `DataSafetyActions`, consuming only `/api/diagnostics` and showing categorical data-root/database/media/log/provider states, previous-startup presence, and bounded-log notice with localized failure handling. It never renders paths, credentials, transcripts, notes, or media names. Native diagnostics save/backup dialogs remain sender-checked and allow-listed in `desktop/main.js`; `DiagnosticsSummary.test.ts` 2/2, `npm run lint`, `npm run build`, and `npm run test:ci` (561 tests, 559 passed, 2 Windows skips) pass. External clean-install/native OS validation remains open.
 
 ### Lane W2-D — Migration and backup
 
-- [ ] **T140 Implement selected offline migration runner on disposable roots**
+- [x] **T140 Implement selected offline migration runner on disposable roots**
   - Req: FR-020, FR-050 through FR-052
   - Deps: T100, T090, T013, T110
   - Parallel: W2-D
   - Owner: migration runner/state/tests; exclusive migration ownership
   - Work: initialize, version, preflight, invoke migrations, incomplete-state recovery; no active DB.
   - Verify: empty/current/old/failing/interrupted fixtures.
+  - Evidence (2026-08-05): `src/lib/migration-runner.ts` replays the frozen Prisma SQL against an explicit target path with an idempotent `_deeplistener_migrations` table, drift detection, per-migration transactions, and bounded failure results. `src/lib/migration-runner.test.ts` exercises fresh initialization (15 migrations / business tables), idempotent rerun, pending detection, rollback after failing SQL, and a protected-database safety assertion. Targeted suite: 12/12 passed on disposable roots; no active database or media was touched. `node:sqlite` availability is runtime-gated and does not claim cross-platform package validation.
 
-- [ ] **T141 Implement backup manifest generation and validation**
+- [x] **T141 Implement backup manifest generation and validation**
   - Req: FR-054, FR-055
   - Deps: T100, T091, T110, T113
   - Parallel: W2-D
   - Owner: backup manifest/service tests
   - Work: DB integrity/checksum, media entries, format/app/schema version, staging, archive validation.
   - Verify: valid/corrupt/incomplete/too-new fixtures.
+  - Evidence (2026-08-04): `src/lib/backup-service.ts` creates a versioned directory bundle with relative database/media keys, SHA-256 checksums, SQLite `quick_check`, symlink containment, and corrupt-bundle rejection; focused disposable-root tests pass. The bundle format is directory-based rather than a native archive.
 
-- [ ] **T142 Implement pre-migration backup gate**
+- [x] **T142 Implement pre-migration backup gate**
   - Req: FR-050, FR-052, FR-072
   - Deps: T140, T141
   - Parallel: W2-D
   - Owner: migration-backup orchestration tests
   - Work: block migration on backup/disk/integrity failure; activate only verified result.
   - Verify: fault injection proves previous state remains active.
+  - Evidence (2026-08-05): `preflightBackup` and `ensureDatabaseReady` copy an existing target DB into a timestamped disposable backup, verify size, and refuse migration when the backup directory/copy cannot be prepared; fresh profiles explicitly skip the backup. `src/lib/migration-runner.test.ts` covers fresh skip, verified copy, unwritable destination, existing DB orchestration, and migration-failure stage reporting. Targeted suite: 12/12 passed; this is a local disposable-root contract, not a release-platform E2E claim.
 
-- [ ] **T143 Implement restore staging/conflict/activation**
+- [x] **T143 Implement restore staging/conflict/activation**
   - Req: FR-055, FR-056
   - Deps: T141, T092
   - Parallel: W2-D
   - Owner: restore service/tests; exclusive restore ownership
   - Work: preflight, active-state backup, conflict policy, restore staging, verification, atomic activation, recovery.
   - Verify: replacement success and failures at every state transition.
+  - Evidence (2026-08-04): `stageRestore`/`inspectRestoreStage`/`activateRestore` and `/api/backups` enforce validation-before-copy, explicit conflict confirmation, sibling previous-root rollback, and operation-owned staging; disposable replacement/corruption/API tests pass.
 
-- [ ] **T144 Implement copy-first legacy import**
+- [x] **T144 Implement copy-first legacy import**
   - Req: FR-053
   - Deps: T142, T143, T113
   - Parallel: W2-D
   - Owner: legacy import service/tests
   - Work: discover legacy paths, select source explicitly, copy, manifest/count verify, migrate copy, preserve source.
   - Verify: fixture metadata/checksums unchanged before/after; partial copy never activates.
+  - Evidence (2026-08-05): `src/lib/legacy-import.ts` copies an explicit legacy root through the manifest-backed backup service, stages it beneath an operation-owned sibling, seeds the portable migration tracker from completed Prisma migrations when present, migrates only the staged database, refreshes the database checksum, and exposes a separate confirmation-aware activation function. `src/lib/legacy-import.test.ts` covers successful staging/activation, target conflict confirmation and rollback sibling, migration failure cleanup, invalid roots, and source DB/media SHA-256 preservation. Targeted suite: 4/4 passed; all fixtures are disposable and active repository data was not touched.
 
 ### Lane W2-E — Standalone packaging foundation
 
-- [ ] **T150 Productionize standalone build script**
+- [x] **T150 Productionize standalone build script**
   - Req: FR-001, FR-073
   - Deps: T100, T011
   - Parallel: W2-E
   - Owner: `next.config.ts` and desktop build scripts; exclusive build config ownership
   - Work: enable standalone output, assemble static/public immutable assets, migrations, Prisma assets, manifest.
   - Verify: package-content audit and standalone route smoke from temp directory.
+  - Evidence (2026-08-06): `next.config.ts` enables `output: "standalone"`; `scripts/desktop-package.mjs` assembles `.next/standalone`, `.next/static`, Prisma migrations/engine/client, strips traced secrets and user data, and emits `runtime-manifest.json`. Disposable Windows staging smoke (`npm run desktop:package -- --no-build --staging .tmp/t150-package-smoke-*`) verified 7 required runtime assets and produced a 16-migration bundle; a separate standalone `server.js` route smoke returned HTTP 200 from an isolated data root. The package-content mutation audit passed 3/3. No active database/media/env resources were touched. Target-specific FFmpeg assets remain an external T181/T272 gate.
 
-- [ ] **T151 Add runtime asset manifest validation to build**
+- [x] **T151 Add runtime asset manifest validation to build**
   - Req: FR-041, FR-073
   - Deps: T150, T082
   - Parallel: W2-E
   - Owner: build-time asset validation/tests
   - Work: fail missing/wrong arch/checksum/license metadata; emit redacted runtime manifest.
   - Verify: mutation tests for each failure.
+  - Evidence (2026-08-04): `scripts/desktop-package.mjs` selects a target-specific Prisma engine (`darwin-arm64`, `darwin-x64`, `win32-x64`), copies only target-matching FFmpeg inputs into `runtime/<platform>-<arch>/`, computes checksums, requires per-target `assets.json`, validates the emitted manifest through the Electron contract, and refuses to fabricate a manifest when assets/metadata are absent. Packaging contract tests and a disposable Windows `--no-build` smoke pass; real binary/provenance and native release QA remain T181/open.
 
-- [ ] **T152 Create non-publishing native package CI jobs**
+- [x] **T152 Create non-publishing native package CI jobs**
   - Req: FR-076, NFR-052
   - Deps: T150, T096
   - Parallel: W2-E
   - Owner: `.github/workflows/desktop-package.yml` or approved separate workflow
   - Work: macOS arm64 artifact assembly and early Windows package smoke where feasible; no signing/publish.
   - Verify: workflow contract test keeps existing CI commands intact; artifacts expire and contain no secrets/data.
+  - Evidence (2026-08-06): `.github/workflows/desktop-package.yml` adds a pull-request/manual matrix for `macos-14`/darwin-arm64 and `windows-latest`/win32-x64. Each job runs `npm ci`, Prisma generation, standalone build, target package assembly, the cross-platform `scripts/desktop-package-audit.mjs`, and uploads only a 7-day artifact; no signing, release, or provider secrets are referenced. `src/lib/desktop-package-workflow.test.ts` passes 2/2 and the audit passed against a disposable Windows staging bundle. GitHub-hosted runner execution remains an external CI observation, not claimed locally.
 
 ### W2 integration
 
@@ -656,6 +671,7 @@ Critical path: `T000 → T010 → T014 → T050 → T060 → T100 → T140 → T
   - Owner: dialog adapter and focused UI bridge tests
   - Work: allowlisted file filters, cancellation, suggested export names/locations, no arbitrary filesystem API.
   - Verify: cancel/supported/unsupported/Unicode filename cases.
+  - Evidence (2026-08-04): diagnostics export slice is implemented: Electron fetches the server-generated allow-listed JSON, validates schema/size, opens a native JSON save dialog with suggested `<data-root>/exports/deeplistener-diagnostics.json`, and exposes only a no-argument preload method. Native backup directory export/import is also implemented: export refuses to overwrite an existing destination and revalidates manifest/checksums; import copies into a `.deeplistener-backup-import-<uuid>` staging directory, then `/api/backups` validates and promotes it only after safe staging checks. Renderer receives no path and no filesystem/arbitrary IPC access; server keeps the browser fallback. Focused helper/API/UI/Desktop contract tests and the full `npm run test:ci` run (430 tests, 428 passed, 2 environment-limited skips, 0 failures) pass. T183 remains intentionally unchecked because platform filename/clean-install validation and complete release QA are still open.
 
 ### Lane W3-C — First run and demo
 

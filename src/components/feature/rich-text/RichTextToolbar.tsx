@@ -7,19 +7,20 @@ import { useTranslations } from "next-intl";
 export interface RichTextColor {
   c: string;
   label: string;
+  labelKey?: "black" | "red" | "blue" | "green" | "amber" | "purple";
 }
 
 export const DEFAULT_RICH_TEXT_COLORS: RichTextColor[] = [
-  { c: "#000000", label: "Black" },
-  { c: "#EF4444", label: "Red" },
-  { c: "#3B82F6", label: "Blue" },
-  { c: "#10B981", label: "Green" },
-  { c: "#F59E0B", label: "Amber" },
-  { c: "#8B5CF6", label: "Purple" },
+  { c: "#000000", label: "Black", labelKey: "black" },
+  { c: "#EF4444", label: "Red", labelKey: "red" },
+  { c: "#3B82F6", label: "Blue", labelKey: "blue" },
+  { c: "#10B981", label: "Green", labelKey: "green" },
+  { c: "#F59E0B", label: "Amber", labelKey: "amber" },
+  { c: "#8B5CF6", label: "Purple", labelKey: "purple" },
 ];
 
 export const RED_FIRST_RICH_TEXT_COLORS: RichTextColor[] = [
-  { c: "#EF4444", label: "Red" },
+  { c: "#EF4444", label: "Red", labelKey: "red" },
   ...DEFAULT_RICH_TEXT_COLORS.filter((color) => color.c !== "#EF4444"),
 ];
 
@@ -63,6 +64,7 @@ export function RichTextToolbar({
         className={iconButtonClassName}
         onClick={() => onCommand("bold")}
         title={t("bold")}
+        aria-label={t("bold")}
       >
         <Bold className={iconClassName} />
       </Button>
@@ -93,21 +95,25 @@ export function RichTextToolbar({
       <div className="h-4 w-px bg-border mx-1" />
 
       <div className="flex gap-1 items-center">
-        {colors.map(({ c, label: colorLabel }) => (
-          <button
-            key={c}
-            className={colorButtonClassName}
-            style={{ backgroundColor: c }}
-            onClick={() => onCommand("foreColor", c)}
-            title={colorLabel}
-          />
-        ))}
+        {colors.map(({ c, label: colorLabel, labelKey }) => {
+          const resolvedColorLabel = labelKey ? t(`colors.${labelKey}`) : colorLabel;
+          return (
+            <button
+              key={c}
+              className={colorButtonClassName}
+              style={{ backgroundColor: c }}
+              onClick={() => onCommand("foreColor", c)}
+              title={resolvedColorLabel}
+              aria-label={resolvedColorLabel}
+            />
+          );
+        })}
       </div>
 
       {onCopy && (
         <>
           <div className="h-4 w-px bg-border mx-1" />
-          <Button size="icon" variant="ghost" className={iconButtonClassName} onClick={onCopy} title={t("copyText")}>
+          <Button size="icon" variant="ghost" className={iconButtonClassName} onClick={onCopy} title={t("copyText")} aria-label={t("copyText")}>
             <Copy className={iconClassName} />
           </Button>
         </>

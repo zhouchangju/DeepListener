@@ -15,6 +15,18 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 import { resolveLayout, secretsFile } from "@/lib/runtime-paths";
+import {
+  DEFAULT_SETTINGS,
+  readSettings,
+  readSettingsFile,
+  updateSettings,
+  type ProviderVerificationStatus,
+} from "@/lib/settings-store";
+import {
+  createSecretStore,
+  type SecretBackend as CredentialSecretBackend,
+  type SecretStoreService,
+} from "@/lib/secret-store-service";
 
 /** Supported transcription providers and the env var holding each one's key. */
 export const PROVIDER_KEY_VARS = {
@@ -24,6 +36,9 @@ export const PROVIDER_KEY_VARS = {
 } as const;
 
 export type ProviderId = keyof typeof PROVIDER_KEY_VARS;
+
+/** Safe provider state exposed to setup/recovery surfaces. */
+export type ProviderStatus = "missing" | ProviderVerificationStatus;
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_KEY_VARS) as ProviderId[];
 
@@ -226,6 +241,15 @@ export async function saveProviderConfig(input: {
   } else {
     next.OPENAI_BASE_URL = "";
   }
+  // Provider selection and routing policy are non-secret settings. Persist
+  // them in the dedicated versioned settings document before writing the
+  // credential file; the legacy secrets fields remain readable for existing
+  // profiles and are retained by writeSecrets for compatibility.
+  await updateSettings({
+    selectedProvider: input.provider,
+    openaiBaseUrl: next.OPENAI_BASE_URL || "",
+    providerVerification: { [input.provider]: "unverified" },
+  });
   await writeSecrets(next);
   // Reflect into the live process so the next request picks it up.
   applyToEnv(next, process.env);
@@ -234,6 +258,87 @@ export async function saveProviderConfig(input: {
   // default endpoint instead of keeping a stale value from a prior config.
   if (!next.OPENAI_BASE_URL || !next.OPENAI_BASE_URL.trim()) {
     delete process.env.OPENAI_BASE_URL;
+  }
+}
+
+/**
+ * Remove one provider credential from the active local backend. The selected
+ * provider marker is intentionally retained so readiness can explain which
+ * service needs attention after removal. OpenAI's optional base URL is
+ * removed with its credential because it has no meaning without that key.
+ */
+export async function removeProviderConfig(provider: ProviderId): Promise<void> {
+  const current = await readSecretsFile();
+  const next: SecretsValues = { ...current };
+  delete next[PROVIDER_KEY_VARS[provider]];
+  if (provider === "openai") delete next.OPENAI_BASE_URL;
+  await writeSecrets(next);
+
+  delete process.env[PROVIDER_KEY_VARS[provider]];
+  if (provider === "openai") delete process.env.OPENAI_BASE_URL;
+  await setProviderVerificationStatus(provider, "unknown");
+}
+
+/**
+ * Create the server-side credential service over the currently selected
+ * backend. The returned service exposes redacted state and operation-scoped
+ * access only; it has no credential read-back method.
+ */
+export function createProviderSecretStore(): SecretStoreService {
+  const backend: CredentialSecretBackend = {
+    read: async (provider) => {
+      const values = await readSecretsFile();
+      return values[PROVIDER_KEY_VARS[provider]];
+    },
+    write: async (provider, value) => {
+      const current = await readSecretsFile();
+      await writeSecrets({
+        ...current,
+        [PROVIDER_KEY_VARS[provider]]: value,
+      });
+    },
+    remove: async (provider) => {
+      const current = await readSecretsFile();
+      delete current[PROVIDER_KEY_VARS[provider]];
+      await writeSecrets(current);
+    },
+  };
+  return createSecretStore(backend);
+}
+
+/** Browser-safe provider credential state for server-side callers. */
+export async function getProviderSecretState(provider: ProviderId) {
+  return createProviderSecretStore().status(provider);
+}
+
+/** Persist a categorical connectivity result; never persist the credential. */
+export async function setProviderVerificationStatus(
+  provider: ProviderId,
+  status: ProviderVerificationStatus,
+): Promise<void> {
+  const loaded = await readSettingsFile();
+  const current = loaded.settings;
+  const selectedProvider = loaded.exists ? current.selectedProvider : getProviderSummary().provider;
+  await updateSettings({
+    selectedProvider,
+    providerVerification: { ...current.providerVerification, [provider]: status },
+  });
+}
+
+/** Run a server-side operation with only the selected provider credential. */
+export async function withProviderCredential<T>(
+  provider: ProviderId,
+  operation: (credential: string) => Promise<T> | T,
+): Promise<T> {
+  try {
+    return await createProviderSecretStore().withCredential(provider, operation);
+  } catch (error) {
+    // Server deployments may still configure credentials through `.env`.
+    // Fall back only to the explicitly selected provider's variable; never
+    // expose or assemble the complete credential set for an operation.
+    const envValue = process.env[PROVIDER_KEY_VARS[provider]];
+    if (envValue?.trim()) return await operation(envValue);
+    throw error;
   }
 }
 
@@ -250,6 +355,8 @@ export interface ProviderSummary {
   provider: ProviderId;
   configured: Record<ProviderId, boolean>;
   hasBaseUrl: boolean;
+  /** Always redacted; optional for compatibility with injected test summaries. */
+  status?: Record<ProviderId, ProviderStatus>;
 }
 
 /**
@@ -271,5 +378,31 @@ export function getProviderSummary(
       google: Boolean(env.GOOGLE_API_KEY?.trim()),
     },
     hasBaseUrl: Boolean(env.OPENAI_BASE_URL?.trim()),
+    status: {
+      deepgram: env.DEEPGRAM_API_KEY?.trim() ? "unverified" : "missing",
+      openai: env.OPENAI_API_KEY?.trim() ? "unverified" : "missing",
+      google: env.GOOGLE_API_KEY?.trim() ? "unverified" : "missing",
+    },
+  };
+}
+
+/**
+ * Read persisted verification states for status-bearing API/UI callers.
+ * Legacy profiles without a settings file remain usable and are reported as
+ * unverified when a credential is present.
+ */
+export async function getProviderSummaryAsync(
+  env: Record<string, string | undefined> = process.env,
+): Promise<ProviderSummary> {
+  const summary = getProviderSummary(env);
+  const settings = await readSettings();
+  const persisted = settings.providerVerification ?? DEFAULT_SETTINGS.providerVerification;
+  return {
+    ...summary,
+    status: {
+      deepgram: summary.configured.deepgram ? (persisted.deepgram ?? "unverified") : "missing",
+      openai: summary.configured.openai ? (persisted.openai ?? "unverified") : "missing",
+      google: summary.configured.google ? (persisted.google ?? "unverified") : "missing",
+    },
   };
 }

@@ -7,6 +7,7 @@ function collectTestFiles(dir) {
   const files = [];
 
   for (const entry of entries) {
+    if (["node_modules", ".next", ".desktop-build", "dist"].includes(entry.name)) continue;
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
@@ -14,7 +15,7 @@ function collectTestFiles(dir) {
       continue;
     }
 
-    if (/\.test\.tsx?$/.test(entry.name)) {
+    if (/\.test\.(?:[cm]?js|tsx?)$/.test(entry.name)) {
       files.push(fullPath);
     }
   }
@@ -30,11 +31,11 @@ function escapeForTestGlob(filePath) {
   return filePath.replace(/[?*[\]{}]/g, (ch) => `[${ch}]`);
 }
 
-const testRoot = path.join(process.cwd(), "src");
-const testFiles = collectTestFiles(testRoot).sort();
+const testRoots = [path.join(process.cwd(), "src"), path.join(process.cwd(), "desktop")];
+const testFiles = testRoots.flatMap((root) => collectTestFiles(root)).sort();
 
 if (testFiles.length === 0) {
-  console.error("No test files found under src/");
+  console.error("No test files found under src/ or desktop/");
   process.exit(1);
 }
 

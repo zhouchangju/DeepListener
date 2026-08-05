@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
     "desktop/**",
     "desktop-spike/**",
     ".desktop-build/**",
+    // Disposable packaging smoke outputs are generated under the workspace
+    // and must not be treated as application source by ESLint.
+    ".build-temp-*/**",
     // W0/W2 feasibility spike scripts and one-off probes (not library code).
     "docs/desktop-w0/**",
     "docs/agent-harness/**",

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import PracticeClient from "./PracticeClient";
 import { notFound } from "next/navigation";
+import DatabaseRecoveryState from "@/components/readiness/DatabaseRecoveryState";
+import { getDatabaseRouteReadiness } from "@/lib/route-readiness";
 
 export default async function PracticePage({
   params,
@@ -9,6 +11,11 @@ export default async function PracticePage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ demo?: string }>;
 }) {
+  const readiness = await getDatabaseRouteReadiness();
+  if (!readiness.ok && readiness.check) {
+    return <DatabaseRecoveryState check={readiness.check} />;
+  }
+
   const { id } = await params;
   const query = await searchParams;
   
@@ -32,7 +39,11 @@ export default async function PracticePage({
 
   return (
     <div className="container mx-auto h-full overflow-y-auto p-3 md:overflow-hidden md:p-4">
-      <PracticeClient track={track} initialBlindMode={query?.demo === "1"} />
+      <PracticeClient
+        track={track}
+        initialBlindMode={query?.demo === "1"}
+        demoMode={query?.demo === "1"}
+      />
     </div>
   );
 }

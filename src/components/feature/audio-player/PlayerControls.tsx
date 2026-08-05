@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Repeat, Eraser } from "lucide-react";
 import { memo, RefObject } from "react";
+import { useTranslations } from "next-intl";
 import SpeedSelector from "../SpeedSelector";
 
 interface PlayerControlsProps {
@@ -28,13 +29,15 @@ export const PlayerControls = memo(function PlayerControls({
   onClearRegions,
   onToggleDebug,
 }: PlayerControlsProps) {
+  const t = useTranslations("feature.audioPlayer");
+
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 bg-muted/60 border-b border-border gap-4">
       <div className="flex items-center gap-4 w-full sm:w-auto">
         <Button
           variant="default"
           size="icon"
-          aria-label={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? t("pause") : t("play")}
           className="bg-primary hover:bg-primary h-12 w-12 rounded-full shrink-0"
           onClick={onTogglePlay}
         >
@@ -42,7 +45,7 @@ export const PlayerControls = memo(function PlayerControls({
         </Button>
         <div className="flex flex-col overflow-hidden" onClick={onToggleDebug}>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider cursor-help">
-            Position
+            {t("position")}
           </span>
           <span className="text-xl sm:text-2xl font-mono text-foreground truncate">
             <span ref={timeRef}>00:00</span>
@@ -64,7 +67,7 @@ export const PlayerControls = memo(function PlayerControls({
           onClick={onToggleLoop}
         >
           <Repeat className="h-4 w-4 mr-2" />
-          <span className="text-xs font-bold uppercase">Loop</span>
+          <span className="text-xs font-bold uppercase">{t("loop")}</span>
         </Button>
         <Button
           variant="ghost"
@@ -72,7 +75,7 @@ export const PlayerControls = memo(function PlayerControls({
           onClick={onClearRegions}
           className="h-9 rounded-full text-muted-foreground hover:text-red-500"
         >
-          <Eraser className="h-4 w-4 mr-2" /> Clear
+          <Eraser className="h-4 w-4 mr-2" /> {t("clear")}
         </Button>
       </div>
     </div>

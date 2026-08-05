@@ -24,7 +24,9 @@ npm run verify          # lint + tests + build — must be green
 ```bash
 npm run desktop:package
 # Output: .desktop-build/standalone/
-# Contains: server.js, .next/static, prisma/migrations, Prisma engine, runtime-manifest.json
+# Contains: server.js, .next/static, prisma/migrations, Prisma engine, and a
+# redacted `runtime-manifest.json`; a verified FFmpeg pair additionally creates
+# `runtime/assets.manifest.json`.
 ```
 
 Before a public desktop build, run the fail-closed preflight:
@@ -34,7 +36,8 @@ npm run desktop:preflight
 ```
 
 For an internal unsigned alpha on a maintainer machine, the explicit escape
-hatch permits the current system FFmpeg and synthetic demo:
+hatch permits the current system FFmpeg and synthetic demo. The machine must
+still expose both `ffmpeg` and `ffprobe` on `PATH`:
 
 ```bash
 npm run desktop:preflight -- --allow-system-ffmpeg --allow-synthetic-demo
@@ -105,7 +108,7 @@ codesign -dvvv out/make/DeepListener.app
 
 ## Release checklist
 
-1. `npm run verify` is green (lint + 339+ tests + build)
+1. `npm run verify` is green (lint + 447 tests, with only documented environment-limited skips + build)
 2. `npm run desktop:package` succeeds
 3. `npm run desktop:preflight` passes without alpha escape hatches
 4. Package-content audit passes (T011/T151)
@@ -149,16 +152,15 @@ codesign -dvvv out/make/DeepListener.app
 ## Not yet implemented (requires user authority or external resources)
 
 - macOS signing/notarization (Apple Developer certificate)
-- Windows x64 support (platform adapter + binaries + installer)
+- Windows x64 support claim (platform adapter contract exists; native installer/runtime evidence is still required)
 - Auto-updater (requires release hosting + signing strategy)
 - Bundled LGPL FFmpeg binary (requires self-build pipeline — see below)
 - User validation sessions (5 real learners)
 
 ## Vendoring FFmpeg (T181, unblocks FR-041/DMR-002)
 
-The current build relies on the user's system FFmpeg (`main.js` logs a loud
-warning at startup when no vendored binary is found). For a fully self-contained
-app, a maintainer must clear OPEN-001..005 in
+The repository currently contains no redistributable FFmpeg assets. For a fully
+self-contained app, a maintainer must clear OPEN-001..005 in
 `docs/desktop-w0/ffmpeg-provenance.md` and drop binaries in `vendor/ffmpeg/`.
 
 ### Quick path (LGPL-licensed static build, darwin-arm64)
@@ -171,32 +173,36 @@ app, a maintainer must clear OPEN-001..005 in
 #      (b) use a vetted third-party static build whose license permits
 #          redistribution — verify the source yourself before committing.
 #
-# 2. Place the binaries (must be executable):
-cp <ffmpeg-binary>  vendor/ffmpeg/ffmpeg
-cp <ffprobe-binary> vendor/ffmpeg/ffprobe
-chmod +x vendor/ffmpeg/ffmpeg vendor/ffmpeg/ffprobe
+# 2. Place the binaries (must be executable) in a target-specific directory:
+mkdir -p vendor/ffmpeg/darwin-arm64
+cp <ffmpeg-binary>  vendor/ffmpeg/darwin-arm64/ffmpeg
+cp <ffprobe-binary> vendor/ffmpeg/darwin-arm64/ffprobe
+chmod +x vendor/ffmpeg/darwin-arm64/ffmpeg vendor/ffmpeg/darwin-arm64/ffprobe
 
-# 3. Record provenance + checksums in the manifest
-sha256sum vendor/ffmpeg/ffmpeg vendor/ffmpeg/ffprobe
-#    (paste both checksums into the runtime asset manifest — T023/T082)
+# 3. Add reviewed metadata alongside the pair:
+#    vendor/ffmpeg/darwin-arm64/assets.json
+#    (license, source, version, capabilities, and redistribution evidence)
 
-# 4. Add the NOTICE/LICENSE text required by FFmpeg's LGPL redistribution
+# 4. The packager computes SHA-256 checksums and emits
+#    runtime/assets.manifest.json only after assets.json and both binaries pass.
+
+# 5. Add the NOTICE/LICENSE text required by FFmpeg's LGPL redistribution
 #    terms (corresponding-source offer URL, attribution). See
 #    docs/desktop-w0/ffmpeg-provenance.md §3.6.
 
-# 5. Rebuild the package and verify the loud PATH-fallback warning is gone:
+# 6. Rebuild the package and verify the packaged resolver uses explicit paths:
 npm run desktop:package
-cd desktop && npm run start:headless 2>&1 | grep -i ffmpeg
-#    Expect: "ffmpeg resolved: .../vendor/ffmpeg/ffmpeg"
+node -e "const m=require('./.desktop-build/standalone/runtime/assets.manifest.json'); console.log(m.platform,m.architecture)"
+#    Then run the packaged startup/media smoke on the target OS.
 ```
 
-### Why the loud fallback warning exists
+### Why packaged FFmpeg is fail-closed
 
-`desktop/main.js` (`resolveFfmpegEnv`) keeps a PATH fallback so technical
-self-hosters and dev mode keep working when no vendored binary is present.
-When vendored binaries are missing, it logs `[desktop] ffmpeg not vendored;
-relying on system PATH` plus a prominent error line so the gap is visible at
-every launch — not a silent failure on the user's first video import.
+Packaged Desktop resolves FFmpeg only after checking the target-specific
+manifest, file existence, capability floor, license metadata, and checksums.
+Missing or tampered assets set an explicit limited state and do not silently
+fall back to a user's PATH. Server/dev mode may still use an explicit system
+configuration for maintainer workflows.
 
 ### Verifying in the packaged app
 
@@ -208,5 +214,5 @@ ls "$APP/Contents/Resources/ffmpeg/"        # should list ffmpeg + ffprobe
 "$APP/Contents/Resources/ffmpeg/ffmpeg" -version | head -1
 ```
 
-If the directory is missing or the binaries are not executable, media import
-and audio export will fail on machines without system FFmpeg.
+If the directory or manifest is missing, the public preflight must fail before
+an artifact is presented as a learner release.

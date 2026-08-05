@@ -16,6 +16,7 @@ import { getReviewKeyboardAction, type ReviewKeyboardGrade } from "./review-keyb
 import { removeCurrentReviewItem } from "./review-queue";
 import { useReviewAudio } from "./useReviewAudio";
 import { ReviewCard } from "./ReviewCard";
+import { REVIEW_COUNT_INVALIDATED_EVENT } from "@/components/app-shell/NavReviewCount";
 
 type ReviewQuality = ReviewKeyboardGrade;
 
@@ -170,6 +171,8 @@ export default function ReviewClient({
       });
 
       await requireOkResponse(res, t("saveProgressFailed"));
+
+      window.dispatchEvent(new Event(REVIEW_COUNT_INVALIDATED_EVENT));
 
       setReviewed((prev) => prev + 1);
       setRemaining((prev) => Math.max(0, prev - 1));

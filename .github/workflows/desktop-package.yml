@@ -1,0 +1,75 @@
+name: Desktop package smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/desktop-package.yml"
+      - "desktop/**"
+      - "next.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "prisma/migrations/**"
+      - "scripts/desktop-package.mjs"
+      - "scripts/desktop-package-audit.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-package-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-smoke:
+    name: ${{ matrix.label }} standalone package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            os: macos-14
+            platform: darwin
+            architecture: arm64
+          - label: Windows x64
+            os: windows-latest
+            platform: win32
+            architecture: x64
+    env:
+      DATABASE_URL: file:./dev.db
+      DEEPLISTENER_TARGET_PLATFORM: ${{ matrix.platform }}
+      DEEPLISTENER_TARGET_ARCH: ${{ matrix.architecture }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build standalone application
+        run: npm run build
+
+      - name: Assemble target package
+        run: node scripts/desktop-package.mjs --no-build --staging "${{ runner.temp }}/deeplistener-standalone"
+
+      - name: Audit package contents
+        run: node scripts/desktop-package-audit.mjs "${{ runner.temp }}/deeplistener-standalone"
+
+      - name: Upload expiring smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deeplistener-standalone-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/deeplistener-standalone
+          if-no-files-found: error
+          retention-days: 7

@@ -3,15 +3,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { getProviderSummary, type ProviderId } from "@/lib/secrets-store";
 import UploadButton from "./UploadButton";
 import BatchUploadButton from "./BatchUploadButton";
 import LibraryManager from "./LibraryManager";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import DatabaseRecoveryState from "@/components/readiness/DatabaseRecoveryState";
+import { getDatabaseRouteReadiness } from "@/lib/route-readiness";
+
+export const dynamic = "force-dynamic";
 
 interface LibraryTrack {
   id: string;
   title: string;
+  displayTitle?: string;
   audioUrl: string;
   note: string | null;
   trackType: string | null;
@@ -27,12 +33,21 @@ interface LibraryTrack {
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; batch?: string }>;
+  searchParams: Promise<{ archived?: string; batch?: string; import?: string }>;
 }) {
-  const { archived, batch } = await searchParams;
+  const readiness = await getDatabaseRouteReadiness();
+  if (!readiness.ok && readiness.check) {
+    return <DatabaseRecoveryState check={readiness.check} />;
+  }
+
+  const { archived, batch, import: importMode } = await searchParams;
   const showArchived = archived === "true";
   const showBatchUpload = batch === "true";
+  const openImportWizard = importMode === "media" || importMode === "subtitle";
   const t = await getTranslations("library");
+  const configuredProviders = Object.entries(getProviderSummary().configured)
+    .filter(([, configured]) => configured)
+    .map(([provider]) => provider as ProviderId);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -65,7 +80,9 @@ export default async function LibraryPage({
                 </Button>
               </Link>
               <div className="flex-1 md:flex-none">
-                {showBatchUpload ? <BatchUploadButton /> : <UploadButton />}
+                {showBatchUpload
+                  ? <BatchUploadButton configuredProviders={configuredProviders} />
+                  : <UploadButton initialWizardOpen={openImportWizard} configuredProviders={configuredProviders} />}
               </div>
             </>
           )}
@@ -80,6 +97,7 @@ export default async function LibraryPage({
 }
 
 async function LibraryContent({ showArchived }: { showArchived: boolean }) {
+  const t = await getTranslations("library");
   const tracks: LibraryTrack[] = await prisma.track.findMany({
     where: { isArchived: showArchived },
     orderBy: { createdAt: "desc" },
@@ -99,7 +117,15 @@ async function LibraryContent({ showArchived }: { showArchived: boolean }) {
     }
   });
 
-  return <LibraryManager tracks={tracks} />;
+  // Demo ownership is an implementation marker, not learner-facing copy.
+  // Keep the stored title stable for data compatibility, but localize the
+  // display value so a translated Library does not expose an English-only
+  // bundled card alongside otherwise localized onboarding text.
+  const displayTracks = tracks.map((track) => (
+    track.trackType === "DEMO" ? { ...track, displayTitle: t("demoTrackTitle") } : track
+  ));
+
+  return <LibraryManager tracks={displayTracks} />;
 }
 
 function LibrarySkeleton() {

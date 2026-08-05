@@ -1,13 +1,13 @@
 import OpenAI from "openai";
 import { type TranscriptionSegment as OpenAITranscriptionSegment, type TranscriptionVerbose } from "openai/resources/audio/transcriptions";
 import { createReadStream } from "fs";
-import { TranscriptionProvider, TranscriptionResponse } from "./types";
+import { TranscriptionProvider, TranscriptionResponse, type TranscriptionProviderConfig } from "./types";
 
 export class OpenAIProvider implements TranscriptionProvider {
   private client: OpenAI;
 
-  constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+  constructor(config?: TranscriptionProviderConfig) {
+    const apiKey = config?.apiKey ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
       // Throw a clear error whose message matches the upload-error classifier
       // so a missing key surfaces as an actionable 502 instead of a generic
@@ -16,7 +16,7 @@ export class OpenAIProvider implements TranscriptionProvider {
     }
     this.client = new OpenAI({
       apiKey,
-      baseURL: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+      baseURL: config?.baseUrl || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
     });
   }
 

@@ -60,7 +60,7 @@ export default function RenameTrackModal({ isOpen, onClose, track, onRenamed }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" closeLabel={commonT("close")}>
         <DialogHeader>
           <DialogTitle>{t("editTitle")}</DialogTitle>
         </DialogHeader>

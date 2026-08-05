@@ -144,6 +144,11 @@ export function settingsDirectory(root: string): string {
   return path.join(root, "settings");
 }
 
+/** Absolute path to the versioned, non-secret settings document. */
+export function settingsFile(root: string): string {
+  return path.join(settingsDirectory(root), "settings.json");
+}
+
 /**
  * The secrets file holding transcription provider credentials entered via the
  * desktop UI. Lives under the settings directory so it inherits the data-root

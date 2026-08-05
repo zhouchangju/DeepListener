@@ -10,7 +10,9 @@ test("github actions CI workflow exists and runs the core verification steps", (
 
   const workflow = readFileSync(workflowPath, "utf8");
 
-  assert.match(workflow, /^on:\n/m);
+  // Git checkout may preserve CRLF on Windows; the workflow contract is about
+  // the YAML key, not the repository's newline convention.
+  assert.match(workflow, /^on:\r?\n/m);
   assert.match(workflow, /pull_request:/);
   assert.match(workflow, /push:/);
   assert.match(workflow, /npm ci/);
@@ -87,6 +89,8 @@ test("next build has a wasm swc fallback for restricted local Node runtimes", ()
   assert.match(buildScript, /NEXT_TEST_WASM_DIR/);
   assert.match(buildScript, /path\.join\(projectRoot, "\.next", "standalone"\)/);
   assert.match(buildScript, /renameSync\(standaloneOutputDir, staleOutputDir\)/);
+  assert.match(buildScript, /error\?\.code !== "EXDEV"/);
+  assert.match(buildScript, /path\.dirname\(standaloneOutputDir\)/);
   assert.match(buildScript, /rmSync\(staleOutputDir/);
   assert.match(buildScript, /path\.join\(staleOutputDir, "\.DS_Store"\)/);
 });

@@ -34,6 +34,9 @@ interface AudioPlayerProps {
   onCapture: (sentenceId: string) => void;
   onShadowing: (index: number) => void;
   blindMode?: boolean;
+  onPlay?: () => void;
+  onReveal?: (sentenceId: string) => void;
+  onSentenceSelected?: (sentenceId: string) => void;
 }
 
 function playMediaSafely(playback: Promise<void> | undefined) {
@@ -52,6 +55,9 @@ export default function AudioPlayer({
   onCapture,
   onShadowing,
   blindMode = false,
+  onPlay,
+  onReveal,
+  onSentenceSelected,
 }: AudioPlayerProps) {
   
   // 🟢 OPTIMIZATION 1: Stable Sentences Array
@@ -178,7 +184,10 @@ export default function AudioPlayer({
   });
 
   // Callbacks
-  const handlePlayPause = () => playMediaSafely(wavesurferRef.current?.playPause());
+  const handlePlayPause = () => {
+    if (!waveSurferIsPlaying) onPlay?.();
+    playMediaSafely(wavesurferRef.current?.playPause());
+  };
   const handleToggleLoop = () => setLoopMode((prev) => !prev);
   const handleClearRegions = () => regionsRef.current?.clearRegions();
   const handleSubtitleVisibilityChange = (visible: boolean) => {
@@ -243,12 +252,14 @@ export default function AudioPlayer({
   const handleSentenceClick = (s: Sentence, index: number) => {
     if (debugMode) console.log(`Sentence ${index}:`, s.text);
     if (blindMode) {
+      onReveal?.(s.id);
       setRevealedIds((prev) => {
         const nextIds = new Set(prev);
         nextIds.add(s.id);
         return nextIds;
       });
     }
+    onSentenceSelected?.(s.id);
     wavesurferRef.current?.setTime(s.startTime);
     playMediaSafely(wavesurferRef.current?.play());
     regionsRef.current?.clearRegions();

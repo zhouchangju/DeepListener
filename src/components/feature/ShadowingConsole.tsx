@@ -291,7 +291,7 @@ export default function ShadowingConsole({
               />
             ) : isEditingText ? (
               <div className="w-full max-w-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
-                <Textarea value={tempText} onChange={(e) => setTempText(e.target.value)} className="text-xl font-medium min-h-[120px] resize-none" />
+                <Textarea aria-label={t("editText")} value={tempText} onChange={(e) => setTempText(e.target.value)} className="text-xl font-medium min-h-[120px] resize-none" />
                 <div className="flex justify-end gap-2">
                   <Button size="sm" variant="ghost" onClick={() => setIsEditingText(false)}>{commonT("cancel")}</Button>
                   <Button size="sm" onClick={handleSaveText} disabled={!tempText.trim()}>
@@ -300,7 +300,19 @@ export default function ShadowingConsole({
                 </div>
               </div>
             ) : blindMode && !isTextRevealed ? (
-              <div className="relative group cursor-pointer w-full max-w-xl" onClick={() => setIsTextRevealed(true)}>
+              <div
+                className="relative group cursor-pointer w-full max-w-xl rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                role="button"
+                tabIndex={0}
+                aria-label={t("clickToReveal")}
+                onClick={() => setIsTextRevealed(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setIsTextRevealed(true);
+                  }
+                }}
+              >
                 <div className="text-2xl font-medium text-muted-foreground/60 leading-loose text-center max-w-xl blur-sm select-none">{sentence.text}</div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-muted/95 px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-border">
@@ -321,13 +333,14 @@ export default function ShadowingConsole({
                   />
                 </div>
                 <div className={getShadowingActionButtonsClassName()}>
-                  <Button size="icon" variant="ghost" className="h-12 w-12" onClick={() => setIsEditingText(true)} title={t("editText")}>
+                  <Button size="icon" variant="ghost" className="h-12 w-12" onClick={() => setIsEditingText(true)} title={t("editText")} aria-label={t("editText")}>
                     <Edit3 className="w-6 h-6 text-muted-foreground hover:text-primary" />
                   </Button>
                   <Button
                     size="icon" variant="ghost" className="h-12 w-12"
                     onClick={async () => { try { await navigator.clipboard.writeText(sentence.text); toast.success(t("copiedToast")); } catch { toast.error(t("copyFailed")); } }}
                     title={t("copyText")}
+                    aria-label={t("copyText")}
                   >
                     <Copy className="w-6 h-6 text-muted-foreground hover:text-primary" />
                   </Button>

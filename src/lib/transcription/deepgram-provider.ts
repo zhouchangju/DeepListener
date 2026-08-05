@@ -1,12 +1,12 @@
 import { createClient } from "@deepgram/sdk";
 import * as fs from "fs";
-import { TranscriptionProvider, TranscriptionResponse, TranscriptionSegment } from "./types";
+import { TranscriptionProvider, TranscriptionResponse, TranscriptionSegment, type TranscriptionProviderConfig } from "./types";
 
 export class DeepgramProvider implements TranscriptionProvider {
   private deepgram;
 
-  constructor() {
-    const apiKey = process.env.DEEPGRAM_API_KEY;
+  constructor(config?: TranscriptionProviderConfig) {
+    const apiKey = config?.apiKey ?? process.env.DEEPGRAM_API_KEY;
     if (!apiKey) {
       throw new Error("Deepgram API key is not set. Set DEEPGRAM_API_KEY in your environment.");
     }
@@ -29,8 +29,8 @@ export class DeepgramProvider implements TranscriptionProvider {
     );
 
     if (error) {
-      console.error("Deepgram API Error:", error);
-      throw new Error(`Deepgram Error: ${error.message}`);
+      console.error("Deepgram transcription request failed");
+      throw new Error("Transcription provider request failed.");
     }
 
     const words = result.results?.channels[0]?.alternatives[0]?.words || [];
