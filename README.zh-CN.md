@@ -9,7 +9,7 @@ DeepListener 是一个专为高阶英语学习者设计的"原子级"听力解�
 - **多 provider 转录**：OpenAI / Deepgram / Google，通过环境变量选择。
 - 协议：[MIT](LICENSE)。
 
-> **当前分发状态（2026-08-05）**：最近的客户端标签是 `v0.3.0-alpha.1`，它是按当前源码构建的未签名 macOS Apple Silicon 内部 alpha 版本。Windows 目前没有打包客户端；Windows 用户可以按下方步骤从源码运行 Server 版本使用。
+> **当前分发状态（2026-08-05）**：最近的客户端标签是 `v0.3.0-alpha.2`，它是按当前源码构建的未签名 macOS Apple Silicon 内部 alpha 版本。Windows 目前没有打包客户端；Windows 用户可以按下方步骤从源码运行 Server 版本使用。
 
 <p align="center">
   <img src="public/demo/readme-core-workflow.png" alt="DeepListener 核心流程：Library、句子级 Practice 和 Shadowing" width="900" />
@@ -21,7 +21,7 @@ DeepListener 是一个专为高阶英语学习者设计的"原子级"听力解�
 
 ### 1. 桌面客户端（macOS Apple Silicon，内部 alpha）
 
-最近的 [DMG release](https://github.com/zhouchangju/DeepListener/releases) 是 `v0.3.0-alpha.1`。它是按当前源码构建的未签名 macOS Apple Silicon 内部 alpha。该打包客户端无需安装 Node.js、Prisma 或命令行工具。
+最近的 [DMG release](https://github.com/zhouchangju/DeepListener/releases) 是 `v0.3.0-alpha.2`。它是按当前源码构建的未签名 macOS Apple Silicon 内部 alpha，无需配置 Node.js 或 Prisma。这个内部 Alpha 的视频导入和生成音频导出会使用本机 Homebrew 安装的 FFmpeg/ffprobe；未安装时基础音频练习仍可使用，但相关可选功能会显示为受限。
 
 首次打开会自动初始化本地数据库，并内置一段 18.4 秒、包含 6 个句子提示的 Piper 英语语音 Demo，你可以立即体验“句子级精听”闭环，不需要任何 provider key。要练习真实素材时，打开 `/library` 选择 **Import Media**。
 

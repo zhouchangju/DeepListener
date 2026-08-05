@@ -1,7 +1,7 @@
 {
   "name": "deeplistener-desktop",
   "productName": "DeepListener",
-  "version": "0.3.0-alpha.1",
+  "version": "0.3.0-alpha.2",
   "description": "DeepListener desktop shell — hosts the packaged Next.js standalone service in a sandboxed Electron window.",
   "main": "main.js",
   "author": "zhouchangju",

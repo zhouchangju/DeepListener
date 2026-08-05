@@ -9,7 +9,7 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 - **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable.
 - License: [MIT](LICENSE).
 
-> **Current distribution status (2026-08-05):** The latest tagged client, `v0.3.0-alpha.1`, is an unsigned macOS Apple Silicon internal alpha built from the current source. Windows has no packaged client yet; Windows users can use DeepListener today by running the Server edition from source as described below.
+> **Current distribution status (2026-08-05):** The latest tagged client, `v0.3.0-alpha.2`, is an unsigned macOS Apple Silicon internal alpha built from the current source. Windows has no packaged client yet; Windows users can use DeepListener today by running the Server edition from source as described below.
 
 <p align="center">
   <img src="public/demo/readme-core-workflow.png" alt="DeepListener core workflow: Library, sentence-level Practice, and Shadowing Mode" width="900" />
@@ -21,7 +21,7 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 
 ### 1. Desktop client (macOS Apple Silicon, internal alpha)
 
-The latest tagged [release DMG](https://github.com/zhouchangju/DeepListener/releases) is `v0.3.0-alpha.1`. It is an unsigned macOS Apple Silicon internal alpha built from the current source. No Node.js, Prisma, or terminal commands are required for that packaged path.
+The latest tagged [release DMG](https://github.com/zhouchangju/DeepListener/releases) is `v0.3.0-alpha.2`. It is an unsigned macOS Apple Silicon internal alpha built from the current source. No Node.js or Prisma setup is required. Video import and generated-audio export use an existing Homebrew FFmpeg/ffprobe installation in this internal alpha; without it, basic audio practice still works but those optional tools are reported as limited.
 
 The client bundles an 18.4-second Piper-generated spoken-English demo with six sentence cues, so you can try the sentence-level listening loop without a provider key or media import. To practice on real material, open `/library` and choose **Import Media**.
 

@@ -8,6 +8,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 
 ## [Unreleased]
 
+## [0.3.0-alpha.2] - 2026-08-05
+
+Unsigned macOS Apple Silicon internal-alpha recovery release.
+
+### Fixed
+
+- Recovered Desktop databases created before migration tracking existed by accepting only the exact known legacy schema, recording its applied migration baseline transactionally, and applying only the pending FSRS migration.
+- Kept unknown or incomplete untracked schemas fail-closed instead of replaying destructive initialization SQL.
+- Added redacted, actionable database startup details to local diagnostics while preserving fail-closed service startup.
+- Allowed explicitly marked internal Alpha packages to resolve a complete Homebrew FFmpeg/ffprobe pair from fixed locations after bounded version and capability checks.
+- Kept verified bundled media tools first, prevented Alpha/public cached-package reuse, and retained fail-closed behavior for public/default packages.
+- Corrected strict TypeScript types in test fixtures so the Stop quality gate passes without weakening production interfaces or assertions.
+
+### Verified
+
+- `npx tsc --noEmit`
+- `npm run verify`
+- Disposable clean and legacy database packaged-runtime startup
+- Internal Alpha FFmpeg resolution and isolated Electron startup
+- Public/default system-FFmpeg fallback rejection
+
 ## [0.3.0-alpha.1] - 2026-08-05
 
 Unsigned macOS Apple Silicon internal alpha built from the current `main`
