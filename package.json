@@ -1,6 +1,6 @@
 {
   "name": "deeplistener",
-  "version": "0.2.0",
+  "version": "0.3.0-alpha.1",
   "private": true,
   "license": "MIT",
   "description": "Local-first, sentence-level English listening trainer with FSRS-4.5 spaced review, multi-provider transcription (OpenAI/Deepgram/Google), waveform-based intensive practice, and shadowing.",

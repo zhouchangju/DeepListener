@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 
 ## [Unreleased]
 
+## [0.3.0-alpha.1] - 2026-08-05
+
+Unsigned macOS Apple Silicon internal alpha built from the current `main`
+branch. This release replaces the older alpha package with the accumulated
+desktop-readiness, first-session, media-import, recovery, and safety work.
+
 ### Added
 
 - Added generic local MP4/WebM import without course-specific metadata or automatic lesson splitting.
