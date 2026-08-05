@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { Prisma } from "@prisma/client";
 import {
   buildDueReviewItemsWhere,
   buildFilteredReviewItemsWhere,
   getSegmentExportAudioFilters,
 } from "./query";
+
+const routeSource = readFileSync(path.join(process.cwd(), "src", "app", "api", "audio", "export", "route.ts"), "utf8");
 
 function assertDateTimeFilter(
   value: Prisma.ReviewItemWhereInput["createdAt"],
@@ -55,4 +59,9 @@ test("segment export applies explicit resampling before mp3 encoding", () => {
       options: "44100",
     },
   ]);
+});
+
+test("track export gathers every sentence instead of only ReviewItems", () => {
+  assert.match(routeSource, /case 'track':[\s\S]*prisma\.track\.findUnique/);
+  assert.match(routeSource, /sentences = track\.sentences\.map/);
 });

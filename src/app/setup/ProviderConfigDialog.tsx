@@ -398,7 +398,7 @@ export default function ProviderConfigDialog({
         open={removeConfirmOpen}
         onOpenChange={setRemoveConfirmOpen}
         title={t("removeConfirmTitle", { provider: PROVIDER_LABELS[provider] })}
-        description={t("removeConfirmDescription")}
+        description={t("removeConfirmDescription", { provider: PROVIDER_LABELS[provider] })}
         confirmLabel={t("removeCredential")}
         cancelLabel={commonT("cancel")}
         destructive

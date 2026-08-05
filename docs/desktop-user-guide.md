@@ -6,11 +6,13 @@
 |---|---|
 | macOS Apple Silicon (M1/M2/M3/M4) | Internal unsigned alpha only; public support not claimed |
 | macOS Intel | Not verified |
-| Windows x64 | Packaging contract exists; clean-install support not yet claimed |
+| Windows x64 packaged client | Not shipped; run the supported Server edition from source |
 | Linux | Not supported |
 
-The repository currently has no signed public Desktop release. Do not treat the
-internal alpha or a source checkout as a supported learner installation.
+The repository currently has no signed public Desktop release. The packaged
+Desktop client currently supports macOS Apple Silicon only. Windows users should
+run the supported Server edition from source; it requires Node.js 22+, Prisma
+setup, FFmpeg/ffprobe, and any provider key needed for transcription.
 
 ## Installation
 
@@ -19,9 +21,10 @@ and drag DeepListener.app to Applications. **No Node.js, npm, or terminal is
 required for that intended packaged path** — the app is designed to bundle its
 own runtime.
 
-The current maintainer artifact is an unsigned internal arm64 alpha. A public
-DMG still requires Apple signing/notarization and a clean-install verification
-run; those gates are intentionally open.
+The current maintainer artifact is an unsigned internal arm64 alpha. A DMG built
+from the current source has not yet been published. A public DMG still requires
+Apple signing/notarization, redistributable FFmpeg assets, and a clean-install
+verification run; those gates are intentionally open.
 
 > **Media import note:** Public Desktop packaging is fail-closed until a
 > checksum-verified, redistributable FFmpeg/ffprobe pair and provenance are
@@ -71,9 +74,9 @@ everything, manually delete `~/Library/Application Support/DeepListener/`.
 5. Capture one sentence to your Vault.
 6. See where it continues in Review.
 
-No API key is required for the demo. The current repository demo audio is an
-internal synthetic fixture; a real redistributable speech asset is still
-required before a public learner release.
+No API key is required for the demo. The bundled clip contains six short
+spoken-English sentences and is generated from a locally runnable Piper voice
+model with redistribution provenance recorded in `public/demo/PROVENANCE.md`.
 
 ## Adding your own media
 

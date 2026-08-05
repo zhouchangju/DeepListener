@@ -1,7 +1,7 @@
 # DeepListener Desktop Product Requirements Document
 
 **Version:** 1.0  
-**Status:** Proposed target state; not yet implemented  
+**Status:** Partially implemented: macOS Apple Silicon internal alpha; public release gates and Windows packaging remain
 **Date:** 2026-07-22  
 **Decision:** Electron desktop-first; macOS Apple Silicon feasibility first; signed macOS beta next; Windows x64 follows; existing Next.js Server edition remains supported  
 **OpenSpec change:** [`desktop-first-distribution`](../openspec/changes/desktop-first-distribution/proposal.md)
@@ -40,7 +40,7 @@ The Server edition remains the contributor and advanced self-hosting path. Deskt
 
 ### 2.3 Decisions
 
-- Use Electron for the desktop shell and Electron Forge for packaging.
+- Use Electron for the desktop shell and electron-builder for packaging.
 - Keep the existing Next.js application as the shared renderer/local service.
 - Validate macOS Apple Silicon first because it is the maintainer's active environment.
 - Treat signed macOS beta and Windows x64 as separate release milestones using the same contracts.

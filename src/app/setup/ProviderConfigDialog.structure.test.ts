@@ -36,7 +36,7 @@ test("provider configuration exposes selection state and stable form labels", ()
 test("provider configuration offers explicit credential removal", () => {
   assert.match(source, /method: "DELETE"/);
   assert.match(source, /removeConfirmOpen/);
-  assert.match(source, /removeConfirmDescription/);
+  assert.match(source, /t\("removeConfirmDescription", \{ provider: PROVIDER_LABELS\[provider\] \}\)/);
 });
 
 test("configured-key placeholder does not promise an unsupported blank-save path", () => {

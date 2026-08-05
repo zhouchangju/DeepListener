@@ -47,6 +47,32 @@ test("resolveExportSource returns the stored path for existing uploaded audio", 
   });
 });
 
+test("resolveExportSource accepts the bundled Demo audio path", () => {
+  const result = resolveExportSource(
+    { label: "DeepListener Demo", audioUrl: "/demo/demo-listening.mp3" },
+    () => true,
+  );
+
+  assert.deepEqual(result, {
+    audioPath: path.join(process.cwd(), "public", "demo", "demo-listening.mp3"),
+  });
+});
+
+test("resolveExportSource rejects Demo path traversal", () => {
+  const result = resolveExportSource(
+    { label: "DeepListener Demo", audioUrl: "/demo/../uploads/audio.mp3" },
+    () => true,
+  );
+
+  assert.deepEqual(result, {
+    issue: {
+      label: "DeepListener Demo",
+      audioUrl: "/demo/../uploads/audio.mp3",
+      reason: "invalid-url",
+    },
+  });
+});
+
 test("formatIncompleteExportMessage explains that selected sources were not exported", () => {
   assert.match(
     formatIncompleteExportMessage("sentences", 4, [

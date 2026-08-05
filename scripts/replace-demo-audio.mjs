@@ -2,9 +2,9 @@
 /**
  * Replace the bundled demo audio and its sentence timeline.
  *
- * The shipped demo (`public/demo/demo-listening.mp3`) is a 5-second synthetic
- * sine wave with only two hand-authored sentence cues — it cannot demonstrate
- * sentence-level listening (see docs/desktop-w0/demo-script.md §1).
+ * The shipped demo (`public/demo/demo-listening.mp3`) is a bundled spoken-English
+ * clip with hand-authored sentence cues. This script keeps the audio and cues
+ * in sync when the release asset is replaced.
  *
  * This script lets a maintainer drop in a REAL spoken-English clip and a
  * matching sentence timeline in one step:
@@ -137,7 +137,7 @@ execFileSync(
 
 const durationSec = Number(
   execFileSync("ffprobe", [
-    "-v", "error", "-show-entries", "format=duration",
+    "-v", "error", "-show_entries", "format=duration",
     "-of", "default=noprint_wrappers=1:nokey=1", stagedAudio,
   ]).toString().trim(),
 );

@@ -8,6 +8,7 @@ import { getProviderSummaryAsync } from "@/lib/secrets-store";
 import ProviderCardActions from "./ProviderCardActions";
 import TranscriptionDecisionGuide from "./TranscriptionDecisionGuide";
 import DataSafetyActions from "./DataSafetyActions";
+import DatabaseRecoveryDialog from "./DatabaseRecoveryDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,8 @@ export default async function SetupPage() {
           const statusLabel = check.id === "provider" && check.status === "ready"
             ? t("configured")
             : t(check.status);
+          const serverDatabaseNeedsSetup = check.id === "database"
+            && check.fixKey === "readiness.database.serverMissingFix";
           return (
             <Card id={check.id === "provider" ? "provider-settings" : undefined} key={check.id} className="gap-4 py-5">
               <CardHeader className="gap-3 px-5">
@@ -96,7 +99,14 @@ export default async function SetupPage() {
                   <summary className="cursor-pointer font-medium text-foreground">{t("showDetails")}</summary>
                   <div className="mt-2 space-y-3 text-muted-foreground">
                     <p>{t(check.detailKey as SetupKey, check.values)}</p>
-                    {check.fixKey && <p className="rounded-lg bg-muted px-3 py-2 font-medium text-foreground">{t("nextPrefix")} {t(check.fixKey as SetupKey, check.values)}</p>}
+                    {check.fixKey && (
+                      <>
+                        <p className="rounded-lg bg-muted px-3 py-2 font-medium text-foreground">
+                          {t("nextPrefix")} {t(check.fixKey as SetupKey, check.values)}
+                        </p>
+                        {serverDatabaseNeedsSetup && <DatabaseRecoveryDialog />}
+                      </>
+                    )}
                   </div>
                 </details>
                 {check.id === "provider" && (

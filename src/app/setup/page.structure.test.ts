@@ -12,6 +12,11 @@ test("setup keeps technical readiness details behind progressive disclosure", ()
   assert.match(source, /check\.fixKey[\s\S]*t\(\"nextPrefix\"/);
 });
 
+test("server database recovery explains the Windows and macOS commands", () => {
+  assert.match(source, /serverDatabaseNeedsSetup/);
+  assert.match(source, /<DatabaseRecoveryDialog \/>/);
+});
+
 test("setup summary keeps a real destination when checks need attention", () => {
   assert.match(source, /<Link href=\"#setup-readiness-checks\">/);
   assert.doesNotMatch(source, /<Button disabled>\{t\(\"resolveFirst\"\)\}<\/Button>/);

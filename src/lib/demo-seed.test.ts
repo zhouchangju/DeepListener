@@ -53,15 +53,47 @@ test("seedDemoTrack creates the demo track with sentences and DEMO ownership", a
   const result = await seedDemoTrack(db);
   assert.equal(result.seeded, true);
   assert.equal(result.trackId, "demo-listening-001");
-  assert.equal(result.sentenceCount, 2);
+  assert.equal(result.sentenceCount, 6);
 
   const track = await db.track.findUnique({
     where: { id: "demo-listening-001" },
     include: { sentences: true },
   });
   assert.equal(track?.trackType, DEMO_TRACK_TYPE);
-  assert.equal(track?.sentences.length, 2);
+  assert.equal(track?.sentences.length, 6);
   assert.equal(track?.audioUrl, "/demo/demo-listening.mp3");
+});
+
+test("seedDemoTrack upgrades a legacy two-sentence demo to the current timeline", async () => {
+  const legacySentences = await db.sentence.findMany({
+    where: { trackId: "demo-listening-001" },
+    orderBy: { orderIndex: "asc" },
+  });
+  await db.sentence.deleteMany({
+    where: {
+      trackId: "demo-listening-001",
+      id: { notIn: legacySentences.slice(0, 2).map((sentence) => sentence.id) },
+    },
+  });
+  await db.sentence.update({
+    where: { id: legacySentences[0].id },
+    data: { text: "Welcome to DeepListener. Listen carefully.", startTime: 0, endTime: 2.5, orderIndex: 0 },
+  });
+  await db.sentence.update({
+    where: { id: legacySentences[1].id },
+    data: { text: "Try to catch every word without reading.", startTime: 2.5, endTime: 5, orderIndex: 1 },
+  });
+
+  const result = await seedDemoTrack(db);
+  assert.equal(result.seeded, false);
+  assert.equal(result.sentenceCount, 6);
+  const upgraded = await db.sentence.findMany({
+    where: { trackId: "demo-listening-001" },
+    orderBy: { orderIndex: "asc" },
+  });
+  assert.equal(upgraded.length, 6);
+  assert.equal(upgraded[0].text, "Welcome to DeepListener. Let us practice listening one sentence at a time.");
+  assert.equal(upgraded[5].endTime, 18.39);
 });
 
 test("seedDemoTrack is idempotent — second call is a no-op", async () => {

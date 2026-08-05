@@ -9,6 +9,14 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 - **Multi-provider transcription:** OpenAI / Deepgram / Google, chosen via environment variable.
 - License: [MIT](LICENSE).
 
+> **Current distribution status (2026-08-05):** The current source is newer than the tagged macOS client, and no DMG built from the current source has been published yet. The latest tagged client, `v0.3.0-alpha.0`, is an unsigned macOS Apple Silicon internal alpha. Windows has no packaged client yet; Windows users can use DeepListener today by running the Server edition from source as described below.
+
+<p align="center">
+  <img src="public/demo/readme-core-workflow.png" alt="DeepListener core workflow: Library, sentence-level Practice, and Shadowing Mode" width="900" />
+</p>
+
+<p align="center"><em>Core loop, captured from the local demo: import a track in Library → decode it sentence by sentence in Practice → shadow the rhythm.</em></p>
+
 <p align="center">
   <img src="docs/assets/deeplistener-demo.gif" alt="DeepListener product tour — 30s walkthrough of practice, dashboard, library, and setup" width="780" />
 </p>
@@ -25,15 +33,18 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 
 ## Two ways to run DeepListener
 
-### 1. Desktop client (recommended, alpha)
+### 1. Desktop client (macOS Apple Silicon, internal alpha)
 
-Download the latest [release dmg](https://github.com/zhouchangju/DeepListener/releases) and drag to Applications. No Node.js, Prisma, or terminal commands required. macOS Apple Silicon only for the alpha; signed builds and Windows will follow once the alpha proves out.
+The last tagged [release DMG](https://github.com/zhouchangju/DeepListener/releases) is `v0.3.0-alpha.0`. It is an unsigned macOS Apple Silicon internal alpha; it is not a DMG built from the current source. No Node.js, Prisma, or terminal commands are required for that packaged path.
 
-The client bundles a 5-second synthetic demo clip so you can try the sentence-level listening loop immediately, without a provider key or media import. To practice on real material, open `/library` and choose **Import Media**.
+The client bundles an 18.4-second Piper-generated spoken-English demo with six sentence cues, so you can try the sentence-level listening loop without a provider key or media import. To practice on real material, open `/library` and choose **Import Media**.
 
-All user data (SQLite database, uploaded media, exported audio) lives under the OS user-data directory — nothing is sent to a server. Transcription is still BYO key; configure it on the in-app `/setup` page.
+All user data (SQLite database, uploaded media, exported audio) lives under the OS user-data directory — nothing is sent to a DeepListener server. Packaged macOS builds store provider credentials in macOS Keychain; source runs use a local access-restricted file. Transcription is still BYO key; configure it on the in-app `/setup` page.
 
-### 2. From source (developers)
+### 2. From source (developers and Windows users)
+
+Windows users can use the supported Server edition today by following this section. The packaged Desktop client currently supports macOS Apple Silicon only. Install FFmpeg and FFprobe and add both commands to `PATH` before using video import or audio export.
+The source edition requires Node.js 22+ and npm.
 
 ```bash
 npm install
@@ -49,7 +60,7 @@ After startup:
 2. Open `/library` and choose **Import Media**.
 3. Start with a short audio file so you can reach the practice screen quickly.
 
-> DeepListener bundles one synthetic demo (`public/demo/demo-listening.mp3`, a 5-second FFmpeg-generated sine wave — no copyright) so a first session works without any provider key. To practice on real material, open `/library` and choose **Import Media**.
+> DeepListener bundles an 18.4-second Piper-generated spoken-English demo (`public/demo/demo-listening.mp3`) with six sentence cues. It requires no provider key and makes no external transcription request. To practice on real material, open `/library` and choose **Import Media**.
 
 You can verify the build and tests **without** any private config:
 
@@ -123,14 +134,14 @@ ffmpeg -version
 
 You can also run `bin/setup`, which performs dependency install, Prisma client generation, and existing migration application. It never creates or edits `.env`; configure local `.env` manually if you need transcription or Symphony credentials.
 
-## 🖥️ Desktop Client (alpha)
+## 🖥️ Desktop Client (macOS Apple Silicon alpha)
 
 DeepListener also ships as a self-contained Electron desktop client so end users do not need to install Node.js, Prisma, or run terminal commands. The client hosts the exact same Next.js service inside a sandboxed window; all user data stays under the OS user-data directory.
 
-- **Platform:** macOS Apple Silicon (arm64). Windows and signed/notarized builds are planned once the alpha proves out.
-- **Demo:** the client bundles a synthetic 5-second demo clip so you can try the sentence-level listening loop immediately, without a provider key or media import.
-- **Transcription:** still BYO key (OpenAI / Deepgram / Google). Configure it on the in-app setup page; the key is stored locally with `060` permissions and never leaves your machine.
-- **FFmpeg:** resolved at launch from a vendored copy if present, otherwise from the system `PATH`. See [`vendor/ffmpeg/README.md`](vendor/ffmpeg/README.md).
+- **Platform:** macOS Apple Silicon (arm64) only for the internal alpha. Windows has no packaged client yet; use the Server edition from source.
+- **Demo:** the client bundles an 18.4-second Piper-generated spoken-English clip with six sentence cues, without requiring a provider key.
+- **Transcription:** still BYO key (OpenAI / Deepgram / Google). Packaged macOS builds use Keychain; source runs use an access-restricted local file.
+- **FFmpeg:** public packages require checksum-verified redistributable binaries; source and explicitly enabled internal alpha runs may use FFmpeg/FFprobe from `PATH`. See [`vendor/ffmpeg/README.md`](vendor/ffmpeg/README.md).
 
 ### Build a distributable from source
 

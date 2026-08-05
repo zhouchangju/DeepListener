@@ -31,7 +31,7 @@ test("Desktop preflight explains a missing system FFmpeg alpha escape hatch", ()
   assert.match(preflightSource, /redistributable vendor assets/);
 });
 
-test("public preflight blocks the current synthetic Demo fixture", () => {
+test("public preflight still fails closed when vendor FFmpeg assets are missing", () => {
   const result = spawnSync(
     process.execPath,
     [path.join(process.cwd(), "scripts", "desktop-preflight.mjs")],
@@ -49,7 +49,7 @@ test("public preflight blocks the current synthetic Demo fixture", () => {
   );
   const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
 
-  assert.notEqual(result.status, 0, "public preflight must fail for the current fixture");
-  assert.match(output, /bundled demo is still synthetic or has incomplete provenance/i);
+  assert.notEqual(result.status, 0, "public preflight must fail without target assets");
+  assert.doesNotMatch(output, /bundled demo is still synthetic or has incomplete provenance/i);
   assert.match(output, /redistributable vendor\/ffmpeg\/contract-test-contract-test/i);
 });

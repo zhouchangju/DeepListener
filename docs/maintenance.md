@@ -1,6 +1,6 @@
 # DeepListener 开发维护手册
 
-Last updated: 2026-07-12
+Last updated: 2026-08-05
 
 ## 1. 转录 Provider 现状
 
@@ -42,6 +42,11 @@ Gemini 偶尔会出现时间轴错位。前端 `AudioPlayer` 仍保留对重叠�
 ## 3. 数据与文件维护
 
 项目当前使用 SQLite。本地数据库通常由 `DATABASE_URL="file:./dev.db"` 指向默认文件；注意 Prisma 会按 `prisma/schema.prisma` 所在目录解析相对路径，所以默认文件实际是 `prisma/dev.db`。
+
+本节路径描述的是 Server/源码运行模式。打包 Desktop 使用操作系统的
+user-data 目录（数据库、媒体、导出和备份均在该目录下），应优先使用
+Desktop 的 Backup/Restore 功能，不要把 Desktop 数据套用到下面的 legacy
+`npm run sync` 路径。
 
 - **Schema**：`prisma/schema.prisma`
 - **数据库查看**：`npx prisma studio`
@@ -203,6 +208,9 @@ A: 先检查 `contentEditable` 编辑器有没有在父组件回传相同内容�
 ## 9. 数据同步与备份
 
 为了防止本地音频文件和数据库丢失，项目保留了基于 `rsync` 的同步脚本：
+
+以下同步脚本只适用于 Server/源码运行模式，并且会写入远端备份目标；
+打包 Desktop 请使用应用内 Backup/Restore，不要运行该脚本。
 
 ```bash
 npm run sync

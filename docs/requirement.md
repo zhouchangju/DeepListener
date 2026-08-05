@@ -455,12 +455,13 @@ DeepListener 是一个面向高阶英语学习者的听力训练与复习系统�
 - 完全遗漏 Symphony 模块
 - 完全遗漏产品介绍页和只读环境诊断页
 
-## 7. 计划中的桌面发行（尚未实现）
+## 7. 桌面发行状态
 
-DeepListener 已确定以桌面客户端降低安装和运行门槛，但本节只记录方向，不改变上文“当前已实现”的事实边界。
+DeepListener 已实现 Electron 桌面壳层、standalone 服务打包、loopback 认证和 OS data root。当前可确认的打包范围是 macOS Apple Silicon 内部 alpha；当前源码尚未发布对应的新 DMG。Windows 用户继续使用受支持的 Server 源码版本。
 
 - 技术路线：保留现有 Next.js + Prisma 业务核心，以 Electron 提供桌面壳层和本机生命周期管理。
-- 平台顺序：先做 macOS Apple Silicon 可行性验证，再做签名和公证的 macOS beta；共享运行时稳定后增加 Windows x64。
+- 当前平台：macOS Apple Silicon（arm64）未签名内部 alpha；Windows 尚无打包客户端。
+- 剩余发布门槛：可再分发 FFmpeg/ffprobe、签名与公证、当前源码对应的干净安装验证、自动更新，以及 Windows x64 安装器与验收。
 - 兼容边界：浏览器/Server 版本继续存在，不能因为桌面化而失去现有开发和自托管能力。
 - 数据边界：数据库、媒体和备份迁移必须显式、可预览、copy-first、可回滚；卸载或升级不能静默删除学习数据。
 - AI 边界：首个桌面版本不为追逐标签新增泛化聊天功能，优先消除安装、配置、导入和恢复摩擦；AI 学习能力需另立需求并验证学习价值。

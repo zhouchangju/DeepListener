@@ -12,7 +12,7 @@ release. It is not required for the internal unsigned alpha build.
 ## Development setup
 
 ```bash
-git clone https://github.com/deeplistener/deeplistener.git
+git clone https://github.com/zhouchangju/DeepListener.git
 cd deeplistener
 npm install
 npx prisma generate
@@ -36,11 +36,11 @@ npm run desktop:preflight
 ```
 
 For an internal unsigned alpha on a maintainer machine, the explicit escape
-hatch permits the current system FFmpeg and synthetic demo. The machine must
-still expose both `ffmpeg` and `ffprobe` on `PATH`:
+hatch permits the current system FFmpeg. The machine must still expose both
+`ffmpeg` and `ffprobe` on `PATH`:
 
 ```bash
-npm run desktop:preflight -- --allow-system-ffmpeg --allow-synthetic-demo
+npm run desktop:preflight -- --allow-system-ffmpeg
 ```
 
 ## Build the Electron desktop shell
@@ -57,16 +57,16 @@ npm run start:dev      # with explicit standalone path
 ### Unsigned build (development / M1 milestone)
 
 ```bash
-npm run desktop:package
-cd desktop
-npm install electron-forge --save-dev
-npx electron-forge make --platform=darwin --arch=arm64
-# Output: out/make/DeepListener-*.zip (unsigned)
+npm run desktop:dist -- --alpha
+# Output: .desktop-build/dist/DeepListener-*.dmg (unsigned internal alpha)
+
+# For a faster unpacked-app iteration:
+npm run desktop:dist -- --dir --alpha
 ```
 
 The maintained distribution entry point is `npm run desktop:dist`. Add
 `--dir --alpha` for an unpacked internal alpha; without `--alpha`, preflight
-rejects system-only FFmpeg and the synthetic demo before packaging.
+rejects system-only FFmpeg before packaging.
 
 ## Repair a pre-Desktop database
 
@@ -90,9 +90,9 @@ Requires:
 - App Store Connect API key for notarization
 
 ```bash
-# place forge.config.js with osxSign + osxNotarize options
-# (certificate name, team ID, api key path — values are secret, never committed)
-npx electron-forge make --platform=darwin --arch=arm64
+# Configure electron-builder signing/notarization environment variables
+# (certificate, team ID, and API-key paths are secret; never commit them).
+npm run desktop:dist
 ```
 
 ## Package content audit
@@ -108,7 +108,7 @@ codesign -dvvv out/make/DeepListener.app
 
 ## Release checklist
 
-1. `npm run verify` is green (lint + 447 tests, with only documented environment-limited skips + build)
+1. `npm run verify` is green (all current tests, with only documented environment-limited skips + build)
 2. `npm run desktop:package` succeeds
 3. `npm run desktop:preflight` passes without alpha escape hatches
 4. Package-content audit passes (T011/T151)

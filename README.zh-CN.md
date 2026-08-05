@@ -9,15 +9,26 @@ DeepListener 是一个专为高阶英语学习者设计的"原子级"听力解�
 - **多 provider 转录**：OpenAI / Deepgram / Google，通过环境变量选择。
 - 协议：[MIT](LICENSE)。
 
+> **当前分发状态（2026-08-05）**：当前源码已经领先于已打标签的 macOS 客户端，但还没有发布按当前源码构建的新 DMG。最近的客户端标签是 `v0.3.0-alpha.0`，它是未签名的 macOS Apple Silicon 内部 alpha 版本。Windows 目前没有打包客户端；Windows 用户可以按下方步骤从源码运行 Server 版本使用。
+
+<p align="center">
+  <img src="public/demo/readme-core-workflow.png" alt="DeepListener 核心流程：Library、句子级 Practice 和 Shadowing" width="900" />
+</p>
+
+<p align="center"><em>真实本地 Demo 截图：在 Library 导入素材 → 在 Practice 中按句精听 → 在 Shadowing 中跟读。</em></p>
+
 ## 两种使用方式
 
-### 1. 桌面客户端（推荐，alpha）
+### 1. 桌面客户端（macOS Apple Silicon，内部 alpha）
 
-下载 [最新 dmg release](https://github.com/zhouchangju/DeepListener/releases)，双击安装即可。无需安装 Node.js、Prisma 或任何命令行工具。目前仅支持 macOS Apple Silicon；Windows 和签名版本会在 alpha 验证通过后跟进。
+最近的 [DMG release](https://github.com/zhouchangju/DeepListener/releases) 是 `v0.3.0-alpha.0`。它是未签名的 macOS Apple Silicon 内部 alpha，并不是按当前源码构建的新包。该打包客户端无需安装 Node.js、Prisma 或命令行工具。
 
-首次打开会自动初始化本地数据库，并内置一段 5 秒合成 demo 音频，你可以立即体验"句子级精听"闭环，不需要任何 provider key。要练习真实素材时，打开 `/library` 选择 **Import Media**。
+首次打开会自动初始化本地数据库，并内置一段 18.4 秒、包含 6 个句子提示的 Piper 英语语音 Demo，你可以立即体验“句子级精听”闭环，不需要任何 provider key。要练习真实素材时，打开 `/library` 选择 **Import Media**。
 
-### 2. 从源码运行（开发者）
+### 2. 从源码运行（开发者和 Windows 用户）
+
+Windows 用户目前可以通过从源码运行 Server 版本使用 DeepListener。打包桌面客户端暂时只支持 macOS Apple Silicon。使用视频导入或音频导出前，请先安装 FFmpeg/ffprobe 并将两个命令加入 `PATH`。
+源码版本需要 Node.js 22+ 和 npm。
 
 ```bash
 npm install
@@ -33,7 +44,7 @@ npm run dev                 # 打开 http://localhost:3000
 2. 打开 `/library` 选择 **Import Media**。
 3. 先用一个短音频文件，这样能快速进入练习界面。
 
-> DeepListener 内置一段合成 demo（`public/demo/demo-listening.mp3`，5 秒 FFmpeg 生成的正弦波，无版权），所以第一次使用不需要 provider key。要练习真实素材，请导入你自己有权使用的音频或视频。
+> DeepListener 内置一段 18.4 秒、由 Piper 生成的英语语音 Demo（`public/demo/demo-listening.mp3`），包含 6 个句子提示；不需要 provider key，也不会发起外部转录请求。要练习真实素材，请导入你自己有权使用的音频或视频。
 
 ## 核心特性
 
@@ -56,6 +67,20 @@ npm run dev                 # 打开 http://localhost:3000
 | **Left Drag** | 圈选区域并自动循环（松开即播） |
 | **Alt + Click** | （在 Position 标题上）开启时间轴调试模式 |
 
+## 音频导出
+
+- **Vault** 支持导出全部、到期、当前筛选结果的句子音频和文本笔记。
+- **Review** 支持导出当前到期复习队列。
+- **Practice** 支持导出当前 Track 中已收藏的句子。
+- MP3 导出为 192 kbps，句子之间插入 2 秒静音；如果源音频缺失或无效，导出会报错，不会生成不完整文件。
+
+## 视频导入
+
+- 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM；单文件导入支持最大 1 GB 视频。
+- 有可解析的内嵌字幕时优先使用，否则对派生音轨调用已配置的转录 provider。
+- Practice 中视频是唯一播放时钟，波形、字幕、句子跳转、变速和循环共享同一时间轴。
+- **Show subtitles / Hide subtitles** 开关默认关闭，只显示当前播放位置对应的转录句子。
+
 ## 前置要求（从源码运行时）
 
 **FFmpeg（必需）**：视频音轨提取、内嵌字幕探测和音频导出需要 FFmpeg/ffprobe。
@@ -68,6 +93,17 @@ sudo apt-get update && sudo apt-get install ffmpeg
 # Windows：从 https://ffmpeg.org/download.html 下载并加入 PATH
 ```
 
+## 桌面客户端构建（维护者）
+
+当前仅维护 macOS Apple Silicon 的内部 alpha 构建；Windows 仍请从源码运行。公开桌面发布还需要可再分发、带校验信息的 FFmpeg/ffprobe，以及签名和公证。
+
+```bash
+npm run desktop:package
+(cd desktop && npm install)
+npm run desktop:dist -- --alpha       # 内部 alpha DMG
+npm run desktop:dist -- --dir --alpha # 未打包目录，便于调试
+```
+
 ## 文档资源
 
 - [文档导航地图](./docs/README.md) — 先看这里，区分当前事实、维护手册、历史计划
@@ -76,6 +112,8 @@ sudo apt-get update && sudo apt-get install ffmpeg
 - [产品需求文档](./docs/requirement.md)
 - [维护手册](./docs/maintenance.md) — Provider、数据库、上传、导出、备份
 - [复习系统与 FSRS 算法说明](./docs/review-system.md)
+- [桌面客户端使用指南](./docs/desktop-user-guide.md)
+- [桌面维护手册](./docs/desktop-maintainer-runbook.md)
 
 ## Support
 

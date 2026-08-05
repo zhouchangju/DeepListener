@@ -1,6 +1,6 @@
 # DeepListener Current Architecture
 
-Last updated: 2026-07-23
+Last updated: 2026-08-05
 
 This document describes the current codebase implementation. For product behavior, see [requirement.md](./requirement.md). For day-to-day operations, see [maintenance.md](./maintenance.md).
 
@@ -124,7 +124,7 @@ Theme changes are UI-only. They must not touch Prisma data, uploaded audio, tran
 | `/api/vault/[id]` | `GET`, `PATCH`, `DELETE` | Reads note payload, updates note/tags/difficulty, or deletes a Vault item. |
 | `/api/vault/[id]/archive` | `POST` | Toggles `ReviewItem.isArchived`. |
 | `/api/vault/export` | `POST` | Exports text notes filtered by tags, difficulty, tracks, and date range. |
-| `/api/audio/export` | `POST` | Exports captured sentence audio for all, due, track, or filtered modes. Max 500 segments. |
+| `/api/audio/export` | `POST` | Exports sentence audio for all, due, track, or filtered modes. `track` exports every sentence on the selected track; the other modes use captured ReviewItems. Max 500 segments. |
 | `/api/library/export` | `POST` | Exports whole-track audio from selected tracks or Library filters. |
 | `/api/review/grade` | `POST` | Runs FSRS update and writes a `ReviewLog`; Again = 5 minutes, Hard = 15 minutes. |
 | `/api/review/log` | `POST` | Creates a standalone review log with duration. |
@@ -285,9 +285,13 @@ Do not delete, overwrite, migrate, or sync these without explicit user confirmat
 
 For non-trivial refactors, performance work, migrations, deployment/basePath work, sync changes, Prisma/data changes, audio export/transcription changes, quality-gate hardening, or workflow changes, read [agent-harness/README.md](./agent-harness/README.md) before editing.
 
-## Planned Desktop Target Architecture
+## Current Desktop Runtime and Remaining Release Work
 
-The desktop client is an approved target state, not part of the current runtime shown above. The planned boundary is:
+The repository now contains the Electron shell, standalone Next.js packager,
+loopback authentication, OS data-root handling, and the macOS Apple Silicon
+internal-alpha distribution path. The packaged client is not yet a signed
+public release, and the current source has not yet been attached to a new DMG.
+The shared boundary is:
 
 ```mermaid
 flowchart LR
@@ -299,12 +303,13 @@ flowchart LR
   Server["Existing browser / Server edition"] --> Core
 ```
 
-Key target-state constraints:
+Current constraints and remaining release gates:
 
 - Electron owns process lifecycle, window security, single-instance behavior, diagnostics, update orchestration, and platform integration; it does not duplicate the learning domain.
 - The packaged Next.js service binds to loopback only, uses a random available port, and requires a per-launch authentication token.
 - Runtime state moves behind explicit data-root and platform-adapter contracts; source-relative `prisma/dev.db` and `public/**` paths cannot become implicit desktop storage.
-- macOS Apple Silicon is the first feasibility target. A signed/notarized macOS beta and then Windows x64 are promotion stages, not simultaneous launch commitments.
+- macOS Apple Silicon is the only packaged Desktop target currently claimed. A signed/notarized macOS beta, redistributable FFmpeg assets, and then Windows x64 are promotion stages, not simultaneous launch commitments.
 - Server behavior stays supported while shared contracts are extracted.
+- Windows users can use the supported Server edition from source; a packaged Windows client is not shipped.
 
 See the [desktop client PRD](./desktop-client-prd.md) and the active [OpenSpec design](../openspec/changes/desktop-first-distribution/design.md) for requirements, alternatives, evidence gates, and implementation ownership.

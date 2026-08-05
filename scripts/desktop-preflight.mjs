@@ -2,10 +2,9 @@
 /**
  * Release preflight for the unsigned/signed desktop distribution pipeline.
  *
- * The alpha path may explicitly allow the two host-dependent inputs that are
- * not suitable for a public release: system FFmpeg and the synthetic demo.
- * A normal release preflight fails closed until both are replaced by
- * redistributable assets.
+ * The alpha path may explicitly allow the host-dependent system FFmpeg input
+ * that is not suitable for a public release. A normal release preflight fails
+ * closed until the target-specific redistributable assets are present.
  */
 import { accessSync, constants, existsSync, readFileSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";

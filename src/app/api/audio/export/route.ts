@@ -27,6 +27,17 @@ interface GatherSegmentsResult {
   totalItems: number;
 }
 
+interface ExportSentence {
+  trackId: string;
+  orderIndex: number;
+  startTime: number;
+  endTime: number;
+  track: {
+    title: string;
+    audioUrl: string;
+  };
+}
+
 function generateFilename(): string {
   const date = new Date().toISOString().split('T')[0];
   return `DeepListener_Export_${date}.mp3`;
@@ -40,11 +51,11 @@ async function gatherSegments(
   dateFrom?: string,
   dateTo?: string
 ): Promise<GatherSegmentsResult> {
-  let reviewItems;
+  let sentences: ExportSentence[] = [];
 
   switch (type) {
     case 'all':
-      reviewItems = await prisma.reviewItem.findMany({
+      sentences = (await prisma.reviewItem.findMany({
         where: {
           isArchived: false,
         },
@@ -56,11 +67,11 @@ async function gatherSegments(
         orderBy: {
           createdAt: 'desc',
         },
-      });
+      })).map((item) => item.sentence);
       break;
 
     case 'due':
-      reviewItems = await prisma.reviewItem.findMany({
+      sentences = (await prisma.reviewItem.findMany({
         where: buildDueReviewItemsWhere(),
         include: {
           sentence: {
@@ -70,33 +81,42 @@ async function gatherSegments(
         orderBy: {
           due: 'asc',
         },
-      });
+      })).map((item) => item.sentence);
       break;
 
     case 'track':
       if (!trackId) {
         throw new Error('trackId is required for track export');
       }
-      reviewItems = await prisma.reviewItem.findMany({
-        where: {
-          sentence: {
-            trackId,
+      {
+        const track = await prisma.track.findUnique({
+          where: { id: trackId },
+          include: {
+            sentences: {
+              orderBy: { orderIndex: 'asc' },
+            },
           },
-          isArchived: false,
-        },
-        include: {
-          sentence: {
-            include: { track: true },
+        });
+
+        if (!track) {
+          return { segments: [], issues: [], totalItems: 0 };
+        }
+
+        sentences = track.sentences.map((sentence) => ({
+          trackId: track.id,
+          orderIndex: sentence.orderIndex,
+          startTime: sentence.startTime,
+          endTime: sentence.endTime,
+          track: {
+            title: track.title,
+            audioUrl: track.audioUrl,
           },
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      });
+        }));
+      }
       break;
 
     case 'filtered':
-      reviewItems = await prisma.reviewItem.findMany({
+      sentences = (await prisma.reviewItem.findMany({
         where: buildFilteredReviewItemsWhere({
           difficulties,
           trackIds,
@@ -109,41 +129,41 @@ async function gatherSegments(
           },
         },
         orderBy: { createdAt: 'asc' },
-      });
+      })).map((item) => item.sentence);
       break;
 
     default:
       throw new Error(`Invalid export type: ${type}`);
   }
 
-  if (reviewItems.length === 0) {
+  if (sentences.length === 0) {
     return { segments: [], issues: [], totalItems: 0 };
   }
 
   // Group by track and sort by sentence orderIndex
-  const trackMap = new Map<string, typeof reviewItems>();
+  const trackMap = new Map<string, ExportSentence[]>();
 
-  for (const item of reviewItems) {
-    const trackId = item.sentence.trackId;
+  for (const sentence of sentences) {
+    const trackId = sentence.trackId;
     if (!trackMap.has(trackId)) {
       trackMap.set(trackId, []);
     }
-    trackMap.get(trackId)!.push(item);
+    trackMap.get(trackId)!.push(sentence);
   }
 
   // Sort within each track by orderIndex
   for (const items of trackMap.values()) {
-    items.sort((a, b) => a.sentence.orderIndex - b.sentence.orderIndex);
+    items.sort((a, b) => a.orderIndex - b.orderIndex);
   }
 
   // Convert to segments
   const segments: AudioSegment[] = [];
   const issuesBySource = new Map<string, ExportSourceIssue>();
   for (const items of trackMap.values()) {
-    for (const item of items) {
+    for (const sentence of items) {
       const result = resolveExportSource({
-        label: item.sentence.track.title,
-        audioUrl: item.sentence.track.audioUrl,
+        label: sentence.track.title,
+        audioUrl: sentence.track.audioUrl,
       });
 
       if ("issue" in result) {
@@ -153,8 +173,8 @@ async function gatherSegments(
 
       segments.push({
         audioPath: result.audioPath,
-        startTime: item.sentence.startTime,
-        endTime: item.sentence.endTime,
+        startTime: sentence.startTime,
+        endTime: sentence.endTime,
       });
     }
   }
@@ -162,7 +182,7 @@ async function gatherSegments(
   return {
     segments,
     issues: [...issuesBySource.values()],
-    totalItems: reviewItems.length,
+    totalItems: sentences.length,
   };
 }
 

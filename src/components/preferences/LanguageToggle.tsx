@@ -2,7 +2,6 @@
 
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { writeLocaleCookie } from "@/i18n/client";
@@ -11,7 +10,6 @@ import type { Locale } from "@/i18n/config";
 export default function LanguageToggle() {
   const locale = useLocale() as Locale;
   const t = useTranslations("language");
-  const router = useRouter();
 
   const nextLocale: Locale = locale === "en" ? "zh-CN" : "en";
   const label =
@@ -21,7 +19,10 @@ export default function LanguageToggle() {
 
   const handleToggle = () => {
     writeLocaleCookie(nextLocale);
-    router.refresh();
+    // A locale change replaces the root provider messages and the complete
+    // Server Component tree. Start a fresh RSC session instead of asking the
+    // current Turbopack client to merge that tree through router.refresh().
+    window.location.reload();
   };
 
   return (

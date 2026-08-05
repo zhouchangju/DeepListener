@@ -13,9 +13,10 @@ application with best-effort review, so this guide keeps the bar clear.
 
 ## Prerequisites
 
-- Node.js 20+ and npm.
+- Node.js 22+ and npm.
 - **FFmpeg / ffprobe** (required for video audio extraction, subtitle probing, and audio export).
-  Install from your platform package manager (`brew install ffmpeg` / `apt-get install ffmpeg`).
+  Install from your platform package manager (`brew install ffmpeg` / `apt-get install ffmpeg`),
+  or follow the [Windows instructions](README.md#prerequisites-when-running-from-source).
 - A transcription provider API key (Deepgram / OpenAI / Google) configured in your local `.env` if
   you want to exercise transcription. See `.env.example`.
 
