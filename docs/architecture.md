@@ -290,7 +290,8 @@ For non-trivial refactors, performance work, migrations, deployment/basePath wor
 The repository now contains the Electron shell, standalone Next.js packager,
 loopback authentication, OS data-root handling, and the macOS Apple Silicon
 internal-alpha distribution path. The packaged client is not yet a signed
-public release, and the current source has not yet been attached to a new DMG.
+public release. The unsigned Apple Silicon recovery build is published as
+[`v0.3.0-alpha.2`](https://github.com/zhouchangju/DeepListener/releases/tag/v0.3.0-alpha.2).
 The shared boundary is:
 
 ```mermaid
@@ -308,7 +309,7 @@ Current constraints and remaining release gates:
 - Electron owns process lifecycle, window security, single-instance behavior, diagnostics, update orchestration, and platform integration; it does not duplicate the learning domain.
 - The packaged Next.js service binds to loopback only, uses a random available port, and requires a per-launch authentication token.
 - Runtime state moves behind explicit data-root and platform-adapter contracts; source-relative `prisma/dev.db` and `public/**` paths cannot become implicit desktop storage.
-- macOS Apple Silicon is the only packaged Desktop target currently claimed. A signed/notarized macOS beta, redistributable FFmpeg assets, and then Windows x64 are promotion stages, not simultaneous launch commitments.
+- macOS Apple Silicon is the only packaged Desktop target currently claimed. The internal Alpha can capability-check Homebrew FFmpeg/ffprobe from approved fixed paths; a signed/notarized macOS beta, redistributable bundled FFmpeg assets, and then Windows x64 are promotion stages, not simultaneous launch commitments.
 - Server behavior stays supported while shared contracts are extracted.
 - Windows users can use the supported Server edition from source; a packaged Windows client is not shipped.
 

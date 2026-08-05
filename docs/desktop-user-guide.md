@@ -9,27 +9,29 @@
 | Windows x64 packaged client | Not shipped; run the supported Server edition from source |
 | Linux | Not supported |
 
-The repository currently has no signed public Desktop release. The packaged
-Desktop client currently supports macOS Apple Silicon only. Windows users should
-run the supported Server edition from source; it requires Node.js 22+, Prisma
-setup, FFmpeg/ffprobe, and any provider key needed for transcription.
+The repository currently has no signed public Desktop release. The unsigned
+[`v0.3.0-alpha.2` internal Alpha](https://github.com/zhouchangju/DeepListener/releases/tag/v0.3.0-alpha.2)
+supports macOS Apple Silicon only. Windows users should run the supported Server
+edition from source; it requires Node.js 22+, Prisma setup, FFmpeg/ffprobe, and
+any provider key needed for transcription.
 
 ## Installation
 
-When a signed release is published, download its `.dmg` from the releases page
-and drag DeepListener.app to Applications. **No Node.js, npm, or terminal is
-required for that intended packaged path** — the app is designed to bundle its
-own runtime.
+For internal testing, download the `v0.3.0-alpha.2` `.dmg` from the releases
+page and drag DeepListener.app to Applications. **No Node.js or npm is required
+for the packaged path** — the app bundles its own application runtime. Because
+the Alpha is unsigned and unnotarized, macOS may require explicit approval to
+open it.
 
-The current maintainer artifact is an unsigned internal arm64 alpha. A DMG built
-from the current source has not yet been published. A public DMG still requires
-Apple signing/notarization, redistributable FFmpeg assets, and a clean-install
-verification run; those gates are intentionally open.
+The current maintainer artifact is an unsigned internal arm64 Alpha. A public
+DMG still requires Apple signing/notarization and redistributable bundled FFmpeg
+assets; those promotion gates remain intentionally open.
 
-> **Media import note:** Public Desktop packaging is fail-closed until a
-> checksum-verified, redistributable FFmpeg/ffprobe pair and provenance are
-> supplied. Development/server runs may use an explicitly configured system
-> FFmpeg, but that is not a supported learner installation workaround.
+> **Media import note:** `v0.3.0-alpha.2` accepts a capability-checked Homebrew
+> FFmpeg/ffprobe pair from approved fixed locations. Install both tools with
+> `brew install ffmpeg` before importing video or exporting generated audio.
+> A future public build remains fail-closed until a checksum-verified,
+> redistributable bundled pair and provenance are supplied.
 
 ## Where your data lives
 
