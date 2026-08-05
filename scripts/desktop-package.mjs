@@ -52,6 +52,11 @@ const skipBuild = args.includes("--no-build");
 const targetPlatform = process.env.DEEPLISTENER_TARGET_PLATFORM || process.platform;
 const targetArchitecture = process.env.DEEPLISTENER_TARGET_ARCH || process.arch;
 const runtimeTarget = `${targetPlatform}-${targetArchitecture}`;
+const releaseChannel = process.env.DEEPLISTENER_RELEASE_CHANNEL === "internal-alpha"
+  ? "internal-alpha"
+  : "public";
+const systemFfmpegFallback = releaseChannel === "internal-alpha"
+  && process.env.DEEPLISTENER_ALLOW_SYSTEM_FFMPEG === "1";
 
 const prismaEngines = {
   "darwin-arm64": "node_modules/.prisma/client/libquery_engine-darwin-arm64.dylib.node",
@@ -278,6 +283,7 @@ log(`verified ${required.length} required runtime assets present`);
 const pkg = JSON.parse(readFileSync(path.join(repo, "package.json"), "utf8"));
 const manifest = {
   schemaVersion: 1,
+  releaseChannel,
   applicationVersion: pkg.version,
   packagedAt: new Date().toISOString(),
   platform: targetPlatform,
@@ -292,6 +298,7 @@ const manifest = {
     prismaEngine: path.basename(prismaEnginePath),
     vendoredFfmpeg: copiedBinaries,
     runtimeAssetManifest: existsSync(path.join(staging, "runtime", "assets.manifest.json")),
+    systemFfmpegFallback,
   },
   // NO secrets, NO user data, NO absolute user paths.
 };

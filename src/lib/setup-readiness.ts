@@ -208,16 +208,17 @@ export async function evaluateSetupReadiness(
   const videoDir = videosDirectory(layout.root, layout.mode);
   const publicOrMediaParent = path.dirname(uploadDir);
 
-  // Packaged Desktop passes a verified/failed asset status from the Electron
-  // boundary. A failed status must not fall back to the host PATH; Server and
-  // development layouts retain the existing command probe.
+  // Packaged Desktop passes a verified/system/missing status from the Electron
+  // boundary. `system` is permitted only by an internal Alpha package marker.
+  // A missing status never falls back to PATH here.
   const packagedAssetStatus = env.DEEPLISTENER_RUNTIME_ASSET_STATUS;
-  const ffmpegProbe = packagedAssetStatus === "verified"
+  const packagedAssetsReady = packagedAssetStatus === "verified" || packagedAssetStatus === "system";
+  const ffmpegProbe = packagedAssetsReady
     ? Promise.resolve(true)
     : packagedAssetStatus === "missing"
       ? Promise.resolve(false)
       : dependencies.hasCommand("ffmpeg");
-  const ffprobeProbe = packagedAssetStatus === "verified"
+  const ffprobeProbe = packagedAssetsReady
     ? Promise.resolve(true)
     : packagedAssetStatus === "missing"
       ? Promise.resolve(false)

@@ -7,12 +7,15 @@
  * closed until the target-specific redistributable assets are present.
  */
 import { accessSync, constants, existsSync, readFileSync } from "node:fs";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const { resolveSystemRuntimePair } = require("../desktop/runtime-assets.js");
 const args = new Set(process.argv.slice(2));
 const allowSystemFfmpeg = args.has("--allow-system-ffmpeg");
 const allowSyntheticDemo = args.has("--allow-synthetic-demo");
@@ -40,15 +43,6 @@ function checkBinary(label, candidate) {
   }
 }
 
-function checkSystemBinary(label, command) {
-  const result = spawnSync(command, ["-version"], { stdio: "ignore", timeout: 5_000 });
-  if (result.status === 0) {
-    log(`${label}: system PATH (${command})`);
-    return true;
-  }
-  return false;
-}
-
 const vendorDir = path.join(repo, "vendor", "ffmpeg", runtimeTarget);
 const executableSuffix = targetPlatform === "win32" ? ".exe" : "";
 const vendoredFfmpeg = checkBinary("ffmpeg", path.join(vendorDir, `ffmpeg${executableSuffix}`));
@@ -58,15 +52,17 @@ if (vendoredFfmpeg && vendoredFfprobe && !existsSync(metadataPath)) {
   failures.push(`Runtime asset metadata is missing: ${metadataPath}`);
 }
 if (!vendoredFfmpeg || !vendoredFfprobe) {
-  const systemFfmpegReady = allowSystemFfmpeg
-    && checkSystemBinary("ffmpeg", "ffmpeg")
-    && checkSystemBinary("ffprobe", "ffprobe");
-  if (systemFfmpegReady) {
+  const systemPair = allowSystemFfmpeg
+    ? resolveSystemRuntimePair({ platform: targetPlatform, architecture: targetArchitecture })
+    : { ok: false, reason: "system fallback not requested" };
+  if (systemPair.ok) {
+    log(`ffmpeg: approved system location (${systemPair.ffmpegPath})`);
+    log(`ffprobe: approved system location (${systemPair.ffprobePath})`);
     warnings.push("Using system FFmpeg; this is acceptable only for internal alpha builds.");
   } else if (allowSystemFfmpeg) {
     failures.push(
-      "Internal alpha requested system FFmpeg, but ffmpeg and/or ffprobe are not available on PATH. " +
-      "Install both commands for the alpha run, or provide the target-specific redistributable vendor assets for a public build.",
+      `Internal alpha requested system FFmpeg, but the approved pair is unavailable: ${systemPair.reason}. ` +
+      "Install both commands with Homebrew, or provide target-specific redistributable vendor assets.",
     );
   } else {
     failures.push(

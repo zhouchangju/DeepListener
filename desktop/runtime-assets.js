@@ -9,6 +9,7 @@
  * semantic checks at the process boundary before FFmpeg is executed.
  */
 const { createHash } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -147,8 +148,103 @@ function resolvePackagedRuntimeAssets({ resourcesRoot, manifestPath, platform = 
   };
 }
 
+function probeOutput(binary, args) {
+  const result = spawnSync(binary, args, {
+    encoding: "utf8",
+    timeout: 5_000,
+    windowsHide: true,
+    maxBuffer: 1024 * 1024,
+  });
+  if (result.status !== 0) return null;
+  return `${result.stdout || ""}\n${result.stderr || ""}`;
+}
+
+function hasToken(output, token) {
+  return new RegExp(`(^|\\s)${token}(\\s|$)`, "m").test(output);
+}
+
+function hasRequiredSystemCapabilities(ffmpegPath, ffprobePath) {
+  const ffmpegVersion = probeOutput(ffmpegPath, ["-version"]);
+  const ffprobeVersion = probeOutput(ffprobePath, ["-version"]);
+  if (!ffmpegVersion || !/ffmpeg version/i.test(ffmpegVersion)) return false;
+  if (!ffprobeVersion || !/ffprobe version/i.test(ffprobeVersion)) return false;
+
+  const encoders = probeOutput(ffmpegPath, ["-hide_banner", "-encoders"]);
+  const filters = probeOutput(ffmpegPath, ["-hide_banner", "-filters"]);
+  const protocols = probeOutput(ffmpegPath, ["-hide_banner", "-protocols"]);
+  const formats = probeOutput(ffmpegPath, ["-hide_banner", "-formats"]);
+  return Boolean(
+    encoders && hasToken(encoders, "libmp3lame")
+    && filters && hasToken(filters, "aresample") && hasToken(filters, "volume")
+    && protocols && hasToken(protocols, "concat")
+    && formats && hasToken(formats, "srt")
+  );
+}
+
+function resolveSystemRuntimePair({
+  platform = process.platform,
+  architecture = process.arch,
+  candidateDirs,
+}) {
+  if (platform !== "darwin") {
+    return { ok: false, reason: `system FFmpeg fallback is unsupported on ${platform}` };
+  }
+  const directories = candidateDirs || (architecture === "arm64"
+    ? ["/opt/homebrew/bin", "/usr/local/bin"]
+    : ["/usr/local/bin", "/opt/homebrew/bin"]);
+  let rejectedPair = false;
+  for (const directory of directories) {
+    const ffmpegPath = path.join(directory, "ffmpeg");
+    const ffprobePath = path.join(directory, "ffprobe");
+    try {
+      if (!fs.statSync(ffmpegPath).isFile() || !fs.statSync(ffprobePath).isFile()) continue;
+      fs.accessSync(ffmpegPath, fs.constants.X_OK);
+      fs.accessSync(ffprobePath, fs.constants.X_OK);
+      if (hasRequiredSystemCapabilities(ffmpegPath, ffprobePath)) {
+        return { ok: true, ffmpegPath, ffprobePath };
+      }
+      rejectedPair = true;
+    } catch {
+      // A partial or non-executable pair is unusable; try the next fixed root.
+    }
+  }
+  return {
+    ok: false,
+    reason: rejectedPair
+      ? "system FFmpeg/ffprobe pair failed required capability checks"
+      : "system FFmpeg/ffprobe pair is unavailable in approved locations",
+  };
+}
+
+function resolveAlphaSystemRuntimeAssets({
+  resourcesRoot,
+  runtimeManifestPath = path.join(resourcesRoot, "runtime-manifest.json"),
+  platform = process.platform,
+  architecture = process.arch,
+  candidateDirs,
+}) {
+  let runtimeManifest;
+  try {
+    runtimeManifest = JSON.parse(fs.readFileSync(runtimeManifestPath, "utf8"));
+  } catch {
+    return { ok: false, reason: "system FFmpeg fallback is not enabled" };
+  }
+  if (
+    runtimeManifest?.schemaVersion !== 1
+    || runtimeManifest?.releaseChannel !== "internal-alpha"
+    || runtimeManifest?.build?.systemFfmpegFallback !== true
+    || runtimeManifest?.platform !== platform
+    || runtimeManifest?.architecture !== architecture
+  ) {
+    return { ok: false, reason: "system FFmpeg fallback is not enabled" };
+  }
+  return resolveSystemRuntimePair({ platform, architecture, candidateDirs });
+}
+
 module.exports = {
   validateAssetEntry,
   validateManifest,
   resolvePackagedRuntimeAssets,
+  resolveAlphaSystemRuntimeAssets,
+  resolveSystemRuntimePair,
 };

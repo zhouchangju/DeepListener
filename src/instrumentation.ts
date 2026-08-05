@@ -87,9 +87,18 @@ export async function register(): Promise<void> {
       }
     }
   } catch (error) {
+    let safeError = error instanceof Error ? error.name : typeof error;
+    try {
+      const { redactDiagnosticText } = await import("./lib/diagnostics");
+      safeError = redactDiagnosticText(
+        error instanceof Error ? error.message : String(error),
+      );
+    } catch {
+      // Keep the categorical fallback if the diagnostics module cannot load.
+    }
     console.error(
       "[instrumentation] Database initialization threw:",
-      error instanceof Error ? error.name : typeof error,
+      safeError,
     );
     try {
       const { recordStartupFailure } = await import("./lib/diagnostics");

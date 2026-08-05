@@ -223,3 +223,20 @@ test("verified packaged Desktop assets make FFmpeg readiness independent of PATH
 
   assert.equal(checks.find((check) => check.id === "ffmpeg")?.status, "ready");
 });
+
+test("approved internal Alpha system assets make FFmpeg readiness independent of PATH", async () => {
+  const checks = await evaluateSetupReadiness({
+    cwd: "/workspace",
+    env: {
+      DEEPLISTENER_DATA_DIR: "/userdata",
+      DEEPLISTENER_RUNTIME_ASSET_STATUS: "system",
+      TRANSCRIPTION_PROVIDER: "deepgram",
+      DEEPGRAM_API_KEY: "configured",
+    },
+    nodeVersion: "22.12.0",
+    canAccess: async () => true,
+    hasCommand: async () => false,
+  });
+
+  assert.equal(checks.find((check) => check.id === "ffmpeg")?.status, "ready");
+});

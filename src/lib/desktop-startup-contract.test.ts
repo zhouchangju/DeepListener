@@ -40,8 +40,13 @@ test("desktop passes the packaged Prisma migration directory to the standalone s
 
 test("desktop database initialization fails closed", () => {
   assert.match(instrumentationSource, /throw new Error\(\s*`Database initialization failed/);
+  assert.match(instrumentationSource, /failedMigration \? ` \(migration: \$\{failedMigration\}\)`/);
   assert.match(instrumentationSource, /\[instrumentation\] Database initialization threw:/);
-  assert.match(instrumentationSource, /error instanceof Error \? error\.name : typeof error/);
+  assert.match(instrumentationSource, /redactDiagnosticText/);
+  assert.match(
+    instrumentationSource,
+    /redactDiagnosticText\(\s*error instanceof Error \? error\.message : String\(error\),?\s*\)/,
+  );
   assert.match(instrumentationSource, /terminateProcess\(1\);/);
   assert.doesNotMatch(instrumentationSource, /Database ready at \$\{dbFilePath\}/);
   assert.match(fatalStartupSource, /process\.exit\(code\)/);
@@ -94,13 +99,16 @@ test("desktop packaging includes every main-process helper module", () => {
   assert.match(builderConfig, /- runtime-assets\.js/);
 });
 
-test("packaged Desktop media tools are manifest-verified and fail closed", () => {
+test("packaged Desktop media tools prefer verified assets and restrict system fallback to Alpha", () => {
   assert.match(mainSource, /resolvePackagedRuntimeAssets/);
+  assert.match(mainSource, /resolveAlphaSystemRuntimeAssets/);
   assert.match(mainSource, /DEEPLISTENER_RUNTIME_ASSET_STATUS: "verified"/);
+  assert.match(mainSource, /DEEPLISTENER_RUNTIME_ASSET_STATUS: "system"/);
   assert.match(mainSource, /DEEPLISTENER_RUNTIME_ASSET_STATUS: "missing"/);
   assert.match(mainSource, /__missing__.*ffmpeg/);
   assert.match(runtimeAssetsSource, /checksum mismatch: asset may be corrupt or tampered/);
   assert.match(runtimeAssetsSource, /manifestVersion !== 1/);
+  assert.match(runtimeAssetsSource, /releaseChannel !== "internal-alpha"/);
 });
 
 test("desktop backup dialogs keep paths in the main process and use operation staging", () => {

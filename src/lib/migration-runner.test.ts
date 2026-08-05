@@ -11,7 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -80,6 +80,23 @@ function fakeMigrationsTree(
   };
 }
 
+/** Recreate the exact Desktop schema that existed before the final FSRS migration. */
+function knownLegacyDesktopMigrationsTree(): { dir: string; names: string[]; dispose: () => void } {
+  const finalLegacyMigration = "20260712000000_add_video_media";
+  const names = readdirSync(REAL_MIGRATIONS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .filter((name) => name <= finalLegacyMigration);
+  const tree = fakeMigrationsTree(
+    names.map((name) => ({
+      name,
+      sql: readFileSync(path.join(REAL_MIGRATIONS_DIR, name, "migration.sql"), "utf8"),
+    })),
+  );
+  return { ...tree, names };
+}
+
 /** Count tracked migrations in a DB file via a fresh connection. */
 function trackedNames(dbPath: string): string[] {
   const db = new DatabaseSync(dbPath);
@@ -91,6 +108,17 @@ function trackedNames(dbPath: string): string[] {
       .prepare("SELECT name FROM _deeplistener_migrations ORDER BY name ASC")
       .all() as Array<{ name: string }>;
     return rows.map((r) => r.name);
+  } finally {
+    db.close();
+  }
+}
+
+function hasTable(dbPath: string, tableName: string): boolean {
+  const db = new DatabaseSync(dbPath);
+  try {
+    return Boolean(
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName),
+    );
   } finally {
     db.close();
   }
@@ -195,6 +223,135 @@ test("fresh DB: migrate is idempotent (re-run applies nothing)", async () => {
     assert.ok(tables.includes("Track"));
   } finally {
     env.dispose();
+  }
+});
+
+test("known pre-runner Desktop schema: baselines verified history and applies only the final migration", async () => {
+  const env = freshTempDb("deeplistener-known-legacy-");
+  const legacy = knownLegacyDesktopMigrationsTree();
+  try {
+    const seeded = await migrateDatabase(env.dbPath, realOpener, legacy.dir);
+    assert.equal(seeded.ok, true, `failed to seed legacy fixture: ${JSON.stringify(seeded)}`);
+    const db = new DatabaseSync(env.dbPath);
+    try {
+      db.exec("DROP TABLE _deeplistener_migrations");
+    } finally {
+      db.close();
+    }
+
+    const result = await migrateDatabase(env.dbPath, realOpener, REAL_MIGRATIONS_DIR);
+    assert.equal(result.ok, true, `expected safe legacy recovery, got ${JSON.stringify(result)}`);
+    if (!result.ok) return;
+    assert.deepEqual(result.applied, ["20260802000000_add_reviewitem_fsrs_state"]);
+    assert.deepEqual(result.alreadyApplied, legacy.names);
+    assert.deepEqual(trackedNames(env.dbPath), [...legacy.names, "20260802000000_add_reviewitem_fsrs_state"]);
+    for (const column of ["state", "reps", "lapses", "lastReview"]) {
+      assert.ok(tableColumns(env.dbPath, "ReviewItem").includes(column));
+    }
+  } finally {
+    env.dispose();
+    legacy.dispose();
+  }
+});
+
+test("unknown non-conflicting untracked schema: fails closed before creating migration state", async () => {
+  const env = freshTempDb("deeplistener-unknown-legacy-");
+  try {
+    const db = new DatabaseSync(env.dbPath);
+    try {
+      db.exec('CREATE TABLE "UnknownData" ("id" TEXT NOT NULL PRIMARY KEY);');
+    } finally {
+      db.close();
+    }
+
+    const result = await migrateDatabase(env.dbPath, realOpener, REAL_MIGRATIONS_DIR);
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failedMigration, undefined);
+    assert.match(result.error, /untracked schema/i);
+    assert.equal(hasTable(env.dbPath, "UnknownData"), true);
+    assert.equal(hasTable(env.dbPath, "_deeplistener_migrations"), false);
+  } finally {
+    env.dispose();
+  }
+});
+
+test("known legacy schema with an incomplete migration bundle: refuses to baseline", async () => {
+  const env = freshTempDb("deeplistener-legacy-incomplete-bundle-");
+  const legacy = knownLegacyDesktopMigrationsTree();
+  try {
+    const seeded = await migrateDatabase(env.dbPath, realOpener, legacy.dir);
+    assert.equal(seeded.ok, true, `failed to seed legacy fixture: ${JSON.stringify(seeded)}`);
+    const db = new DatabaseSync(env.dbPath);
+    try {
+      db.exec("DROP TABLE _deeplistener_migrations");
+    } finally {
+      db.close();
+    }
+
+    const result = await migrateDatabase(env.dbPath, realOpener, legacy.dir);
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failedMigration, "20260802000000_add_reviewitem_fsrs_state");
+    assert.match(result.error, /exact bundled migration sequence/i);
+    assert.equal(hasTable(env.dbPath, "_deeplistener_migrations"), false);
+  } finally {
+    env.dispose();
+    legacy.dispose();
+  }
+});
+
+test("known legacy baseline write failure: returns a structured migration error and rolls back tracking", async () => {
+  const env = freshTempDb("deeplistener-legacy-baseline-failure-");
+  const legacy = knownLegacyDesktopMigrationsTree();
+  try {
+    const seeded = await migrateDatabase(env.dbPath, realOpener, legacy.dir);
+    assert.equal(seeded.ok, true, `failed to seed legacy fixture: ${JSON.stringify(seeded)}`);
+    const db = new DatabaseSync(env.dbPath);
+    try {
+      db.exec("DROP TABLE _deeplistener_migrations");
+    } finally {
+      db.close();
+    }
+
+    const failingOpener: SqliteOpener = async (dbFilePath) => {
+      const connection = new DatabaseSync(dbFilePath);
+      let baselineInsertCount = 0;
+      return {
+        exec(sql: string) {
+          connection.exec(sql);
+        },
+        prepare(sql: string) {
+          const statement = connection.prepare(sql) as unknown as ReturnType<SqliteConnection["prepare"]>;
+          if (!sql.startsWith("INSERT INTO _deeplistener_migrations")) return statement;
+          return {
+            get(...params: unknown[]) {
+              return statement.get(...params);
+            },
+            all(...params: unknown[]) {
+              return statement.all(...params);
+            },
+            run(...params: unknown[]) {
+              baselineInsertCount += 1;
+              if (baselineInsertCount === 2) throw new Error("injected baseline insert failure");
+              return statement.run(...params);
+            },
+          };
+        },
+        close() {
+          connection.close();
+        },
+      };
+    };
+    const result = await migrateDatabase(env.dbPath, failingOpener, REAL_MIGRATIONS_DIR);
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.failedMigration, "20260802000000_add_reviewitem_fsrs_state");
+    assert.match(result.error, /legacy baseline.*injected baseline insert failure/i);
+    assert.equal(hasTable(env.dbPath, "_deeplistener_migrations"), false);
+  } finally {
+    env.dispose();
+    legacy.dispose();
   }
 });
 

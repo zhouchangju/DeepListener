@@ -21,15 +21,17 @@
  *   node scripts/desktop-dist.mjs                # full: package + dist
  *   node scripts/desktop-dist.mjs --no-package   # skip standalone build
  *   node scripts/desktop-dist.mjs --dir          # produce unpacked .app only
+ *   node scripts/desktop-dist.mjs --alpha        # internal system-FFmpeg fallback
  *
  * The script never signs or notarizes unless the relevant env vars are set
  * (CSC_LINK, APPLE_ID, …). An unsigned alpha is the default output.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { validateReusedStandalone } from "./desktop-dist-policy.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..");
@@ -39,6 +41,7 @@ const args = process.argv.slice(2);
 const skipPackage = args.includes("--no-package");
 const dirOnly = args.includes("--dir");
 const alpha = args.includes("--alpha");
+const standaloneRoot = path.join(repo, ".desktop-build", "standalone");
 
 function log(msg) {
   process.stdout.write(`[desktop-dist] ${msg}\n`);
@@ -53,9 +56,20 @@ function run(cmd, cmdArgs, opts) {
   if (r.status !== 0) fail(`${cmd} ${cmdArgs.join(" ")} failed (exit ${r.status})`);
 }
 
+if (skipPackage) {
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(path.join(standaloneRoot, "runtime-manifest.json"), "utf8"));
+  } catch {
+    fail("--no-package requires a valid cached runtime-manifest.json");
+  }
+  const reused = validateReusedStandalone({ alpha, manifest });
+  if (!reused.ok) fail(`${reused.reason}; rebuild without --no-package`);
+}
+
 // Public release builds fail closed until redistributable FFmpeg and a real
-// licensed spoken demo are present. `--alpha` keeps the current host-dependent
-// development path available without weakening the release check.
+// licensed spoken demo are present. `--alpha` records an explicit package
+// marker that permits only the fixed-location system FFmpeg fallback.
 run(process.execPath, [
   path.join(repo, "scripts", "desktop-preflight.mjs"),
   ...(alpha ? ["--allow-system-ffmpeg", "--allow-synthetic-demo"] : []),
@@ -64,12 +78,18 @@ run(process.execPath, [
 // --- 1. build standalone bundle (unless skipped) -----------------------
 if (!skipPackage) {
   log("step 1/2: building Next.js standalone bundle (npm run desktop:package)...");
-  run("npm", ["run", "desktop:package"], { cwd: repo });
+  run("npm", ["run", "desktop:package"], {
+    cwd: repo,
+    env: {
+      ...process.env,
+      DEEPLISTENER_RELEASE_CHANNEL: alpha ? "internal-alpha" : "public",
+      DEEPLISTENER_ALLOW_SYSTEM_FFMPEG: alpha ? "1" : "0",
+    },
+  });
 } else {
   log("--no-package: skipping standalone build");
 }
 
-const standaloneRoot = path.join(repo, ".desktop-build", "standalone");
 if (!existsSync(path.join(standaloneRoot, "server.js"))) {
   fail(`standalone server.js missing at ${standaloneRoot}; run without --no-package.`);
 }

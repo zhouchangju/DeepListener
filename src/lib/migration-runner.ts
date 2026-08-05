@@ -29,6 +29,7 @@
  * references `prisma/dev.db`, `DATABASE_URL`, or any active database. All
  * callers in tests route it at mktemp dirs.
  */
+import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, copyFile, mkdir, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -48,6 +49,34 @@ export type BackupResult =
 
 /** The runner's own tracking table (deliberately distinct from `_prisma_migrations`). */
 const TRACKING_TABLE = "_deeplistener_migrations";
+
+/**
+ * v0.3.0-alpha.0 created this exact Desktop schema before the portable runner
+ * existed. It contains migrations through video media, but no migration
+ * history and none of the final FSRS state columns. Recovery is intentionally
+ * limited to the exact schema fingerprint and exact historical migration list.
+ */
+const KNOWN_LEGACY_SCHEMA_SHA256 =
+  "f3683a56bee9c387122575bca87c3c30e47d47ea1a51a5104329b503d176c9d5";
+const KNOWN_LEGACY_MIGRATIONS = [
+  "20260124102615_init",
+  "20260125014852_add_is_archived",
+  "20260125103353_add_difficulty",
+  "20260126110956_add_is_learnt",
+  "20260129110758_add_track_note",
+  "20260129122656_add_track_categories",
+  "20260129161325_add_review_log",
+  "20260130123315_add_track_status_and_categories",
+  "20260130124040_change_default_status_to_unlearnt",
+  "20260130125545_add_indexes",
+  "20260131145817_add_sentence_formatting",
+  "20260201104430_add_study_session",
+  "20260202075755_add_reviewitem_archived",
+  "20260203094718_add_fsrs_fields",
+  "20260712000000_add_video_media",
+] as const;
+const KNOWN_LEGACY_PENDING_MIGRATION =
+  "20260802000000_add_reviewitem_fsrs_state";
 
 /**
  * A minimal, synchronous SQLite interface used by this module. Modeled on the
@@ -147,6 +176,90 @@ function appliedMigrationNames(db: SqliteConnection): Set<string> {
   return new Set(rows.map((r) => r.name));
 }
 
+function schemaSnapshot(db: SqliteConnection): { fingerprint: string; objectCount: number } {
+  const rows = db
+    .prepare(
+      `SELECT type, name, tbl_name, sql
+       FROM sqlite_master
+       WHERE name NOT LIKE 'sqlite_%' AND name <> ?
+       ORDER BY type, name`,
+    )
+    .all(TRACKING_TABLE) as Array<{
+      type: string;
+      name: string;
+      tbl_name: string;
+      sql: string | null;
+    }>;
+  const canonical = `${rows
+    .map((row) => `${row.type}|${row.name}|${row.tbl_name}|${row.sql ?? ""}`)
+    .join("\n")}\n`;
+  return {
+    fingerprint: createHash("sha256").update(canonical).digest("hex"),
+    objectCount: rows.length,
+  };
+}
+
+type LegacyBaselineDecision =
+  | { ok: true; baseline: boolean }
+  | { ok: false; error: string; failedMigration?: string };
+
+/** Decide before writing whether an untracked schema is the one known legacy profile. */
+function decideLegacyBaseline(
+  snapshot: { fingerprint: string; objectCount: number },
+  migrations: PendingMigration[],
+  already: Set<string>,
+): LegacyBaselineDecision {
+  if (already.size > 0 || snapshot.objectCount === 0) {
+    return { ok: true, baseline: false };
+  }
+  if (snapshot.fingerprint !== KNOWN_LEGACY_SCHEMA_SHA256) {
+    return {
+      ok: false,
+      error: "Untracked schema does not match the known legacy Desktop schema; refusing automatic migration.",
+    };
+  }
+  const bundledPrefix = migrations
+    .slice(0, KNOWN_LEGACY_MIGRATIONS.length)
+    .map((migration) => migration.name);
+  if (
+    bundledPrefix.length !== KNOWN_LEGACY_MIGRATIONS.length ||
+    bundledPrefix.some((name, index) => name !== KNOWN_LEGACY_MIGRATIONS[index]) ||
+    migrations[KNOWN_LEGACY_MIGRATIONS.length]?.name !==
+      KNOWN_LEGACY_PENDING_MIGRATION
+  ) {
+    return {
+      ok: false,
+      error: "Known legacy Desktop schema requires the exact bundled migration sequence; refusing automatic migration.",
+      failedMigration: KNOWN_LEGACY_PENDING_MIGRATION,
+    };
+  }
+  return { ok: true, baseline: true };
+}
+
+function writeKnownLegacyBaseline(
+  db: SqliteConnection,
+  already: Set<string>,
+): void {
+  const appliedAt = new Date().toISOString();
+  try {
+    db.exec("BEGIN");
+    ensureTrackingTable(db);
+    const insert = db.prepare(
+      `INSERT INTO ${TRACKING_TABLE} (name, applied_at) VALUES (?, ?)`,
+    );
+    for (const name of KNOWN_LEGACY_MIGRATIONS) insert.run(name, appliedAt);
+    db.exec("COMMIT");
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // Preserve the original baseline failure.
+    }
+    throw error;
+  }
+  for (const name of KNOWN_LEGACY_MIGRATIONS) already.add(name);
+}
+
 /**
  * Apply migrations to the given DB file offline.
  *
@@ -177,8 +290,29 @@ export async function migrateDatabase(
   await mkdir(path.dirname(dbFilePath), { recursive: true });
   const db = await opener(dbFilePath);
   try {
-    ensureTrackingTable(db);
-    const already = appliedMigrationNames(db);
+    const hasTrackingTable = Boolean(
+      db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
+        .get(TRACKING_TABLE),
+    );
+    const already = hasTrackingTable
+      ? appliedMigrationNames(db)
+      : new Set<string>();
+    const baseline = decideLegacyBaseline(schemaSnapshot(db), migrations, already);
+    if (!baseline.ok) return baseline;
+    if (baseline.baseline) {
+      try {
+        writeKnownLegacyBaseline(db, already);
+      } catch (error) {
+        return {
+          ok: false,
+          error: `Known legacy baseline failed: ${error instanceof Error ? error.message : String(error)}`,
+          failedMigration: KNOWN_LEGACY_PENDING_MIGRATION,
+        };
+      }
+    } else {
+      ensureTrackingTable(db);
+    }
 
     // Drift detection: if a migration that was previously recorded as applied
     // is no longer present in the bundled set, the bundle and the live DB have

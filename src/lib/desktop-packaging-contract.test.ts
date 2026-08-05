@@ -25,9 +25,10 @@ test("Desktop packager emits a checksum-bound runtime asset manifest only with m
 });
 
 test("Desktop preflight explains a missing system FFmpeg alpha escape hatch", () => {
-  assert.match(preflightSource, /const systemFfmpegReady = allowSystemFfmpeg/);
+  assert.match(preflightSource, /const systemPair = allowSystemFfmpeg/);
+  assert.match(preflightSource, /resolveSystemRuntimePair/);
   assert.match(preflightSource, /Internal alpha requested system FFmpeg/);
-  assert.match(preflightSource, /not available on PATH/);
+  assert.match(preflightSource, /approved pair is unavailable/);
   assert.match(preflightSource, /redistributable vendor assets/);
 });
 

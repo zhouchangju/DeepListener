@@ -6,7 +6,11 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { resolvePackagedRuntimeAssets, validateAssetEntry } = require("./runtime-assets.js");
+const {
+  resolveAlphaSystemRuntimeAssets,
+  resolvePackagedRuntimeAssets,
+  validateAssetEntry,
+} = require("./runtime-assets.js");
 
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
@@ -97,6 +101,111 @@ test("runtime asset adapter rejects tampering, wrong platform, and nonfree metad
     assert.equal(wrongPlatform.ok, true, "win32-x64 is valid metadata; matching is runtime-specific");
     const nonfree = validateAssetEntry({ ...entry("ffmpeg", "darwin", "arm64", "runtime/darwin-arm64/ffmpeg", ffmpegBytes), buildConfig: { ...entry("ffmpeg", "darwin", "arm64", "runtime/darwin-arm64/ffmpeg", ffmpegBytes).buildConfig, hasNonfreeComponents: true } });
     assert.equal(nonfree.ok, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("internal Alpha resolves a complete executable Homebrew FFmpeg pair", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
+  try {
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    const ffmpegPath = path.join(bin, "ffmpeg");
+    const ffprobePath = path.join(bin, "ffprobe");
+    const ffmpegFixture = `#!/bin/sh
+case "$*" in
+  *-version*) echo "ffmpeg version test" ;;
+  *-encoders*) echo "libmp3lame" ;;
+  *-filters*) echo "aresample volume" ;;
+  *-protocols*) echo "concat" ;;
+  *-formats*) echo "srt" ;;
+esac
+`;
+    fs.writeFileSync(ffmpegPath, ffmpegFixture);
+    fs.writeFileSync(ffprobePath, "#!/bin/sh\necho 'ffprobe version test'\n");
+    fs.chmodSync(ffmpegPath, 0o755);
+    fs.chmodSync(ffprobePath, 0o755);
+    fs.writeFileSync(path.join(root, "runtime-manifest.json"), JSON.stringify({
+      schemaVersion: 1,
+      releaseChannel: "internal-alpha",
+      platform: "darwin",
+      architecture: "arm64",
+      build: { systemFfmpegFallback: true },
+    }));
+
+    const resolved = resolveAlphaSystemRuntimeAssets({
+      resourcesRoot: root,
+      platform: "darwin",
+      architecture: "arm64",
+      candidateDirs: [bin],
+    });
+
+    assert.deepEqual(resolved, { ok: true, ffmpegPath, ffprobePath });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("internal Alpha rejects executable files that are not a usable FFmpeg pair", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
+  try {
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    for (const name of ["ffmpeg", "ffprobe"]) {
+      const binary = path.join(bin, name);
+      fs.writeFileSync(binary, "not a command");
+      fs.chmodSync(binary, 0o755);
+    }
+    fs.writeFileSync(path.join(root, "runtime-manifest.json"), JSON.stringify({
+      schemaVersion: 1,
+      releaseChannel: "internal-alpha",
+      platform: "darwin",
+      architecture: "arm64",
+      build: { systemFfmpegFallback: true },
+    }));
+
+    const resolved = resolveAlphaSystemRuntimeAssets({
+      resourcesRoot: root,
+      platform: "darwin",
+      architecture: "arm64",
+      candidateDirs: [bin],
+    });
+
+    assert.equal(resolved.ok, false);
+    if (!resolved.ok) assert.match(resolved.reason, /unavailable|capability/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("system FFmpeg remains disabled without the internal Alpha package marker", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
+  try {
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    for (const name of ["ffmpeg", "ffprobe"]) {
+      const binary = path.join(bin, name);
+      fs.writeFileSync(binary, "fixture");
+      fs.chmodSync(binary, 0o755);
+    }
+    fs.writeFileSync(path.join(root, "runtime-manifest.json"), JSON.stringify({
+      schemaVersion: 1,
+      releaseChannel: "public",
+      platform: "darwin",
+      architecture: "arm64",
+      build: { systemFfmpegFallback: true },
+    }));
+
+    const resolved = resolveAlphaSystemRuntimeAssets({
+      resourcesRoot: root,
+      platform: "darwin",
+      architecture: "arm64",
+      candidateDirs: [bin],
+    });
+
+    assert.equal(resolved.ok, false);
+    if (!resolved.ok) assert.match(resolved.reason, /not enabled/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

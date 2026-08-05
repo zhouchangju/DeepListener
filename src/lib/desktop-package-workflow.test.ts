@@ -5,6 +5,9 @@ import path from "node:path";
 
 const workflow = readFileSync(path.join(process.cwd(), ".github", "workflows", "desktop-package.yml"), "utf8");
 const audit = readFileSync(path.join(process.cwd(), "scripts", "desktop-package-audit.mjs"), "utf8");
+const dist = readFileSync(path.join(process.cwd(), "scripts", "desktop-dist.mjs"), "utf8");
+const packager = readFileSync(path.join(process.cwd(), "scripts", "desktop-package.mjs"), "utf8");
+const preflight = readFileSync(path.join(process.cwd(), "scripts", "desktop-preflight.mjs"), "utf8");
 
 test("desktop package workflow covers macOS arm64 and Windows x64 without publishing", () => {
   assert.match(workflow, /macos-14/);
@@ -29,4 +32,14 @@ test("desktop package audit is fail-closed for user data and malformed manifests
   assert.match(audit, /runtime-manifest\.json/);
   assert.match(audit, /user media copied/);
   assert.match(audit, /process\.exit\(1\)/);
+});
+
+test("only an explicit Alpha distribution records system FFmpeg fallback permission", () => {
+  assert.match(dist, /DEEPLISTENER_ALLOW_SYSTEM_FFMPEG/);
+  assert.match(dist, /DEEPLISTENER_RELEASE_CHANNEL/);
+  assert.match(packager, /systemFfmpegFallback/);
+  assert.match(packager, /releaseChannel/);
+  assert.match(dist, /validateReusedStandalone/);
+  assert.match(preflight, /resolveSystemRuntimePair/);
+  assert.doesNotMatch(preflight, /spawnSync\(command/);
 });

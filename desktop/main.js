@@ -40,7 +40,10 @@ const {
   removeOwnedDirectory,
   stageBundle,
 } = require("./native-backup.js");
-const { resolvePackagedRuntimeAssets } = require("./runtime-assets.js");
+const {
+  resolveAlphaSystemRuntimeAssets,
+  resolvePackagedRuntimeAssets,
+} = require("./runtime-assets.js");
 
 const HEADLESS = !!process.env.DEEPLISTENER_HEADLESS;
 const HEALTH_TIMEOUT_MS = Number(process.env.DEEPLISTENER_HEALTH_TIMEOUT_MS || 30000);
@@ -204,10 +207,10 @@ function databaseFilePath(root) {
 // ========================================================================
 // DeepListener uses fluent-ffmpeg for media import, video MP3 extraction, and
 // audio export. fluent-ffmpeg resolves the binary via (1) FFMPEG_PATH env,
-// In a packaged Desktop app the manifest/checksum pair is the only accepted
-// source. Explicit paths are set even on failure, using a guaranteed-missing
-// sentinel, so fluent-ffmpeg cannot silently fall back to a user's PATH.
-// Development keeps the explicit env and system PATH fallback.
+// A packaged Desktop app prefers the manifest/checksum pair. An explicitly
+// marked internal Alpha may use a complete pair from fixed Homebrew roots;
+// public/default packages never search the user's PATH. Explicit paths are set
+// even on failure so fluent-ffmpeg cannot silently add another fallback.
 function resolveFfmpegEnv() {
   const standaloneRoot = resolveStandaloneRoot();
   if (app.isPackaged) {
@@ -227,8 +230,23 @@ function resolveFfmpegEnv() {
         DEEPLISTENER_RUNTIME_ASSET_STATUS: "verified",
       };
     }
+    const system = standaloneRoot
+      ? resolveAlphaSystemRuntimeAssets({
+          resourcesRoot: standaloneRoot,
+          platform: process.platform,
+          architecture: process.arch,
+        })
+      : { ok: false, reason: "standalone runtime is unavailable" };
+    if (system.ok) {
+      log("internal Alpha system FFmpeg/ffprobe resolved from an approved location");
+      return {
+        FFMPEG_PATH: system.ffmpegPath,
+        FFPROBE_PATH: system.ffprobePath,
+        DEEPLISTENER_RUNTIME_ASSET_STATUS: "system",
+      };
+    }
     const missingRoot = standaloneRoot || path.join(process.resourcesPath || __dirname, "standalone");
-    logError(`packaged FFmpeg/ffprobe rejected: ${verified.reason}`);
+    logError(`packaged FFmpeg/ffprobe rejected: ${verified.reason}; ${system.reason}`);
     return {
       // Explicit non-existent paths prevent fluent-ffmpeg from searching PATH.
       FFMPEG_PATH: path.join(missingRoot, "runtime", "__missing__", "ffmpeg"),
