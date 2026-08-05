@@ -46,6 +46,17 @@ npm run dev                 # 打开 http://localhost:3000
 
 > DeepListener 内置一段 18.4 秒、由 Piper 生成的英语语音 Demo（`public/demo/demo-listening.mp3`），包含 6 个句子提示；不需要 provider key，也不会发起外部转录请求。要练习真实素材，请导入你自己有权使用的音频或视频。
 
+你也可以在不配置私有 provider key 的情况下验证构建和测试：
+
+```bash
+npx prisma generate
+npm run lint
+npm run build
+npm run test:ci
+```
+
+转录功能需要在 `.env` 中配置至少一个 provider key；应用、构建和测试本身不需要密钥。`bin/setup` 可以完成依赖安装、Prisma client 生成和已有迁移应用，但不会创建或修改 `.env`。
+
 ## 核心特性
 
 - **通用音频/视频精听**：导入本地音频、MP4、WebM；视频会提取派生 MP3，若带可解析的内嵌字幕则优先使用，否则转录派生音轨。Practice 中视频是唯一播放时钟，波形、字幕、句子跳转、变速和循环共享同一时间轴。
@@ -72,14 +83,16 @@ npm run dev                 # 打开 http://localhost:3000
 - **Vault** 支持导出全部、到期、当前筛选结果的句子音频和文本笔记。
 - **Review** 支持导出当前到期复习队列。
 - **Practice** 支持导出当前 Track 中已收藏的句子。
-- MP3 导出为 192 kbps，句子之间插入 2 秒静音；如果源音频缺失或无效，导出会报错，不会生成不完整文件。
+- MP3 导出为 192 kbps，句子之间插入 2 秒静音，文件名为 `DeepListener_Export_YYYY-MM-DD.mp3`；如果源音频缺失或无效，导出会报错，不会生成不完整文件。
+- 文本笔记导出为 `.txt`，按标签分组，并保留难度、来源 Track、筛选条件和纯文本笔记。
 
 ## 视频导入
 
-- 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM；单文件导入支持最大 1 GB 视频。
+- 在 Library 点击 **Import Media**，选择本地 MP4 或 WebM；单文件导入支持最大 1 GB 视频，大文件应使用单文件入口而不是 Batch。
 - 有可解析的内嵌字幕时优先使用，否则对派生音轨调用已配置的转录 provider。
 - Practice 中视频是唯一播放时钟，波形、字幕、句子跳转、变速和循环共享同一时间轴。
 - **Show subtitles / Hide subtitles** 开关默认关闭，只显示当前播放位置对应的转录句子。
+- 原视频保存在 `public/videos/`，派生 MP3 保存在 `public/uploads/`；删除视频 Track 时会一并清理两者。
 
 ## 前置要求（从源码运行时）
 
@@ -93,9 +106,22 @@ sudo apt-get update && sudo apt-get install ffmpeg
 # Windows：从 https://ffmpeg.org/download.html 下载并加入 PATH
 ```
 
-## 桌面客户端构建（维护者）
+验证安装：
 
-当前仅维护 macOS Apple Silicon 的内部 alpha 构建；Windows 仍请从源码运行。公开桌面发布还需要可再分发、带校验信息的 FFmpeg/ffprobe，以及签名和公证。
+```bash
+ffmpeg -version
+```
+
+## 🖥️ 桌面客户端（macOS Apple Silicon alpha）
+
+DeepListener 还提供自包含的 Electron 桌面客户端，运行相同的 Next.js 服务；所有用户数据都保存在操作系统的 user-data 目录中。
+
+- **平台**：内部 alpha 目前只支持 macOS Apple Silicon（arm64）；Windows 暂无打包客户端，请从源码运行 Server 版本。
+- **Demo**：内置 18.4 秒、包含 6 个句子提示的 Piper 英语语音，不需要 provider key。
+- **转录**：支持 OpenAI / Deepgram / Google；打包的 macOS 客户端使用 Keychain，源码运行使用受限的本地文件。
+- **FFmpeg**：公开包需要带校验信息的可再分发二进制；源码和明确启用的内部 alpha 可以使用 `PATH` 中的 FFmpeg/ffprobe。详见 [`vendor/ffmpeg/README.md`](vendor/ffmpeg/README.md)。
+
+### 从源码构建可分发包
 
 ```bash
 npm run desktop:package
@@ -104,22 +130,42 @@ npm run desktop:dist -- --alpha       # 内部 alpha DMG
 npm run desktop:dist -- --dir --alpha # 未打包目录，便于调试
 ```
 
+## 仓库结构
+
+- `/src/app`：Next.js App Router 页面和 API；主要页面包括 `library`、`practice/[id]`、`review`、`vault`、`dashboard`。
+- `/src/app/api`：上传、导出、Vault、Review、Study Time、Track、Sentence、Symphony 状态和媒体字节范围服务。
+- `/src/components/feature`：精听、Shadowing、Review、富文本笔记和波形播放器等业务组件。
+- `/src/lib`：Prisma、API schema/response、上传安全、音频工具、FSRS、文本工具和转录 provider。
+- `/src/lib/transcription`：`openai` / `deepgram` / `google` provider 的统一实现。
+- `/src/symphony`：本地 Symphony runner/orchestrator/tracker/workspace，仅供开发工具使用。
+- `/public/uploads`：原始音频和视频派生音频；属于用户数据并被 Git 忽略。
+- `/public/videos`：原始本地视频；属于用户数据并被 Git 忽略。
+- `/prisma`：schema、migrations 和默认 SQLite 数据库 `prisma/dev.db`。
+- `/desktop`：承载 standalone Next.js 服务的 Electron 壳层。
+- `/vendor/ffmpeg`：可选的 FFmpeg/ffprobe 二进制和说明。
+- `/scripts`：测试、迁移、桌面打包和维护脚本。
+- `/docs`：当前文档、维护手册、历史计划、审计材料和 agent harness。
+
 ## 文档资源
 
 - [文档导航地图](./docs/README.md) — 先看这里，区分当前事实、维护手册、历史计划
 - [更新日志](./CHANGELOG.md)
 - [当前架构](./docs/architecture.md) — routes、API、数据模型、上传/复习流、数据安全边界
 - [产品需求文档](./docs/requirement.md)
+- [桌面客户端 PRD](./docs/desktop-client-prd.md)
+- [桌面分发 OpenSpec](./openspec/changes/desktop-first-distribution/proposal.md)
 - [维护手册](./docs/maintenance.md) — Provider、数据库、上传、导出、备份
 - [复习系统与 FSRS 算法说明](./docs/review-system.md)
+- [Symphony orchestrator](./docs/symphony.md)
+- [Node.js proxy timeout 技术深潜](./docs/solving-node-proxy-timeout.md)
 - [桌面客户端使用指南](./docs/desktop-user-guide.md)
 - [桌面维护手册](./docs/desktop-maintainer-runbook.md)
 
 ## Support
 
-DeepListener 是**单人维护、尽力而为**的自托管项目，没有 SLA，也没有 LTS 分支。
+DeepListener 是**单人维护、尽力而为**的自托管项目，没有 SLA，也没有 LTS 分支；详见 [SUPPORT.md](SUPPORT.md)。
 
-- Bug 与功能请求：开 GitHub issue，附上版本/commit 与复现步骤。
+- Bug 与功能请求：[提交 GitHub issue](https://github.com/zhouchangju/DeepListener/issues/new/choose)，附上版本/commit 与复现步骤。
 - 安全报告：见 [SECURITY.md](SECURITY.md) —— **不要**用公开 issue 报告安全问题。
 - 贡献：见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

@@ -17,20 +17,6 @@ DeepListener is a local-first, sentence-level English listening trainer. It brea
 
 <p align="center"><em>Core loop, captured from the local demo: import a track in Library → decode it sentence by sentence in Practice → shadow the rhythm.</em></p>
 
-<p align="center">
-  <img src="docs/assets/deeplistener-demo.gif" alt="DeepListener product tour — 30s walkthrough of practice, dashboard, library, and setup" width="780" />
-</p>
-
-<p align="center"><em>30-second tour: landing → practice workbench → FSRS dashboard → library → setup diagnostics.</em></p>
-
-### Screenshots
-
-| | | |
-|:---:|:---:|:---:|
-| ![Practice workbench](docs/assets/deeplistener-practice.png) | ![Dashboard](docs/assets/deeplistener-dashboard.png) | ![Library](docs/assets/deeplistener-library.png) |
-| Sentence-level practice with waveform | FSRS dashboard & analytics | Media library & import |
-| ![Setup diagnostics](docs/assets/deeplistener-setup.png) | ![Onboarding diagram](docs/assets/deeplistener-onboarding.svg) | |
-
 ## Two ways to run DeepListener
 
 ### 1. Desktop client (macOS Apple Silicon, internal alpha)
@@ -152,12 +138,12 @@ npm run desktop:package
 # 2. install the desktop toolchain once
 (cd desktop && npm install)
 
-# 3. pack the macOS dmg (unsigned alpha)
-npm run desktop:dist
+# 3. pack the macOS dmg (unsigned internal alpha)
+npm run desktop:dist -- --alpha
 # → artifacts land in .desktop-build/dist/
 ```
 
-For an unpacked `.app` (faster iteration), use `npm run desktop:dist -- --dir`.
+For an unpacked `.app` (faster iteration), use `npm run desktop:dist -- --dir --alpha`.
 
 ## Repository layout
 
