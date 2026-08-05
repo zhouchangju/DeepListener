@@ -46,7 +46,7 @@ Apply the Karpathy guideline set from `multica-ai/andrej-karpathy-skills` when w
 - Prefer scoped verification while editing, then run the broader checks (`npm run verify`, falling back to `verify:quick` for a fast lint+test pass) before claiming completion for code changes.
 
 ## CI Contract (do not refactor without intent)
-CI runs lint, test:ci, and build as three explicit steps rather than via `npm run verify`. This is intentional and is guarded by `src/lib/ci-workflow.test.ts`, which asserts those three command strings appear verbatim in `.github/workflows/ci.yml`. The contract makes the remote gate readable at a glance. Locally, `npm run verify` is the exact equivalent — use it. If you ever want to collapse CI into one step, update the contract test in the same change.
+CI runs lint, test:ci, and build as three explicit steps rather than via `npm run verify`. This is intentional and is guarded by `src/lib/ci-workflow.test.ts`, which parses `.github/workflows/ci.yml` and asserts the three steps exist as separate `run:` commands. The contract makes the remote gate readable at a glance. Locally, `npm run verify` is the exact equivalent — use it. If you ever want to collapse CI into one step, update the contract test in the same change.
 
 ## Learned from Mistakes
 - `npm run lint` can accidentally scan generated files under `.worktrees/**/.next`; keep generated worktrees out of ESLint scope and do not treat generated build output as source.

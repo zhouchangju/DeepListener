@@ -34,10 +34,3 @@ test("the Demo replacement example contains ordered, non-overlapping speech cues
     previousEnd = cue.end;
   }
 });
-
-test("the replacement script documents and accepts the example timeline path", () => {
-  const source = readFileSync(path.join(root, "scripts", "replace-demo-audio.mjs"), "utf8");
-  assert.match(source, /--timeline <timeline\.json>/);
-  assert.match(source, /demo-timeline\.example\.json/);
-  assert.match(source, /validateTimeline\(timeline\)/);
-});

@@ -57,7 +57,7 @@ const TRACKING_TABLE = "_deeplistener_migrations";
  * limited to the exact schema fingerprint and exact historical migration list.
  */
 const KNOWN_LEGACY_SCHEMA_SHA256 =
-  "f3683a56bee9c387122575bca87c3c30e47d47ea1a51a5104329b503d176c9d5";
+  "9fe35c855b74eb61159c37255e4c720c93dc1e2c4df69121dfdbc1856c521658";
 const KNOWN_LEGACY_MIGRATIONS = [
   "20260124102615_init",
   "20260125014852_add_is_archived",

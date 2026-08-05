@@ -106,7 +106,16 @@ test("runtime asset adapter rejects tampering, wrong platform, and nonfree metad
   }
 });
 
-test("internal Alpha resolves a complete executable Homebrew FFmpeg pair", () => {
+// The next three tests construct `#!/bin/sh` shebang fixtures, chmod them
+// 0o755, and rely on the OS actually executing them to validate the
+// capability-check path. That only works on POSIX systems: Windows ignores the
+// executable bit and cannot run shell shebang scripts, so the same fixtures
+// always report "capability checks failed" there — a platform mismatch, not a
+// product regression. Skip them on win32 so CI on Windows stays green without
+// weakening coverage on macOS/Linux.
+const systemFfmpegTest = process.platform === "win32" ? test.skip : test;
+
+systemFfmpegTest("internal Alpha resolves a complete executable Homebrew FFmpeg pair", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
   try {
     const bin = path.join(root, "bin");
@@ -147,7 +156,7 @@ esac
   }
 });
 
-test("internal Alpha rejects executable files that are not a usable FFmpeg pair", () => {
+systemFfmpegTest("internal Alpha rejects executable files that are not a usable FFmpeg pair", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
   try {
     const bin = path.join(root, "bin");
@@ -179,6 +188,9 @@ test("internal Alpha rejects executable files that are not a usable FFmpeg pair"
   }
 });
 
+// This test exercises the early "public release channel → not enabled"
+// short-circuit, which returns before any external process is spawned. It is
+// platform-independent, so it runs everywhere.
 test("system FFmpeg remains disabled without the internal Alpha package marker", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "deeplistener-system-ffmpeg-"));
   try {

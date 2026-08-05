@@ -37,8 +37,17 @@ const eslintConfig = defineConfig([
     "desktop-spike/**",
     ".desktop-build/**",
     // Disposable packaging smoke outputs are generated under the workspace
-    // and must not be treated as application source by ESLint.
-    ".build-temp-*/**",
+    // and must not be treated as application source by ESLint. Use the
+    // `**/`-anchored form so flat config matches them at any depth — a bare
+    // `.build-temp-*/**` only matches at the workspace root and silently let
+    // stray packaging temp dirs inflate lint runtime from ~8s to ~54s.
+    "**/.build-temp-*/**",
+    // Markdown is documentation, not lintable source. ESLint still computes a
+    // config for every matched file even without a parser, and the repo ships
+    // 850+ .md files under docs/ and openspec/, so exclude them wholesale.
+    "**/*.md",
+    // Generated artifacts and lockfiles have no value to lint.
+    "package-lock.json",
     // W0/W2 feasibility spike scripts and one-off probes (not library code).
     "docs/desktop-w0/**",
     "docs/agent-harness/**",
