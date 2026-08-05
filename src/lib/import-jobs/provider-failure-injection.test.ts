@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { access, mkdir, stat, utimes } from "node:fs/promises";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessByStdio } from "node:child_process";
+import type { Readable } from "node:stream";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -220,7 +221,7 @@ test("a stale operation lock left by a killed process is recovered safely", asyn
 test("a killed import process can be restarted and resumed from its manifest", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "deeplistener-process-restart-"));
   const layout = { root, mode: "desktop" as const };
-  let child: ChildProcessWithoutNullStreams | undefined;
+  let child: ChildProcessByStdio<null, Readable, Readable> | undefined;
   try {
     const createUrl = pathToFileURL(path.resolve(process.cwd(), "src/lib/import-jobs/create.ts")).href;
     const runUrl = pathToFileURL(path.resolve(process.cwd(), "src/lib/import-jobs/run.ts")).href;
@@ -240,7 +241,7 @@ test("a killed import process can be restarted and resumed from its manifest", a
         () => ({ transcribe: async () => new Promise(() => undefined) }),
       );
     `;
-    child = spawn(
+    const spawnedChild = spawn(
       process.execPath,
       ["--import", "tsx", "--input-type=module", "-e", childScript],
       {
@@ -249,12 +250,13 @@ test("a killed import process can be restarted and resumed from its manifest", a
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
+    child = spawnedChild;
     let output = "";
     let errorOutput = "";
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => { output += chunk; });
-    child.stderr.on("data", (chunk: string) => { errorOutput += chunk; });
+    spawnedChild.stdout.setEncoding("utf8");
+    spawnedChild.stderr.setEncoding("utf8");
+    spawnedChild.stdout.on("data", (chunk: string) => { output += chunk; });
+    spawnedChild.stderr.on("data", (chunk: string) => { errorOutput += chunk; });
     const deadline = Date.now() + 8_000;
     let jobId: string | undefined;
     while (!jobId && Date.now() < deadline) {
@@ -281,8 +283,8 @@ test("a killed import process can be restarted and resumed from its manifest", a
     }
     assert.equal(ready, true, "child must persist TRANSCRIBING state and lock before termination");
 
-    child.kill();
-    await new Promise<void>((resolve) => child?.once("exit", () => resolve()));
+    spawnedChild.kill();
+    await new Promise<void>((resolve) => spawnedChild.once("exit", () => resolve()));
     // Give the OS a moment to flush the lock mtime, then use a tiny injected
     // stale threshold to model the passage of the production 30-minute bound.
     await new Promise((resolve) => setTimeout(resolve, 50));

@@ -96,7 +96,9 @@ test("restore stages first, requires explicit conflict confirmation, then keeps 
     assert.equal(staged.status, "conflict");
     assert.ok(staged.stage.conflicts.includes("database/deeplistener.db"));
     const blocked = await activateRestore({ stage: staged.stage, confirmReplace: false });
-    assert.deepEqual(blocked.reason, "confirmation-required");
+    assert.equal(blocked.ok, false);
+    if (blocked.ok) return;
+    assert.equal(blocked.reason, "confirmation-required");
     assert.match(readFileSync(path.join(target, "media", "audio", "lesson.mp3"), "utf8"), /existing/);
     assert.equal(await discardRestoreStage(staged.stage.stagingPath), true);
 

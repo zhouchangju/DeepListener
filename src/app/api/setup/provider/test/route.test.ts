@@ -3,7 +3,12 @@ import { access, readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { NextRequest } from "next/server";
-import { POST, runProviderConnectivityTest, type ProviderConnectivityFactory } from "./route";
+import {
+  POST,
+  runProviderConnectivityTest,
+  type ProviderConnectivityFactory,
+  type ProviderCredentialReader,
+} from "./route";
 
 const routeSource = readFileSync(new URL("./route.ts", import.meta.url), "utf8");
 
@@ -145,7 +150,10 @@ test("provider connectivity persists invalid versus unknown outcomes without exp
     (() => ({ transcribe: async () => { throw new Error(failure); } })) as ProviderConnectivityFactory,
     { credentialScope: true },
   );
-  const credentialReader = async (_provider: "deepgram" | "openai" | "google", operation: (credential: string) => Promise<unknown>) => operation("selected-secret");
+  const credentialReader: ProviderCredentialReader = async <T>(
+    _provider: "deepgram" | "openai" | "google",
+    operation: (credential: string) => T | Promise<T>,
+  ) => operation("selected-secret");
   const statusWriter = async (_provider: "deepgram" | "openai" | "google", status: "unknown" | "unverified" | "verified" | "invalid") => {
     statuses.push(status);
   };

@@ -29,7 +29,8 @@ function createWav(): Uint8Array {
 }
 
 function source(name: string, body: Uint8Array | string, type: string) {
-  const blob = new Blob([body], { type });
+  const blobPart = typeof body === "string" ? body : Uint8Array.from(body).buffer;
+  const blob = new Blob([blobPart], { type });
   return { name, type, size: blob.size, stream: blob.stream() };
 }
 

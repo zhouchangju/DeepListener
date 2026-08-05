@@ -62,7 +62,7 @@ test("a valid SRT sidecar activates without constructing or calling a Provider",
       job.id,
       "deepgram",
       layout,
-      {
+      ({
         track: {
           async create({ data }: { data: { id: string; title: string; audioUrl: string; mediaType: string; sentences: { create: unknown[] } } }) {
             return {
@@ -77,7 +77,7 @@ test("a valid SRT sidecar activates without constructing or calling a Provider",
             return null;
           },
         },
-      },
+      }) as unknown as ImportJobDatabase,
       (provider) => {
         providerCalls.push(provider);
         throw new Error("A sidecar import must not construct a Provider.");
@@ -125,7 +125,10 @@ test("credential-scoped provider factory receives only the selected provider cre
       },
     } as unknown as ImportJobDatabase;
 
-    const reader = async (provider: "deepgram" | "openai" | "google", operation: (credential: string) => Promise<unknown>) => {
+    const reader = async <T>(
+      provider: "deepgram" | "openai" | "google",
+      operation: (credential: string) => T | Promise<T>,
+    ): Promise<T> => {
       assert.equal(provider, "openai");
       return operation("selected-openai-secret");
     };
