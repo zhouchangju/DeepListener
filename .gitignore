@@ -60,6 +60,9 @@ yarn-error.log*
 /settings/secrets.json
 /settings/settings.json
 
+# runtime state (resumable import-job manifests, startup-failure diagnostics)
+/runtime/
+
 # vercel
 .vercel
 
