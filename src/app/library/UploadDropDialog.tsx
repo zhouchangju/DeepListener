@@ -84,7 +84,7 @@ export default function UploadDropDialog({
           {uploading ? uploadingLabel : triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md" closeLabel={commonT("close")}>
+      <DialogContent className="sm:max-w-2xl" closeLabel={commonT("close")}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -100,7 +100,7 @@ export default function UploadDropDialog({
         />
         <div
           className={cn(
-            "flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors",
+            "flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center transition-colors",
             dragging ? "border-primary bg-primary/5" : "border-border bg-muted/30",
           )}
           onDragOver={handleDragOver}

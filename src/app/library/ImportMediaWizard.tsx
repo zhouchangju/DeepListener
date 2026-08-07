@@ -160,7 +160,7 @@ export default function ImportMediaWizard({ initialOpen = false, onRecoveryChang
           {t("importWithSubtitles")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg" closeLabel={commonT("close")}>
+      <DialogContent className="sm:max-w-2xl" closeLabel={commonT("close")}>
         <DialogHeader>
           <DialogTitle>{t("subtitleImportTitle")}</DialogTitle>
           <DialogDescription>{t("subtitleImportDesc")}</DialogDescription>
@@ -173,7 +173,7 @@ export default function ImportMediaWizard({ initialOpen = false, onRecoveryChang
         <input ref={mediaInput} type="file" className="hidden" accept="audio/*,video/mp4,video/webm" onChange={onMediaChange} />
         <input ref={subtitleInput} type="file" className="hidden" accept=".srt,.vtt,text/vtt,application/x-subrip" onChange={onSubtitleChange} />
         <div
-          className={`flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed p-5 text-center ${dragging ? "border-primary bg-primary/5" : "border-border bg-muted/30"}`}
+          className={`flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center ${dragging ? "border-primary bg-primary/5" : "border-border bg-muted/30"}`}
           onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
