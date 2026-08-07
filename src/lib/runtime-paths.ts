@@ -6,8 +6,8 @@
  * and falls back to the legacy repository-relative layout (Server) when it is
  * not — so Server behavior is byte-identical unless an explicit root is given.
  *
- * Design (AD-003): database, media, exports, backups, logs, settings, and
- * runtime state all resolve beneath one root. Packaged application resources
+ * Design (AD-003): database, media, backups, logs, settings, and runtime
+ * state all resolve beneath one root. Packaged application resources
  * are treated as read-only.
  */
 import { constants } from "node:fs";
@@ -120,13 +120,6 @@ export function mediaTempDirectory(root: string, mode: RuntimeMode): string {
   return mode === "desktop"
     ? path.join(root, "media", "temp")
     : path.join(root, "public", "uploads", ".tmp");
-}
-
-/** The directory holding generated exports. */
-export function exportsDirectory(root: string, mode: RuntimeMode): string {
-  return mode === "desktop"
-    ? path.join(root, "exports")
-    : path.join(root, "public", "exports");
 }
 
 /** The directory holding backups. */
