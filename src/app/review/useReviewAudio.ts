@@ -72,6 +72,11 @@ export function useReviewAudio({ current, playbackRate, onPlaybackBlocked }: Use
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.play().catch((error) => {
+      // AbortError means this play() was interrupted — typically because a
+      // newer playAudio() call paused this element while its play() was still
+      // pending (rapid grading / replay clicks). That is a normal race, not
+      // an autoplay block; reporting it would surface a spurious toast.
+      if (error instanceof DOMException && error.name === "AbortError") return;
       // Auto-play policies block audio that starts without a user gesture.
       // This is a real, user-visible condition (no audio during review) so we
       // surface it instead of failing silently.
