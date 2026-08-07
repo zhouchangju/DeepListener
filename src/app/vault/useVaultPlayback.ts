@@ -124,7 +124,13 @@ export function useVaultPlayback(
       endTimeRef.current = item.sentence.endTime;
       onEndRef.current = onEnd;
       setPlayingId(item.id);
-      audio.play().catch(() => {
+      audio.play().catch((error) => {
+        // AbortError means this play() was interrupted — by pause() from the
+        // stop/pause controls, or by a newer loadSentence that already armed
+        // its own endTime/onEnd state. Neither is a failure: clearing refs
+        // here would clobber the newer sentence's armed state, and surfacing
+        // it would misreport a normal interruption as an autoplay block.
+        if (error instanceof DOMException && error.name === "AbortError") return;
         // Autoplay block / decode error: clear playback state and let the
         // caller decide how to surface it.
         endTimeRef.current = null;
