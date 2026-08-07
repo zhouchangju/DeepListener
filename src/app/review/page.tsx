@@ -72,6 +72,10 @@ async function ReviewContent() {
       difficulty: true,
       isArchived: true,
       createdAt: true,
+      // `due` must stay selected: Prisma chunks large `id in (...)` filters and
+      // sorts the merged batches in memory; without the sort key in each record
+      // the query engine panics ("no entry found for key", prisma/prisma#24152).
+      due: true,
       tags: {
         select: { id: true, name: true }
       },
